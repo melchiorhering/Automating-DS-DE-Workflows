@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "ms-playwright.playwright",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+    "ms-python.python",
+    "excalidraw.excalidraw-editor",
+    "njpwerner.autodocstring",
+    "streetsidesoftware.code-spell-checker",
+    "tamasfe.even-better-toml",
+    "KevinRose.vsc-python-indent",
+    "ms-vscode-remote.remote-containers"
+    // "denoland.vscode-deno"
+  ]
+}

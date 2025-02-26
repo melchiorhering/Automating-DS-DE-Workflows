@@ -1,0 +1,23 @@
+{
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk",
+      "command": "latexmk",
+      "args": [
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-synctex=1",
+        "-outdir=../build",
+        "-auxdir=../auxdir",
+        "%DOCFILE%"
+      ],
+      "env": {
+        "CLSINPUTS": "../document-classes//:",
+        "TEXINPUTS": "../document-classes//:../sections//:../setups//:",
+        "BSTINPUTS": "../bibliographies//:",
+        "BIBINPUTS": "../bibliographies//:"
+      }
+    }
+  ],
+  "latex-workshop.latex.outDir": "../build"
+}
