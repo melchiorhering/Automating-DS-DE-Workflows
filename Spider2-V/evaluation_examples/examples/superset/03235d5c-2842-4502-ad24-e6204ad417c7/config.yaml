@@ -1,9 +1,0 @@
-
-connection:
-  - type: postgres
-  - host: db
-  - port: 5432
-  - database: superset
-  - user: superset
-  - password: superset
-  - connection_name: MyPostgresConn

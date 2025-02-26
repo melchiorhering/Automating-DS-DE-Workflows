@@ -1,1 +1,0 @@
-SELECT avg(salary) as average_salary FROM salary where job_title = :title_keyword;

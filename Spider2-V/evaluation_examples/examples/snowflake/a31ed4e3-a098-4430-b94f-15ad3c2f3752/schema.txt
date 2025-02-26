@@ -1,7 +1,0 @@
-- country_id IntegerType()
-- country_name StringType()
-- country_code1 StringType()
-- country_code2 StringType()
-- postal_code StringType()
-- city_name StringType()
-- size IntegerType()
