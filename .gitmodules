@@ -2,5 +2,5 @@
 path = overleaf
 url = https://git@git.overleaf.com/6705303b2d103c1e10f778c4
 [submodule "Spider2-V"]
-path = Spider2-V
-url = https://github.com/xlang-ai/Spider2-V.git
+	path = Spider2-V
+	url = https://github.com/xlang-ai/Spider2-V.git
