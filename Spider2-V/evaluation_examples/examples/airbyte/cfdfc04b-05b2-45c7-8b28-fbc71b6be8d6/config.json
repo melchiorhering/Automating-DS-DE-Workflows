@@ -1,0 +1,15 @@
+{
+    "source Postgres": {
+        "name": "postgres",
+        "host": "localhost",
+        "port": 2000,
+        "db name": "postgres", 
+        "user": "postgres",
+        "password": "password",
+        "update method": "Scan Changes with User Defined Cursor"
+    },
+    "destination Local SQLite": {
+        "destination name": "Local SQLite",
+        "destination_path": "/local/obesity.sqlite"
+    }
+}

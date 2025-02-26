@@ -1,0 +1,121 @@
+Documentation Source:
+cloud.google.com/bigquery/docs/tables.html
+
+Documentation Title:
+Create and use tables  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+This dataset is part of the BigQuery
+<a>public dataset program</a>.</p><p>Because the table you're querying is in another project, you add the project ID to the dataset in
+the following format:
+<code>`<var>project_id</var>`.<var>dataset</var>.INFORMATION_SCHEMA.<var>view</var></code>.
+In this example, the value is
+<code>`bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES</code>.</p><pre>SELECT
+  table_name, ddl
+FROM
+  `bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES
+WHERE
+  table_name = 'population_by_zip_2010';
+</pre><p>The result is similar to the following:</p><pre>+------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|       table_name       |                                                                                                            ddl                                                                                                             |
++------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| population_by_zip_2010 | CREATE TABLE `bigquery-public-data.census_bureau_usa.population_by_zip_2010`                                                                                                                                               |
+|                        | (                                                                                                                                                                                                                          |
+|                        |   geo_id STRING OPTIONS(description="Geo code"),                                                                                                                                                                           |
+|                        |   zipcode STRING NOT NULL OPTIONS(description="Five digit ZIP Code Tabulation Area Census Code"),                                                                                                                          |
+|                        |   population INT64 OPTIONS(description="The total count of the population for this segment."),                                                                                                                             |
+|                        |   minimum_age INT64 OPTIONS(description="The minimum age in the age range. If null, this indicates the row as a total for male, female, or overall population."),                                                          |
+|                        |   maximum_age INT64 OPTIONS(description="The maximum age in the age range. If null, this indicates the row as having no maximum (such as 85 and over) or the row is a total of the male, female, or overall population."), |
+|                        |   gender STRING OPTIONS(description="male or female. If empty, the row is a total population summary.")
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/tables.html
+
+Documentation Title:
+Create and use tables  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+expand your project, and then select a dataset.
+</li><li>In the <b>Dataset info</b>section, click <span>add_box</span><b>Create table</b>.</li><li>In the <b>Create table</b>panel, specify the following details: </li><ol><li>In the <b>Source</b>section, select <b>Empty table</b>in the <b>Create table from</b>list.</li><li>In the <b>Destination</b>section, specify the following details:
+<ol><li>For <b>Dataset</b>, select the dataset in which you want to create the
+        table.</li><li>In the <b>Table</b>field, enter the name of the table that you want to create.</li><li>Verify that the <b>Table type</b>field is set to <b>Native table</b>.</li></ol></li><li>In the <b>Schema</b>section, enter the <a>schema</a>definition.
+  
+
+
+
+  
+
+  You can enter schema information manually by using one of
+     the following methods:
+<ul><li>Option 1: Click <b>Edit as text</b>and paste the schema in the form of a
+        JSON array. When you use a JSON array, you generate the schema using the
+        same process as <a>creating a JSON schema file</a>.
+        You can view the schema of an existing table in JSON format by entering the following
+      command:
+    <pre><a>bq show</a>--format=prettyjson <var>dataset.table</var></pre></li><li>Option 2: Click <span>add_box</span><b>Add field</b>and enter the table schema. Specify each field's <b>Name</b>,
+        <b>Type</b>,
+        and <b>Mode</b>.</li></ul></li><li>Optional: Specify <b>Partition and cluster settings</b>. For more information, see
+       <a>Creating partitioned tables</a>and
+    <a>Creating and using clustered tables</a>.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/information-schema-tables.html
+
+Documentation Title:
+TABLES view  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+This dataset is part of the BigQuery
+<a>public dataset program</a>.</p><p>Because the table you're querying is in another project, you add the project ID to the dataset in
+the following format:
+<code>`<var>project_id</var>`.<var>dataset</var>.INFORMATION_SCHEMA.<var>view</var></code>.
+In this example, the value is
+<code>`bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES</code>.</p><pre>SELECT
+  table_name, ddl
+FROM
+  `bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES
+WHERE
+  table_name = 'population_by_zip_2010';
+</pre><p>The result is similar to the following:</p><pre>+------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|       table_name       |                                                                                                            ddl                                                                                                             |
++------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| population_by_zip_2010 | CREATE TABLE `bigquery-public-data.census_bureau_usa.population_by_zip_2010`                                                                                                                                               |
+|                        | (                                                                                                                                                                                                                          |
+|                        |   geo_id STRING OPTIONS(description="Geo code"),                                                                                                                                                                           |
+|                        |   zipcode STRING NOT NULL OPTIONS(description="Five digit ZIP Code Tabulation Area Census Code"),                                                                                                                          |
+|                        |   population INT64 OPTIONS(description="The total count of the population for this segment."),                                                                                                                             |
+|                        |   minimum_age INT64 OPTIONS(description="The minimum age in the age range. If null, this indicates the row as a total for male, female, or overall population."),                                                          |
+|                        |   maximum_age INT64 OPTIONS(description="The maximum age in the age range. If null, this indicates the row as having no maximum (such as 85 and over) or the row is a total of the male, female, or overall population."), |
+|                        |   gender STRING OPTIONS(description="male or female. If empty, the row is a total population summary.")
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/tables.html
+
+Documentation Title:
+Create and use tables  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+This dataset is part of the BigQuery
+<a>public dataset program</a>.</p><p>Because the table you're querying is in another project, the
+<code>bigquery-public-data</code>project, you add the project ID to the dataset in the
+following format:
+<code>`<var>project_id</var>`.<var>dataset</var>.INFORMATION_SCHEMA.<var>view</var></code>;
+for example,
+<code>`bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES</code>.</p><p>The following columns are excluded from the query results because they are
+currently reserved for future use:</p><ul><code>IS_GENERATED</code><code>GENERATION_EXPRESSION</code><code>IS_STORED</code><code>IS_UPDATABLE</code></ul><aside><strong>Note:</strong><span><code>INFORMATION_SCHEMA</code>view names are case-sensitive.</span></aside><pre>SELECT
+    * EXCEPT(is_generated, generation_expression, is_stored, is_updatable)
+  FROM
+    `bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.COLUMNS
+  WHERE
+    table_name = 'population_by_zip_2010';
+</pre><p>The result is similar to the following. For readability, some columns
+are excluded from the result.
+
+
+

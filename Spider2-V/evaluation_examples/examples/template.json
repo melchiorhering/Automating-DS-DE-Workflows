@@ -1,0 +1,38 @@
+{
+    "id": "xxxxxxxx-xxxxxx-xxxxxx",
+    "snapshot": "snapshot_name",
+    "instruction": "task goal",
+    "source": [
+        "source_url1",
+        "source_url2"
+    ],
+    "related_apps": [
+        "app1",
+        "app2"
+    ],
+    "tags": [
+        "cli+gui", // cli or cli+gui
+        "abstract", // verbose or abstract instruction
+        "account", // optional
+        "data_warehousing" // task categories
+    ],
+    "counterpart": "xxxxxxxx-xxxxxx-xxxxxx", // for comparison, abstract v.s. verbose
+    "config": [
+        {
+            "type": "method_to_setup_environment",
+            "parameters": {
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [],
+        "func": "metric_function_name",
+        "result": {
+            "type": "method_to_obtain_predicted_result"
+        },
+        "expected": {
+            "type": "method_to_obtain_expected_result"
+        },
+        "options": {}
+    }
+}

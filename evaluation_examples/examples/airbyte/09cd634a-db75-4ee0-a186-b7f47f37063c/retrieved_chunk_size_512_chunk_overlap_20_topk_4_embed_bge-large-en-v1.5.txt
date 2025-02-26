@@ -1,0 +1,175 @@
+Documentation Source:
+airbyte.com/tutorials/creating-duckdb-destination-with-python.txt
+
+Documentation Title:
+How to Create an Airbyte Python Destination: DuckDB | Airbyte
+
+Documentation Content:
+:param logger: Logging object to display debug/info/error to the logs
+            (logs will not be accessible via airbyte UI if they are not passed to this logger)
+        :param config: Json object containing the configuration of this destination, content of this json is as specified in
+        the properties of the spec.json file
+
+        :return: AirbyteConnectionStatus indicating a Success or Failure
+The way we can achieve that is by checking the input `config` parameters and setting up a connection to the database. If all parameters are ok and the connection establishes, we return the `Status.SUCCEEDED`.
+Function write()
+The write function reads the data passed from the source connector to our destination. You can see below in the function definition that we get a list of
+Airbyte Messages
+. This is important to know as Airbyte serialized data into JSON Messages, making it possible to convert any source to any destination.
+We also get the
+ConfiguredAirbyteCatalog
+, which describes the schema of the messages and how it's persisted in the destination.
+def write(
+        self, config: Mapping[str, Any], configured_catalog: ConfiguredAirbyteCatalog, input_messages: Iterable[AirbyteMessage]
+    ) -> Iterable[AirbyteMessage]:
+
+        """
+        Reads the input stream of messages, config, and catalog to write data to the destination.
+
+        This method returns an iterable (typically a generator of AirbyteMessages via yield) containing state messages received in the input message stream. Outputting a state message means that every AirbyteRecordMessage which came before it has been successfully persisted to the destination. This is used to ensure fault tolerance in the case that a sync fails before fully completing, then the source is given the last state message output from this method as the starting point of the next sync.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/using-airbyte/getting-started/set-up-a-connection.txt
+
+Documentation Title:
+Set up a Connection | Airbyte Documentation
+
+Documentation Content:
+Check the data from your first sync
+​
+Once the first sync has completed, you can verify the sync has completed by checking the data in your destination.
+Cloud
+Self Hosted
+If you followed along and created your own connection using a
+Google Sheets
+destination, you will now see three tabs created in your Google Sheet,
+products
+,
+users
+, and
+purchases
+.
+If you followed along and created your own connection using a
+Local JSON
+destination, you can use this command to check the file's contents to make sure the replication worked as intended (be sure to replace YOUR_PATH with the path you chose in your destination setup, and YOUR_STREAM_NAME with the name of an actual stream you replicated):
+cat /tmp/airbyte_local/YOUR_PATH/_airbyte_raw_YOUR_STREAM_NAME.jsonl
+You should see a list of JSON objects, each containing a unique
+airbyte_ab_id
+, an
+emitted_at
+timestamp, and
+airbyte_data
+containing the extracted record.
+tip
+If you are using Airbyte on Windows with WSL2 and Docker, refer to
+this guide
+to locate the replicated folder and file.
+What's next?
+​
+Congratulations on successfully setting up your first connection using Airbyte! We hope that this will be just the first step on your journey with us. We support a large, ever-growing
+catalog of sources and destinations
+, and you can even
+contribute your own
+.
+If you have any questions at all, please reach out to us on
+Slack
+. If you would like to see a missing feature or connector added, please create an issue on our
+Github
+. Our community's participation is invaluable in helping us grow and improve every day, and we always welcome your feedback.
+Thank you, and we hope you enjoy using Airbyte!
+Edit this page
+Previous
+Add a Destination
+Next
+Configuring Connections
+Configure the connection
+Connection Overview
+Check the data from your first sync
+What's next?
+Was this page helpful?
+Yes
+No
+
+
+
+Documentation Source:
+airbyte.com/tutorials/extract-data-from-the-webflow-api.txt
+
+Documentation Title:
+Build a connector to extract data from the Webflow API | Airbyte
+
+Documentation Content:
+– the list of
+supported destinations
+is long and growing.
+Below I show how to replicate Webflow collections to a
+local json file
+.
+‍
+This tells Airbyte to output json data to
+/tmp/airbyte_local/webflow-blog-test
+. You will then be presented with a screen that allows you to configure the connection parameters as follows:
+Notice that there are many stream names available, all of which were
+dynamically generated based on the collections that are available in Webflow
+. Using the switch on the left side allows you to specify which of these streams you are interested in replicating to your output. For this demonstration, you may leave all settings with their default value, and then click on the
+Set up connection
+button in the bottom right corner.
+Once this is done, you will see that the first sync has already started as follows:
+‍
+And after a few minutes, if everything has gone as expected, you should see that the connection succeeded as follows:
+‍
+You can then look in the local directory at
+/tmp/airbyte_local/webflow-blog-test
+to verify that several json files have been created, with each file corresponding to a Webflow collection. In my case, the output looks as follows:
+‍
+This confirms that all of the collections have been pulled from Webflow, and copied to a directory on my local host!
+Creating a pull request (optional)
+Assuming that you wish to contribute your connector back
+to the Airbyte community, once you have validated that your connector is working as expected, you can push your local branch to github and then click on the
+Compare & pull request
+button, as shown in the image below:
+‍
+After you have created a pull request, one of Airbyte’s engineers will work with you to get your connector merged into the master branch so that it can be distributed and used by others.
+Conclusion
+Because of the open source nature of Airbyte, it is relatively easy to create your own connectors. In this article I presented the
+Webflow source connector
+implementation as an example of how to create a custom Airbyte source connector written in Python.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/how-to-use-airflow-and-airbyte-together.txt
+
+Documentation Title:
+A step-by-step guide to setting up and configuring Airbyte and Airflow to work together | Airbyte
+
+Documentation Content:
+Get the
+connectionId
+from the URL shown in your browser as annotated in the following image:
+Get the Airbyte connection ID
+‍
+You can use
+cURL
+to verify that Airbyte’s API endpoint is working as expected. Be sure to update the
+connectionID
+in the following command to reflect the value extracted from the URL above. Execute a call to the REST API as follows:
+curl  -u 'airbyte:password' -X POST "http://localhost:8000/api/v1/connections/sync" \
+ -H "Accept: application/json"\
+ -H "Content-Type: application/json" \
+ -d '{"connectionId":"[REPLACE WITH YOUR CONNECTION ID]"}'
+The above command should respond with the following, which indicates that a Sync has started:
+{"job":{"id":303,"configType":"sync","configId":"1ab174f8-fa2c-4204-9442-2900be4fd28a","createdAt":1675690032,"updatedAt":1675690032,"status":"running"},"attempts":[{"attempt":{"id":0,"status":"running","createdAt":1675690032,"updatedAt":1675690032},"logs":{"logLines":[]}}]}%
+If you look in the UI, you will see that a sync executes each time that you run the cURL command. In my case I have executed the command twice within a minute of each other, and so my UI looks as follows:
+View the Sync History
+Install and Launch Airflow
+Now that you have verified that the REST endpoint is functioning as expected, we’ll start working with Airflow, which will trigger that same Airbyte API endpoint to execute a sync. The instructions for this section are based on
+Running Airflow in Docker
+, with additional information about how to get the
+Airbyte provider
+installed.
+
+
+

@@ -1,0 +1,58 @@
+Documentation Source:
+www.metabase.com/learn/administration/serialization.html
+
+Documentation Title:
+Serialization: preloading dashboards in a new Metabase instance
+
+Documentation Content:
+["setup-token"]'</span><span>)</span><span>MB_TOKEN</span><span>=</span><span>$(</span>curl <span>-s</span><span>-X</span>POST <span>\</span><span>-H</span><span>"Content-type: application/json"</span><span>\</span>http://<span>${</span><span>METABASE_HOST</span><span>}</span>:<span>${</span><span>METABASE_PORT</span><span>}</span>/api/setup <span>\</span><span>-d</span><span>'{
+    "token": "'</span><span>${</span><span>SETUP_TOKEN</span><span>}</span><span>'",
+    "user": {
+        "email": "'</span><span>${</span><span>ADMIN_EMAIL</span><span>}</span><span>'",
+        "first_name": "Metabase",
+        "last_name": "Admin",
+        "password": "'</span><span>${</span><span>ADMIN_PASSWORD</span><span>}</span><span>'"
+    },
+    "prefs": {
+        "allow_tracking": false,
+        "site_name": "Metawhat"
+    }
+}'</span>| jq <span>-r</span><span>'.id'</span><span>)</span><span>echo</span><span>-e</span><span>"</span><span>\n</span><span>👥 Creating some basic users: "</span>curl <span>-s</span><span>"http://</span><span>${</span><span>METABASE_HOST</span><span>}</span><span>:</span><span>${</span><span>METABASE_PORT</span><span>}</span><span>/api/user"</span><span>\</span><span>-H</span><span>'Content-Type: application/json'</span><span>\</span><span>-H</span><span>"X-Metabase-Session: </span><span>${</span><span>MB_TOKEN</span><span>}</span><span>"</span><span>\</span><span>-d</span><span>'{"first_name":"Basic","last_name":"User",
+
+
+
+Documentation Source:
+www.metabase.com/learn/administration/metabase-api.html
+
+Documentation Title:
+Working with the Metabase API
+
+Documentation Content:
+such as adding a user or creating a dashboard. Then use the developer tools in your browser to view the request Metabase made to the server when you performed that action.</p><h2>A few things you can do with the Metabase API</h2><h3>Provision a Metabase instance</h3><p>In addition to using <a>environment variables</a>, you can use the Metabase API to setup an instance of Metabase. Once you have installed Metabase using your <a>preferred method</a>, and the Metabase server is up and running, you can create the first user (as an Admin) by posting to a special endpoint, <a>/api/setup</a>. This <code>/api/setup</code>endpoint:</p><ul><li>Creates the first user as an Admin (superuser).</li><li>Logs them in.</li><li>Returns a session ID.</li></ul><p>You can then configure settings using the <code>/api/settings</code>endpoint, set up email using the <code>/api/email</code>endpoint, and use the <code>/api/setup/admin_checklist</code>endpoint to verify your setup progress.</p><h3>Add a data source</h3><p>You can add a new database using the <code>POST /api/database/</code>endpoint, and validate that database’s connection details using the <code>/api/setup/validate</code>endpoint. Once you’ve connected the database to your Metabase instance, you can rescan the database and update the schema metadata.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/configuring-metabase/setting-up-metabase.html
+
+Documentation Title:
+Setting up Metabase
+
+Documentation Content:
+If you’ve installed Metabase on a production server, you should be really careful to remember the password for this account since it will be used to add other users, connect to databases, set up email, and more. You can also create additional admin accounts later.</p><p>For now, let’s just create an account for ourselves to explore Metabase. Type in your info, and when you’re ready to continue, click the <strong>Next</strong>button.</p><h2>What will you use Metabase for?</h2><p>Let us know your plans with Metabase so that we can best guide you.</p><ul><li>Self-service analytics for my own company</li><li>Embedding analytics into my application</li><li>A bit of both</li><li>Not sure yet</li></ul><p>Don’t worry about picking the wrong option. If you say you’re interested in embedding, Metabase will display a card with a link to the embedding settings when you (the admin) first log in to your instance. Just a little convenience thing, that’s all.</p><h2>Gathering your database info</h2><p>At this point you’ll need to gather some information about the database you want to use with Metabase. We won’t be able to connect to your database without it, but you’d like to deal with all of this later, that’s okay: just click <strong>I’ll add my data later</strong>.
+
+
+
+Documentation Source:
+www.metabase.com/learn/administration/serialization.html
+
+Documentation Title:
+Serialization: preloading dashboards in a new Metabase instance
+
+Documentation Content:
+"last_name":"User","email":"basic@somewhere.com","login_attributes":{"region_filter":"WA"},"password":"'</span><span>${</span><span>ADMIN_PASSWORD</span><span>}</span><span>'"}'</span>curl <span>-s</span><span>"http://</span><span>${</span><span>METABASE_HOST</span><span>}</span><span>:</span><span>${</span><span>METABASE_PORT</span><span>}</span><span>/api/user"</span><span>\</span><span>-H</span><span>'Content-Type: application/json'</span><span>\</span><span>-H</span><span>"X-Metabase-Session: </span><span>${</span><span>MB_TOKEN</span><span>}</span><span>"</span><span>\</span><span>-d</span><span>'{"first_name":"Basic 2","last_name":"User","email":"basic2@somewhere.com","login_attributes":{"region_filter":"CA"},"password":"'</span><span>${</span><span>ADMIN_PASSWORD</span><span>}</span><span>'"}'</span><span>echo</span><span>-e</span><span>"</span><span>\n</span><span>👥 Basic users created!"</span></code><p>Save the above code as <code>create_users.sh</code>, and make it executable:</p><code><span>chmod</span>+x create_users.sh
+</code><p>Then run:</p><code><span>MB_HOSTNAME</span><span>=</span>localhost <span>MB_PORT</span><span>=</span>5001 ./create_users.sh
+</code><p>With your metabase-source instance up, and your users created, open up <code>http://localhost:5001</code>and sign in as the admin user you created.
+
+
+

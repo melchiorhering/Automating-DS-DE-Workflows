@@ -1,0 +1,331 @@
+Documentation Source:
+cloud.google.com/bigquery/docs/quickstarts/load-data-console.txt
+
+Documentation Title:
+Load and query data with the Google Cloud console  |  BigQuery
+
+Documentation Content:
+In the
+Explorer
+panel, click your project name.
+Next to the
+babynames
+dataset, click
+More actions
+more_vert
+and select
+Open
+.
+In the details panel, click
+add_box
+Create
+   table
+.
+Unless otherwise indicated, use the default values for all settings.
+On the
+Create table
+page, do the following:
+In the
+Source
+section, choose
+Upload
+from the
+Create table
+    from
+list.
+In the
+Select file
+field, click
+Browse
+.
+Navigate to and open your local
+yob2014.txt
+file, and click
+Open
+.
+From the
+File
+    format
+list, choose
+CSV
+In the
+Destination
+section, enter
+names_2014
+for
+Table
+    name
+.
+In the
+Schema
+section, click the
+Edit as
+      text
+toggle, and paste the following
+  schema definition into the text field:
+name:string,assigned_sex_at_birth:string,count:integer
+Click
+Create
+    table
+.
+Wait for BigQuery to create the table and load the data.
+   When BigQuery finishes loading the data, expand the
+Personal
+    history
+and
+Project history
+panel to review the job details.
+Preview table data
+To preview the table data, follow these steps:
+In the
+Explorer
+panel, expand your project and
+babynames
+dataset, and then
+    select the
+names_2014
+table.
+In the details panel, click
+Preview
+. BigQuery displays the first few
+    rows of the table.
+The
+Preview
+tab is not available for all table types. For example, the
+Preview
+tab is not displayed for external tables or views.
+Query table data
+Next, query the table. The process is identical to the previous example,
+except that this time, you're querying your table instead of a public table.
+Click
+add_box
+Compose new query
+. A new
+Editor
+tab opens.
+In the
+Editor
+    tab
+, paste the following query. This query
+    retrieves the top five names for US babies that were assigned male at birth
+    in 2014.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/quickstarts/load-data-console.txt
+
+Documentation Title:
+Load and query data with the Google Cloud console  |  BigQuery
+
+Documentation Content:
+Note
+: If you don't plan to keep the
+    resources that you create in this procedure, create a project instead of
+    selecting an existing project. After you finish these steps, you can
+    delete the project, removing all resources associated with the project.
+Go to project selector
+Optional: If you
+    select an existing project, make sure that you
+enable
+      the BigQuery API
+. The BigQuery API is automatically
+      enabled in new projects.
+Create a BigQuery dataset
+Use the Google Cloud console to create a dataset that stores the data.
+In the Google Cloud console, open the BigQuery page.
+Go to BigQuery
+In the
+Explorer
+panel, click your project name.
+Expand the
+more_vert
+View actions > Create dataset
+.
+On the
+Create dataset
+page, do the following:
+For
+Dataset ID
+, enter
+babynames
+.
+From the
+Data location
+list, choose
+us (multiple regions in United States)
+.
+     The public datasets are stored in the
+us
+multi-region
+location
+. For simplicity,
+      store your
+     dataset in the same location.
+Leave the remaining default settings as they are, and click
+Create dataset
+.
+Download the source data file
+The file that you're downloading contains approximately 7 MB of data about
+popular baby names. It's provided by the US Social Security Administration.
+For more information about the dataset, see the
+Social Security Administration's dataset information page
+.
+Download the US Social Security Administration's dataset by opening the
+following URL in a new browser tab:
+https://www.ssa.gov/OACT/babynames/names.zip
+Extract the file.
+For more information about the dataset schema, see the zip file's
+NationalReadMe.pdf
+file.
+To see what the data looks like, open the
+yob2014.txt
+file. This file
+contains comma-separated values for name, assigned sex at birth, and number
+of children with that name. The file has no header row.
+Note the location of the
+yob2014.txt
+file so that you can find it later.
+Load data into a table
+Next, load the data into a new table.
+In the
+Explorer
+panel, click your project name.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/quickstarts/load-data-bq.txt
+
+Documentation Title:
+Load and query data with the bq tool  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+The name cannot start with a number or underscore,
+and it cannot have spaces.
+Confirm that the dataset
+babynames
+now appears in your project:
+bq ls
+The output is similar to the following:
+datasetId
+-------------
+  babynames
+Load data into a table
+In the
+babynames
+dataset, load the source file
+yob2010.txt
+into a
+new table that's named
+names2010
+:
+bq load babynames.names2010 yob2010.txt name:string,assigned_sex_at_birth:string,count:integer
+The output is similar to the following:
+Upload complete.
+Waiting on bqjob_r3c045d7cbe5ca6d2_0000018292f0815f_1 ... (1s) Current status: DONE
+By default, when you load data, BigQuery expects UTF-8
+encoded data. If you have data in ISO-8859-1 (or Latin-1) encoding and
+you have problems with it, instruct BigQuery to treat
+your data as Latin-1 using
+bq load -E=ISO-8859-1
+. For more information,
+see
+Encoding
+.
+Confirm that the table
+names2010
+now appears in the
+babynames
+dataset:
+bq ls babynames
+The output is similar to the following. Some columns are omitted to simplify
+the output.
+tableId     Type
+----------- ---------
+ names2010    TABLE
+Confirm that the table schema of your new
+names2010
+table is
+name: string
+,
+assigned_sex_at_birth: string
+, and
+count: integer
+:
+bq show babynames.names2010
+The output is similar to the following. Some columns are omitted to simplify
+the output.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/quickstarts/load-data-bq.txt
+
+Documentation Title:
+Load and query data with the bq tool  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+Go to project selector
+Make sure that billing is enabled for your Google Cloud project
+.
+If you do not enable billing for the Google Cloud project that you use in this
+tutorial, then you will work with data in the BigQuery sandbox. The
+BigQuery sandbox lets you learn BigQuery with a limited
+set of BigQuery features at no charge.
+Ensure that the BigQuery API is enabled.
+Enable the API
+If you created a new project, the BigQuery API is automatically
+    enabled.
+In the Google Cloud console, activate Cloud Shell.
+Activate Cloud Shell
+At the bottom of the Google Cloud console, a
+Cloud Shell
+session starts and displays a command-line prompt. Cloud Shell is a shell environment
+      with the Google Cloud CLI
+      already installed and with values already set for
+      your current project. It can take a few seconds for the session to initialize.
+Download the source public data file
+Download the
+baby names zip file
+.
+Extract the zip file. It contains a file named
+NationalReadMe.pdf
+that
+describes the dataset schema.
+Learn more about the baby names dataset
+.
+Open the
+yob2010.txt
+file. It's a comma-separated value (CSV) file that
+contains three columns: name, assigned sex at birth, and number of children
+with that name. The file has no header row.
+Move the file to your working directory.
+If you're working in Cloud Shell, click
+more_vert
+More
+>
+Upload
+, click
+Choose Files
+, choose the
+yob2010.txt
+file, and then click
+Upload
+.
+If you're working in a local shell, copy or move the file
+yob2010.txt
+into the directory where you're running the bq tool.
+Create a dataset
+Create a dataset named
+babynames
+:
+bq mk babynames
+The output is similar to the following:
+Dataset 'myproject:babynames' successfully created.
+A dataset name can be up to 1,024 characters long and consist of A-Z, a-z,
+0-9, and the underscore. The name cannot start with a number or underscore,
+and it cannot have spaces.
+
+
+

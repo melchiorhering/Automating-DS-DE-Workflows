@@ -1,0 +1,63 @@
+Documentation Source:
+www.metabase.com/docs/v0.49/people-and-groups/managing.html
+
+Documentation Title:
+Managing people and groups
+
+Documentation Content:
+Otherwise, they’ll receive a password reset email.</p><h2>Resetting the admin password</h2><p>If you’re using Metabase Cloud, <a>contact support</a>to reset your admin password.</p><p>If you’re a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:</p><ol><li>Stop the running Metabase application.</li><li>Restart Metabase with <code>reset-password email@example.com</code>, where “email@example.com” is the email associated with the admin account:
+    <code>java -jar metabase.jar reset-password email@example.com
+</code></li><li><p>Metabase will print out a random token like this:</p><code>...
+Resetting password for email@example.com...
+
+OK [[[1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89]]]
+</code></li><li>Start Metabase normally again (<em>without</em>the <code>reset-password</code>option).</li><li>Navigate to it in your browser using the path <code>/auth/reset_password/:token</code>, where “:token” is the token that was generated from the step above. The full URL should look something like this:
+    <code>https://metabase.example.com/auth/reset_password/1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89
+</code></li><li>You should now see a page where you can input a new password for the admin account.</li></ol><h2>Unsubscribe from all subscriptions / alerts</h2><p>This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.</p><p>This action doesn’t affect email distribution lists that are managed outside of Metabase.</p><h2>Default user accounts</h2><p>Metabase includes default user accounts to handle various tasks. We’re documenting these accounts here so you know they’re legitimate accounts and not someone trying to spy on your Metabase.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/people-and-groups/account-settings.html
+
+Documentation Title:
+Account settings
+
+Documentation Content:
+Note that if your Metabase uses Single Sign-On (SSO), your administrator will have disabled this password section, as your identity provider will manage logins.</p><p>If you’re having trouble logging in, see our <a>People can’t log into Metabase</a>.</p><h2>Account login history</h2><p>The login history lists each login, along with some location information (if available), and some client information (like Browser (Firefox/Windows)).
+If you see any suspicious login attempts, change your password and notify your administrator.</p><h3>A note about new login emails</h3><p>Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don’t remember logging in, or don’t recognize the device, change your password and let your administrator know.</p><h2>Disable animations in Metabase</h2><p>This isn’t an in-Metabase setting, but just so you know: you can disable UI animations in Metabase (like sidebars sliding around, or rotating spinners) by changing the settings for your operating system so it respects the <code>prefers-reduced-motion</code>CSS media feature. This change will also affect other applications, not just Metabase. Check out the instructions for how to set the user preferences for your operating system in the <a>MDN Web Docs</a>.</p><h2>Notifications</h2><p>If you subscribe or are added to dashboard subscriptions or alerts, you’ll be able to manage those notifications here (as well as on the relevant question or dashboard themselves).</p></article><p>Read docs for other <a>versions of Metabase</a>.
+	      </p><div><div><div><p>Did this article help you?
+        </p><ul><button>Yes
+                </button><button>No
+                </button></ul></div><button>Send
+                </button></div><p>Thanks for your feedback!</p><span>Want to improve these docs?
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/troubleshooting-guide/cant-log-in.html
+
+Documentation Title:
+People can't log in to Metabase
+
+Documentation Content:
+</p><p>If you’ve forgotten your Metabase Cloud admin password, you can <a>contact support</a>to reset the password.</p><h2>Related topics</h2><ul><li><a>Troubleshooting SAML</a>.</li><li><a>Troubleshooting LDAP</a>.</li><li><a>Resetting someone’s password</a>.</li><li><a>Resetting the admin password</a>.</li><li><a>Deleting an account that’s set up incorrectly</a>.</li></ul><h2>Are you still stuck?</h2><p>If you can’t solve your problem using the troubleshooting guides:</p><ul><li>Search or ask the <a>Metabase community</a>.</li><li>Search for <a>known bugs or limitations</a>.</li></ul></article><p>Read docs for other <a>versions of Metabase</a>.
+	      </p><div><div><div><p>Did this article help you?
+        </p><ul><button>Yes
+                </button><button>No
+                </button></ul></div><button>Send
+                </button></div><p>Thanks for your feedback!</p><span>Want to improve these docs? <a>Propose a change.</a></span></div></div><footer><div><h5>Subscribe to our newsletter</h5><p>Stay in touch with updates and news from Metabase.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/people-and-groups/managing.html
+
+Documentation Title:
+Managing people and groups
+
+Documentation Content:
+Instead, Metabase deactivates accounts so people can’t log in to them, while it preserves any questions, models, dashboards, and other items created by those accounts.</p><p>If you want to delete an account because the account information was set up incorrectly, you can deactivate the old account and create a new one instead.</p><ol><li>Change the name and email associated with the old account.</li><li><a>Deactivate</a>the old account.</li><li><a>Create a new account</a>with the person’s correct information.</li></ol><h2>Checking someone’s auth method</h2><p>Search for a person and look for an icon beside their name.</p><ul><li>If they log in using Google credentials, Metabase displays a Google icon.</li><li>If they log in using an email address and password stored in Metabase, no icon is shown.</li></ul><p>Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter’s icon will <em>not</em>show up next to their name.</p><h2>Resetting someone’s password</h2><p>If you’ve already <a>configured your email settings</a>, people can reset their passwords using the “forgot password” link on the login screen. If you haven’t yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.</p><p>To reset a password for someone, just click the three dots icon next to their account and choose <strong>Reset Password</strong>. If you haven’t <a>configured your email settings</a>yet, you’ll be given a temporary password that you’ll have to share with that person.
+
+
+

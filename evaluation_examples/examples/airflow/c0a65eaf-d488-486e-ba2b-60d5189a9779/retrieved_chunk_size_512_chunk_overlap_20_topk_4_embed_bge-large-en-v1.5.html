@@ -1,0 +1,44 @@
+Documentation Source:
+docs.astronomer.io/learn/airflow-sql-data-quality.html
+
+Documentation Title:
+Run data quality checks using SQL check operators | Astronomer Documentation
+
+Documentation Content:
+Note that currently the operators cannot support BigQuery <code>job_id</code>s.</li><li>A love for birds.</li></ul><h2>Step 1: Configure your Astro project<a>​</a></h2><p>To use SQL check operators, install the <a>Common SQL provider</a>in your Astro project.</p><ol><li><p>Run the following commands to create a new Astro project:</p><code><span><span>$ </span><span>mkdir</span><span>astro-sql-check-tutorial </span><span>&amp;&amp;</span><span>cd</span><span>astro-sql-check-tutorial</span></span><span>$ astro dev init</span></code></li><li><p>Add the Common SQL provider and the SQLite provider to your Astro project <code>requirements.txt</code>file.</p><code><span>apache-airflow-providers-common-sql==1.5.2</span><span>apache-airflow-providers-sqlite==3.4.2</span></code></li></ol><h2>Step 2: Create a connection to SQLite<a>​</a></h2><ol><p>In the Airflow UI, go to <strong>Admin</strong>&gt; <strong>Connections</strong>and click <strong>+</strong>.</p><li><p>Create a new connection named <code>sqlite_conn</code>and choose the <code>SQLite</code>connection type. Enter the following information:</p><ul><li><strong>Connection Id</strong>: <code>sqlite_conn</code>.</li><li><strong>Connection Type</strong>: <code>SQLite</code>.</li><li><strong>Host</strong>: <code>/tmp/sqlite.db</code>.</li></ul></li></ol><h2>Step 3: Add a SQL file with a custom check<a>​</a></h2><ol><p>In your <code>include</code>folder, create a file called <code>custom_check.sql</code>.
+
+
+
+Documentation Source:
+docs.astronomer.io/astro/cloud-ide/quickstart.html
+
+Documentation Title:
+Astro Cloud IDE quickstart | Astronomer Documentation
+
+Documentation Content:
+To enable cell runs, Astronomer support might need to set up additional cloud infrastructure for the IDE.</p></div><h2>Step 5: Create a database connection<a>​</a></h2><p>To create a SQL cell and execute SQL, first create a database to run your SQL queries against.</p><ol><p>Click the <strong>Connections</strong>tab and then click <strong>Connection</strong>.</p><p>Click <strong>NEW CONNECTION</strong>.</p><p>Choose one of the available connection types and configure all required values for the connection. Click <strong>More options</strong>to configure optional values for the connection.</p></ol><div><div>info</div><p>SQL cell query results are stored in XComs and are not accessible outside of your data pipeline. To save the results of a SQL query, run it in a SQL warehouse cell. See <a>Run SQL</a>.</p></div><ol><p>Optional. Click <strong>Test Connection</strong>. The Astro Cloud IDE runs a quick connection test and returns a status message. You can still create the connection if the test is unsuccessful.</p><p>Click <strong>Create Connection</strong>. You new connection appears in the <strong>Connections</strong>tab both in the pipeline editor and on your project homepage. You can use this connection with any future pipelines you create in this project.</p></ol><h2>Step 6: Create a SQL cell<a>​</a></h2><p>You can now write and run SQL cells with your database connection.</p><ol><p>In the <strong>Pipeline</strong>list, click the name of the pipeline you created in step 2.</p><p>Click <strong>Add Cell</strong>and select <strong>SQL</strong>.
+
+
+
+Documentation Source:
+docs.astronomer.io/learn/debugging-dags.html
+
+Documentation Title:
+Debug DAGs | Astronomer Documentation
+
+Documentation Content:
+You can enable connection testing by defining the environment variable <code>AIRFLOW__CORE__TEST_CONNECTION=Enabled</code>in your Airflow environment. Astronomer recommends not enabling this feature until you are sure that only highly trusted UI/API users have "edit connection" permissions.</p></div><p>To find information about what parameters are required for a specific connection:</p><ul><li>Read provider documentation in the <a>Astronomer Registry</a>to access the Apache Airflow documentation for the provider. Most commonly used providers will have documentation on each of their associated connection types. For example, you can find information on how to set up different connections to Azure in the Azure provider docs.</li><li>Check the documentation of the external tool you are connecting to and see if it offers guidance on how to authenticate.</li><li>View the source code of the hook that is being used by your operator.</li></ul><p>You can also test connections from within your IDE by using the <code>dag.test()</code>method. See <a>Debug interactively with dag.test()</a>and <a>How to test and debug your Airflow connections</a>.</p><h2>I need more help<a>​</a></h2><p>The information provided here should help you resolve the most common issues. If your issue was not covered in this guide, try the following resources:</p><ul><li>If you are an Astronomer customer contact our <a>customer support</a>.</li><li>Post your question to <a>Stack Overflow</a>, tagged with <code>airflow</code>and other relevant tools you are using. Using Stack Overflow is ideal when you are unsure which tool is causing the error, since experts for different tools will be able to see your question.</li><li>Join the <a>Apache Airflow Slack</a>and open a thread in <code>#newbie-questions</code>or <code>#troubleshooting</code>. The Airflow slack is the best place to get answers to more complex Airflow specific questions.</li><li>If you found a bug in Airflow or one of its core providers, please open an issue in the <a>Airflow GitHub repository</a>.
+
+
+
+Documentation Source:
+docs.astronomer.io/learn/data-quality.html
+
+Documentation Title:
+Data quality and Airflow | Astronomer Documentation
+
+Documentation Content:
+Astronomer recommends using SQL check operators if you want to:</p><ul><li>Write checks without needing to set up software in addition to Airflow.</li><li>Write checks as Python dictionaries and in SQL.</li><li>Use any SQL statement that returns a single row of booleans as a data quality check.</li><li>Implement many different downstream dependencies depending on the outcome of different checks.</li><li>Have full observability of which checks failed from within Airflow task logs, including the full SQL statements of failed checks.</li></ul><p>Astronomer recommends using a data validation framework such as Great Expectations or Soda in the following circumstances:</p><ul><li>You want to collect the results of your data quality checks in a central place.</li><li>You prefer to write checks in JSON (Great Expectations) or YAML (Soda).</li><li>Most or all of your checks can be implemented by the predefined checks in the solution of your choice.</li><li>You want to abstract your data quality checks from the DAG code.</li></ul><p>Currently only SQL check operators and the GreatExpectationsOperator offer data lineage extraction through <a>OpenLineage</a>.</p><h3>SQL check operators<a>​</a></h3><div><div>info</div><p>You can find more details and examples using SQL check operators in the <a>Run data quality checks using SQL check operators</a>tutorial.</p></div><p>SQL check operators execute a SQL statement that results in a set of booleans. A result of <code>True</code>leads to the check passing and the task being labeled as successful. A result of <code>False</code>, or any error when the statement is executed, leads to a failure of the task. Before using any of the operators, you need to define the <a>connection</a>to your data storage from the Airflow UI or with an external secrets manager.</p><p>The SQL check operators work with any backend solution that accepts SQL queries and supports Airflow, and differ in what kind of data quality checks they can perform and how they are defined.
+
+
+

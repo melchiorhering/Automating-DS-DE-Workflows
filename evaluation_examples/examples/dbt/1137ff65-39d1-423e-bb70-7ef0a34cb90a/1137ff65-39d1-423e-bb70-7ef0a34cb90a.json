@@ -1,0 +1,83 @@
+{
+    "id": "1137ff65-39d1-423e-bb70-7ef0a34cb90a",
+    "snapshot": "dbt",
+    "instruction": "Please help me materialize the two test example models as tables, then execute them.",
+    "source": [
+        "https://docs.getdbt.com/guides/manual-install?step=11"
+    ],
+    "config": [
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dbt/1137ff65-39d1-423e-bb70-7ef0a34cb90a/materialize_test.zip",
+                "dest": "/home/user/materialize_test.zip"
+            }
+        },
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/dbt/1137ff65-39d1-423e-bb70-7ef0a34cb90a/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        }
+    ],
+    "action_number": 6,
+    "related_apps": [
+        "dbt",
+        "duckdb",
+        "vscode",
+        "terminal"
+    ],
+    "tags": [
+        "cli",
+        "data_transformation",
+        "abstract"
+    ],
+    "evaluator": {
+        "func": [
+            "check_include_exclude",
+            "check_local_database"
+        ],
+        "conj": "and",
+        "result": [
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dbt/1137ff65-39d1-423e-bb70-7ef0a34cb90a/eval.sh",
+                "dest": "/home/user/eval.sh"
+            },
+            {
+                "type": "vm_file",
+                "path": "/home/user/projects/materialize_test/materialize_test.duckdb",
+                "dest": "materialize_test.duckdb"
+            }
+        ],
+        "expected": [
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "succeed"
+                    ],
+                    "exclude": [
+                        "failed"
+                    ]
+                }
+            },
+            {
+                "type": "local_file",
+                "path": "evaluation_examples/examples/dbt/1137ff65-39d1-423e-bb70-7ef0a34cb90a/materialize_test.gold.duckdb",
+                "dest": "materialize_test.gold.duckdb"
+            }
+        ],
+        "options": [
+            {},
+            {
+                "db_type": "duckdb",
+                "check_type": [
+                    "table-schema-content"
+                ]
+            }
+        ]
+    },
+    "counterpart": "deb61207-c5e3-4474-bd29-9349ef04741f"
+}

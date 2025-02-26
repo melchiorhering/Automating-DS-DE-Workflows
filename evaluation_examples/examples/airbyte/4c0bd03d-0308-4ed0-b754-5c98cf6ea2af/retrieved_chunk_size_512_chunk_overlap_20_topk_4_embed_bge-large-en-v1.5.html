@@ -1,0 +1,44 @@
+Documentation Source:
+airbyte.com/docs.airbyte.com/cloud/managing-airbyte-cloud/configuring-connections.html
+
+Documentation Title:
+Configuring Connections | Airbyte Documentation
+
+Documentation Content:
+Each stream is most commonly associated with a database table or an API endpoint. Within a stream, there can be one or many fields or columns.</p></div><p>To modify streams, click <strong>Connections</strong>and then click the connection you want to change. Click the <strong>Schema</strong>tab to see all the streams Airbyte can sync. To modify an individual stream:</p><ol><p>Toggle <strong>Sync</strong>on or off for your selected stream. To select or deselect all streams at once, use "Hide disabled streams" in the table header. To deselect an individual stream, use the toggle in its row.</p><p>Click the <strong>Sync mode</strong>dropdown and select the sync mode you want to apply. Depending on the sync mode you select, you may need to choose a cursor or primary key.</p></ol><div><div>info</div><p>Source-defined cursors and primary keys are selected automatically and cannot be changed in the table.</p></div><ol><p>Click on a stream to display the stream details panel. You'll see each column we detect from the source.</p><p>Column selection is available to protect PII or sensitive data from being synced to the destination. Toggle individual fields to include or exclude them in the sync, or use the toggle in the table header to select all fields at once.</p></ol><div><div>info</div><ul><li>You can only deselect top-level fields. You cannot deselect nested fields.</li><li>The Airbyte platform may read all data from the source (depending on the source), but it will only write data to the destination from fields you selected. Deselecting fields will not prevent the Airbyte platform from reading them.</li><li>When you refresh the schema, newly added fields will be selected by default, even if you have previously deselected fields in that stream.</li></ul></div><ol><p>Click the <strong>X</strong>to close the stream details panel.</p><p>Click <strong>Save changes</strong>, or click <strong>Cancel</strong>to discard the changes.</p><p>The <strong>Stream configuration changed</strong>dialog displays.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/cloud/managing-airbyte-cloud/configuring-connections.html
+
+Documentation Title:
+Configuring Connections | Airbyte Documentation
+
+Documentation Content:
+This gives you the option to reset streams when you save the changes.</p></ol><div><div>tip</div><p>When editing the stream configuration, Airbyte recommends that you reset streams. A reset will delete data in the destination of the affected streams and then re-sync that data. Skipping a reset is discouraged and might lead to unexpected behavior.</p></div><li>Click <strong>Save connection</strong>.</li></div><a>Edit this page</a></article><nav><a><div>Previous</div><div>Set up a Connection</div></a><a><div>Next</div><div>Sync Schedules</div></a></nav></div><div><ul><a>Configure Connection Settings</a><a>Modify Streams</a></ul><div><div>Was this page helpful?</div><div><button>Yes</button><button>No</button></div></div></div></div></div></div>
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/cloud/managing-airbyte-cloud/manage-connection-state.html
+
+Documentation Title:
+Modifying connection state | Airbyte Documentation
+
+Documentation Content:
+It includes the most recent values for the global or stream-level cursors, which can aid in debugging or determining which data will be included in the next sync.</p><p>To review the connection state:</p><ol><p>In the Airbyte UI, click <strong>Connections</strong>and then click the connection you want to display.</p><p>Click the <strong>Settings</strong>tab on the Connection page.</p><li><p>Click the <strong>Advanced</strong>dropdown arrow.</p><p><strong>Connection State</strong>displays.</p></li></ol><p>Editing the connection state allows the sync to start from any date in the past. If the state is edited, Airbyte will start syncing incrementally from the new date. This is helpful if you do not want to fully resync your data. To edit the connection state:</p><div><div>warning</div><p>Updates to connection state should be handled with extreme care. Updates may break your syncs, requiring a full historical sync of your data to fix. Make changes only as directed by the Airbyte team.</p></div><ol><p>Click anywhere in the Connection state to start editing.</p><p>Confirm changes by clicking "Update state". Discard any changes by clicking "Revert changes".</p><p>Confirm the changes to the connection state update.</p></ol></div><a>Edit this page</a></article><nav><a><div>Previous</div><div>Clearing your data</div></a><a><div>Next</div><div>Deploy Airbyte</div></a></nav></div></div></div>
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/cloud/managing-airbyte-cloud/configuring-connections.html
+
+Documentation Title:
+Configuring Connections | Airbyte Documentation
+
+Documentation Content:
+connection links a source to a destination and defines how your data will sync. After you have created a connection, you can modify any of the configuration settings or stream settings.</p><h2>Configure Connection Settings<a>​</a></h2><p>Configuring the connection settings allows you to manage various aspects of the sync, such as how often data syncs and where data is written.</p><p>To configure these settings:</p><ol><p>In the Airbyte UI, click <strong>Connections</strong>and then click the connection you want to change.</p><p>Click the <strong>Settings</strong>tab.</p><p>Click the <strong>Configuration</strong>dropdown to expand the options.</p></ol><div><div>note</div><p>These settings apply to all streams in the connection.</p></div><p>You can configure the following settings:</p><table><tr><th>Setting</th><th>Description</th></tr><tbody><tr><td>Connection Name</td><td>A custom name for your connection</td></tr><tr><a>Schedule Type</a><td>How often data syncs (can be scheduled, cron, API-triggered or manual)</td></tr><tr><a>Destination Namespace</a><td>Where the replicated data is written to in the destination</td></tr><tr><td>Destination Stream Prefix</td><td>A prefix added to each table name in the destination</td></tr><tr><a>Detect and propagate schema changes</a><td>How Airbyte handles schema changes in the source</td></tr><tr><a>Connection Data Residency</a><td>Where data will be processed (Cloud only)</td></tr></tbody></table><h2>Modify Streams<a>​</a></h2><p>On the "Schema" tab, you choose which streams to sync and how they are loaded to the destination.</p><div><div>info</div><p>A connection's schema consists of one or many streams. Each stream is most commonly associated with a database table or an API endpoint.
+
+
+

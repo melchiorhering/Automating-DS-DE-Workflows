@@ -1,0 +1,44 @@
+Documentation Source:
+docs.astronomer.io/astro/astro-architecture.html
+
+Documentation Title:
+About Astro | Astronomer Documentation
+
+Documentation Content:
+Astronomer recommends that you create a dedicated Git repository for each Astro project. To run a DAG, you add the DAG to your Astro project and deploy your Astro project to Astro.</p><p>See <a>Run your first DAG with the Astro CLI</a>to create your first Astro project.</p><h3>Astro UI<a>​</a></h3><p>The Astro UI, hosted at <code>https://cloud.astronomer.io</code>, is the primary interface for accessing and managing Astro from your web browser. You can use the Astro UI to:</p><ul><li>Manage users, teams, and permissions.</li><li>Create and configure Deployments, including infrastructure resources and compute.</li><li>View all of your organization's Deployments, DAGs, and tasks in a single place.</li><li>Monitor the health of your Airflow environments with a variety of alerts, logs, and analytics interfaces.</li><li>Stay up to date with the latest Astro features.</li><li>Create and edit DAGs in the Astro Cloud IDE.</li></ul><h3>Deployment<a>​</a></h3><p>An Astro <em>Deployment</em>is an Airflow environment hosted on Astro. It encompasses all core Airflow components, including the Airflow webserver, scheduler, and workers, along with additional tools for reliability and observability. It runs in an isolated Kubernetes namespace in an <a>Astro cluster</a>and has a set of attached resources to run your Airflow tasks.</p><p>Compared to an open source Airflow environment, an Astro Deployment is easy to create, delete, and modify through either the Astro UI or with the Astro CLI. You can <a>fine-tune resources and settings</a>directly from the Astro UI, see metrics and analytics for your DAGs, review your deploy history, and more. The infrastructure required to run a Deployment is managed by Astronomer.</p><p>To run DAGs in a Deployment, you must either deploy an Astro project manually from your local machine or configure an automated deploy process using a third-party CI/CD tool with the Astro CLI. Then, you can open the Airflow UI from the Astro UI and view your DAGs.
+
+
+
+Documentation Source:
+docs.astronomer.io/learn/managing-airflow-code.html
+
+Documentation Title:
+Manage Airflow code | Astronomer Documentation
+
+Documentation Content:
+This means that you can use a version control tool such as Github or Bitbucket to package everything together.</p><p>Astronomer uses the following project structure:</p><code><span>.</span><span><span>├── dags                        </span><span># Folder where all your DAGs go</span></span><span>│   ├── example-dag.py</span><span>│   └── redshift_transforms.py</span><span><span>├── Dockerfile                  </span><span># For Astronomer's Docker image and runtime overrides</span></span><span><span>├── include                     </span><span># For any scripts that your DAGs might need to access</span></span><span>│   └── sql</span><span>│       └── transforms.sql</span><span><span>├── packages.txt                </span><span># For OS-level packages</span></span><span><span>├── plugins                     </span><span># For any custom or community Airflow plugins</span></span><span>│   └── example-plugin.py</span><span><span>└── requirements.txt            </span><span># For any Python packages</span></span></code><p>To create a project with this structure automatically, install the <a>Astro CLI</a>and initialize a project with <code>astro dev init</code>.</p><p>If you are not running Airflow with Docker or have different requirements for your organization, your project structure might look different. Choose a structure that works for your organization and keep it consistent so that anyone working with Airflow can easily transition between projects without having to re-learn a new structure.</p><h2>When to separate projects<a>​</a></h2><p>The most common setup for Airflow projects is to keep all code for a given deployment in the same repository. However, there are some circumstances where it makes sense to separate DAGs into multiple projects. In these scenarios, it's best practice to have a separate Airflow deployment for each project.
+
+
+
+Documentation Source:
+docs.astronomer.io/learn/dag-best-practices.html
+
+Documentation Title:
+DAG writing best practices in Apache Airflow | Astronomer Documentation
+
+Documentation Content:
+This is also useful in situations where you no longer have access to the source system such as hitting an API limit.</p><h3>Use the right tool for the job<a>​</a></h3><p>Airflow excels at course-grain parallellism. If you need to do large scale transformations or fine-grain parallelism, consider using Airflow to trigger other data processing frameworks.</p><h2>Other best practices<a>​</a></h2><p>Here are a few other noteworthy best practices that you should follow.</p><h3>Use a consistent file structure<a>​</a></h3><p>Having a consistent file structure for Airflow projects keeps things organized and easy to adopt. This is the structure that Astronomer uses:</p><code><span><span>├── dags/ </span><span># Where your DAGs go</span></span><span><span>│   └── example-dag.py </span><span># An example dag that comes with the initialized project</span></span><span><span>├── Dockerfile </span><span># For Astronomer's Docker image and runtime overrides</span></span><span><span>├── include/ </span><span># For any other files you'd like to include</span></span><span><span>├── plugins/ </span><span># For any custom or community Airflow plugins</span></span><span><span>├── packages.txt </span><span># For OS-level packages</span></span><span><span>└── requirements.txt </span><span># For any Python packages</span></span></code><h3>Use DAG name and start date properly<a>​</a></h3><p>You should always use a static <code>start_date</code>with your DAGs. A dynamic <code>start_date</code>is misleading, and can cause failures when clearing out failed task instances and missing DAG runs.</p><p>Additionally, if you change the <code>start_date</code>of your DAG you should also change the DAG name.
+
+
+
+Documentation Source:
+docs.astronomer.io/astro/astro-architecture.html
+
+Documentation Title:
+About Astro | Astronomer Documentation
+
+Documentation Content:
+Then, you can open the Airflow UI from the Astro UI and view your DAGs. See <a>Run your first DAG</a>to get started with examples of either workflow.</p><h3>Astro Runtime<a>​</a></h3><p><em>Astro Runtime</em>is a <a>debian-based Docker image</a>that bundles Apache Airflow with optimized configurations and add-ons that make your Airflow experience reliable, fast, and scalable. Astronomer releases an Astro Runtime distribution for each version of Apache airflow.</p><p>Every Deployment and Astro project uses Astro Runtime at its core. Astronomer provides <a>extended support and bug fixes</a>to Astro Runtime versions, so that you can keep your DAGs running for longer without disruption.</p><p>See <a>Astro Runtime Architecture and features</a>for a complete feature list.</p><h3>Workspace<a>​</a></h3><p>A <em>Workspace</em>is a collection of Deployments that can be accessed by a specific group of users. You can use a Workspace to group Deployments that share a business use case or environment trait. For example, your data science team might have a dedicated Workspace with two Deployments within it. Workspaces don't require any resources to run and are only an abstraction for grouping Deployments and configuring user access to them. All Deployments must belong to a Workspace.</p><p>You can assign new users <a>Workspace roles</a>that include varying levels of access to your Deployments.</p><h3>Cluster<a>​</a></h3><p>A <em>cluster</em>in Astro is a Kubernetes cluster that hosts the infrastructure required to run your Airflow environments, also known as <a>Deployments</a>in Astro. There are two types of clusters in Astro:</p><ul><p>A <em>standard cluster</em>is a multi-tenant cluster that's pre-configured by Astronomer. It's the default cluster type and the quickest way to get an Airflow environment up and running on Astro. Each Deployment in a standard cluster exists in its own isolated Kubernetes namespace.
+
+
+

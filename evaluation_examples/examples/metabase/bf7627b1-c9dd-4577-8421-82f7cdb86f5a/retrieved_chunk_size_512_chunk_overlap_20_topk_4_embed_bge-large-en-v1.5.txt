@@ -1,0 +1,394 @@
+Documentation Source:
+www.metabase.com/docs/v0.49/databases/connecting.txt
+
+Documentation Title:
+Adding and managing databases
+
+Documentation Content:
+See
+Database roles, users, and privileges
+.
+Syncing and scanning databases
+See
+Syncing and scanning
+.
+Deleting databases
+Caution: Deleting a database is irreversible! All saved questions and dashboard cards based on the database will be deleted as well!
+Go to
+Admin settings
+>
+Databases
+> your database and click
+Remove this database
+.
+Restoring the Sample Database
+If you’ve deleted the Metabase
+Sample Database
+, go to
+Admin settings
+>
+Databases
+and click
+Bring the Sample Database back
+.
+Troubleshooting
+Troubleshooting database connections
+Troubleshooting syncs, scans, and fingerprinting
+Search or ask the
+Metabase community
+.
+Search for
+known bugs or limitations
+.
+Further reading
+Metadata editing
+.
+Setting data access permissions
+.
+Metabase at scale
+.
+Read docs for other
+versions of Metabase
+.
+Did this article help you?
+Yes
+No
+Send
+Thanks for your feedback!
+Want to improve these docs?
+Propose a change.
+Subscribe to our newsletter
+Stay in touch with updates and news from Metabase. No spam, ever.
+Product
+Watch Demo
+Data Sources
+Security
+Cloud
+Roadmap
+What's New
+Pricing
+Plans
+Open Source
+Use Cases
+Self-Service Business Analytics
+Embedded Analytics
+Metabase Plans
+Starter and Open Source
+Pro
+Enterprise
+Features
+Query Builder
+Drill Through
+Collections
+Usage analytics
+New
+Analytics dashboards
+SQL editor
+Sandboxing
+Models
+Permissions
+CSV upload
+Company
+Jobs
+We're hiring!
+Privacy Policy
+Terms of Service
+License
+Brand Guidelines
+Support
+Documentation
+Help
+Professional Services
+Onboarding
+New
+Status
+Github
+Resources
+Case Studies
+Blog
+Learn
+Community Stories
+Data and Business Intelligence Glossary
+Partners
+The Startup's Guide to Financial Modeling
+The 2023 Metabase Community Data Stack Report
+More Resources
+Example Dashboards
+SQL Best Practices
+Choosing a Data Warehouse
+How to Create Pivot Tables
+Types of SQL Joins
+SQL Cheat Sheet
+Data Bias Examples
+Modern Data Stack
+Dashboard for Marketing Teams
+Dashboards for Sales Teams
+Dashboards for Engineering Teams
+© Metabase 2024
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/exploration-and-organization/history.txt
+
+Documentation Title:
+History
+
+Documentation Content:
+Deleting multiple items permanently
+You can delete multiple items at once from the same collection:
+Go to the collection.
+Hover over the icon beside the name of the item and click the checkbox that appears.
+When you’re done selecting your items, click
+Delete
+at the bottom of the page.
+Read docs for other
+versions of Metabase
+.
+Did this article help you?
+Yes
+No
+Send
+Thanks for your feedback!
+Want to improve these docs?
+Propose a change.
+Subscribe to our newsletter
+Stay in touch with updates and news from Metabase. No spam, ever.
+Product
+Watch Demo
+Data Sources
+Security
+Cloud
+Roadmap
+What's New
+Pricing
+Plans
+Open Source
+Use Cases
+Self-Service Business Analytics
+Embedded Analytics
+Metabase Plans
+Starter and Open Source
+Pro
+Enterprise
+Features
+Query Builder
+Drill Through
+Collections
+Usage analytics
+New
+Analytics dashboards
+SQL editor
+Sandboxing
+Models
+Permissions
+CSV upload
+Company
+Jobs
+We're hiring!
+Privacy Policy
+Terms of Service
+License
+Brand Guidelines
+Support
+Documentation
+Help
+Professional Services
+Onboarding
+New
+Status
+Github
+Resources
+Case Studies
+Blog
+Learn
+Community Stories
+Data and Business Intelligence Glossary
+Partners
+The Startup's Guide to Financial Modeling
+The 2023 Metabase Community Data Stack Report
+More Resources
+Example Dashboards
+SQL Best Practices
+Choosing a Data Warehouse
+How to Create Pivot Tables
+Types of SQL Joins
+SQL Cheat Sheet
+Data Bias Examples
+Modern Data Stack
+Dashboard for Marketing Teams
+Dashboards for Sales Teams
+Dashboards for Engineering Teams
+© Metabase 2024
+
+
+
+Documentation Source:
+www.metabase.com/learn/getting-started/data-browser.txt
+
+Documentation Title:
+Exploring data with Metabase's data browser
+
+Documentation Content:
+The Databases page
+The
+Databases
+page in the
+Admin Panel
+displays connection information about your databases:
+The database type
+How Metabase is connected to your Metabase instance
+Sync settings
+Metabase does a lightweight sync every hour to keep your in-app data current, but you can use this page to manually
+sync your database
+, manage sync frequency, and with some databases, determine which schemas to sync.
+Editing metadata in Table Metadata
+Picking clear names and adding descriptions will help people find the data they’re looking for, and provide important context for analysis. Metabase can automatically try to create human-readable names of your tables and columns for you, but if Metabase misses the mark, you can always disable the
+Friendly Table and Field Names
+feature.
+Admins can make changes to your metadata in Metabase, by clicking on the
+gear
+icon in the upper right and going to
+Admin settings
+>
+Table metadata
+. The Table metadata tab displays options to
+edit metadata
+for the database, tables, and columns. For example, you can edit a column’s name, visibility, type, and description. You can also
+remap foreign keys
+to give human readable names to foreign key columns!
+Some tips for making life easier for people:
+When column names are confusing, you can
+change their names
+or
+add a description
+.
+You can
+hide
+unused columns to make tables easier to digest.
+You can pick your preferred
+filter interface
+from three options (search box, list of values, or plain input box).
+Perhaps the
+most important
+piece of metadata you can change is the
+field type
+. There is a long list of
+field types
+to choose from. Selecting the correct type for a column can connect information across multiple tables, and give context to Metabase so it can choose visualizations appropriate for your data. For example, once you’ve accurately identified latitude and longitude columns in your table, you will be able to use
+map visualizations
+.
+Further reading
+Models
+« Previous
+Next »
+Did this article help you?
+Yes
+No
+Send
+Thanks for your feedback!
+Subscribe to our newsletter
+Stay in touch with updates and news from Metabase. No spam, ever.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/databases/uploads.txt
+
+Documentation Title:
+Uploading data
+
+Documentation Content:
+The “T” separator could also be a space (“ “).
+Offsets:
+Z
+(for UTC)
++HH
+or
+-HH
++HH:mm
+or
+-HH:mm
++HH:mm:ss
+or
+-HH:mm:ss
+Examples
+:
+2023-01-01 00:00:00+00:00:00
+2023-01-01T00:00:00+00:00:00
+Deleting models and tables created by uploads
+Models
+You can archive a model by clicking on the three dots in the upper right and selecting
+Archive
+.
+For deleting models completely, see
+Deleting items permanently
+.
+Tables
+You’ll need to drop that table in the database itself (not in Metabase). For how to delete tables, see your database’s documentation.
+Note on uploading data to a MySQL database
+For speeding up uploads to a MySQL database, we recommend that you set a
+local_infile
+to
+ON
+. You’ll need to set this
+local_infile
+in MySQL, not Metabase. The command-line format is
+--local-infile=ON
+.
+If
+local_infile
+is disabled (set to
+OFF
+), Metabase will automatically fall back to uploading CSVs in a much slower way.
+For more context, check out:
+Non-LOCAL Versus LOCAL Operation
+Reference docs for the local_infile variable
+Security Considerations for LOAD LOCAL DATA
+Read docs for other
+versions of Metabase
+.
+Did this article help you?
+Yes
+No
+Send
+Thanks for your feedback!
+Want to improve these docs?
+Propose a change.
+Subscribe to our newsletter
+Stay in touch with updates and news from Metabase. No spam, ever.
+Product
+Watch Demo
+Data Sources
+Security
+Cloud
+Roadmap
+What's New
+Pricing
+Plans
+Open Source
+Use Cases
+Self-Service Business Analytics
+Embedded Analytics
+Metabase Plans
+Starter and Open Source
+Pro
+Enterprise
+Features
+Query Builder
+Drill Through
+Collections
+Usage analytics
+New
+Analytics dashboards
+SQL editor
+Sandboxing
+Models
+Permissions
+CSV upload
+Company
+Jobs
+We're hiring!
+
+
+

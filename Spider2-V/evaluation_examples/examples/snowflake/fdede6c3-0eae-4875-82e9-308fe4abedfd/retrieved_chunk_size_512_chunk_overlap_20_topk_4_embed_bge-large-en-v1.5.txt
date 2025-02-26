@@ -1,0 +1,334 @@
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/tasty-bytes-sql-load.txt
+
+Documentation Title:
+Load and query sample data using SQL | Snowflake Documentation
+
+Documentation Content:
+Provide your
+account identifier
+or account URL.
+If you’ve previously signed in to Snowsight, you might see an account name that you can select.
+Sign in using your Snowflake account credentials.
+Step 2. Open the SQL worksheet for loading and querying data
+¶
+You can use worksheets to write and run SQL commands on your Snowflake database. Your trial account has access
+to a pre-loaded worksheet for this tutorial. The worksheet has the SQL commands that
+you will run to create a database, load data into it, and query the data. For more information
+about worksheets, see
+Getting started with worksheets
+.
+To open the pre-loaded tutorial worksheet:
+Select
+Projects
+»
+Worksheets
+to open the list of worksheets.
+Open
+[Tutorial] Using SQL to load and query sample data
+.
+Your worksheet looks similar to the following image.
+Step 3. Set the role and warehouse to use
+¶
+The role you use determines the privileges you have. In this tutorial, use the
+ACCOUNTADMIN system role so that you can view and manage objects in your account.
+For more information, see
+Using the ACCOUNTADMIN Role
+.
+A warehouse provides the required resources to create and manage objects and run
+SQL commands. These resources include CPU, memory, and temporary storage. Your
+trial account has a virtual warehouse (
+compute_wh
+) that you can use for this
+tutorial. For more information, see
+Virtual warehouses
+.
+To set the role and warehouse to use, do the following:
+In the open worksheet, place your cursor in the USE ROLE line.
+USE
+ROLE
+accountadmin
+;
+Copy
+In the upper-right corner of the worksheet, select
+Run
+.
+Note
+In this tutorial, run SQL statements one at a time. Do not select
+Run All
+.
+Place your cursor in the USE WAREHOUSE line, then select
+Run
+.
+USE
+WAREHOUSE
+compute_wh
+;
+Copy
+Step 4. Create a database, schema, and table
+¶
+A database stores data in tables that you can manage and query. A schema is a logical
+grouping of database objects, such as tables and views. For example, a schema might
+contain the database objects required for a specific application.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/cleanrooms/demo-flows/basic-flow-data-analysis.txt
+
+Documentation Title:
+Snowflake Data Clean Rooms: Provider Data Analysis | Snowflake Documentation
+
+Documentation Content:
+To view the top 10 rows, call the following procedure.
+select
+*
+from
+SAMOOHA_SAMPLE_DATABASE_NAV2
+.
+DEMO
+.
+CUSTOMERS
+limit
+10
+;
+Copy
+Set the columns the consumer can group, aggregate (for example, SUM or AVG) and generally use in an analysis for every table and template combination. This gives flexibility so the same table can allow different column selections depending on the underlying template. This should only be called after adding the template.
+Note that the column policy is
+replace only
+, so if the function is called again, then the previously set column policy is completely replaced by the new one.
+Column policy should not be used on identity columns like email, HEM, or RampID because you don’t want the consumer to be able to group by these columns. In the production environment, the system will intelligently infer PII columns and block this operation, but this feature is not available in the sandbox environment. It should only be used on columns that you want the consumer to be able to aggregate and group by, like Status, Age Band, Channel, or Days Active.
+call
+samooha_by_snowflake_local_db
+.
+provider
+.
+set_column_policy
+($
+cleanroom_name
+,
+[
+'prod_provider_data_analysis:SAMOOHA_SAMPLE_DATABASE_NAV2.DEMO.CUSTOMERS:STATUS'
+,
+'prod_provider_data_analysis:SAMOOHA_SAMPLE_DATABASE_NAV2.DEMO.CUSTOMERS:AGE_BAND'
+,
+'prod_provider_data_analysis:SAMOOHA_SAMPLE_DATABASE_NAV2.DEMO.CUSTOMERS:DAYS_ACTIVE'
+,
+'prod_provider_data_analysis:SAMOOHA_SAMPLE_DATABASE_NAV2.DEMO.CUSTOMERS:REGION_CODE'
+]);
+Copy
+If you want to view the column policy that has been added to the clean room, call the following procedure.
+call
+samooha_by_snowflake_local_db
+.
+provider
+.
+view_column_policy
+($
+cleanroom_name
+);
+Copy
+Share with a consumer
+¶
+Finally, add a data consumer to the clean room by adding their Snowflake account locator and account names as shown below. The Snowflake account name must be of the form <ORGANIZATION>.<ACCOUNT_NAME>.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/snowflake-in-20minutes.txt
+
+Documentation Title:
+Snowflake in 20 minutes | Snowflake Documentation
+
+Documentation Content:
+For example, to insert two additional rows into the table:
+INSERT
+INTO
+emp_basic
+VALUES
+(
+'Clementine'
+,
+'Adamou'
+,
+'cadamou@sf_tuts.com'
+,
+'10510 Sachs Road'
+,
+'Klenak'
+,
+'2017-9-22'
+)
+,
+(
+'Marlowe'
+,
+'De Anesy'
+,
+'madamouc@sf_tuts.co.uk'
+,
+'36768 Northfield Plaza'
+,
+'Fangshan'
+,
+'2017-1-26'
+);
+Copy
+Query rows based on email address
+¶
+Return a list of email addresses with United Kingdom top-level domains using the
+[ NOT ] LIKE
+function:
+SELECT
+email
+FROM
+emp_basic
+WHERE
+email
+LIKE
+'%.uk'
+;
+Copy
+The following is an example result:
++--------------------------+
+| EMAIL                    |
+|--------------------------|
+| gbassfordo@sf_tuts.co.uk |
+| rtalmadgej@sf_tuts.co.uk |
+| madamouc@sf_tuts.co.uk   |
++--------------------------+
+Query rows based on start date
+¶
+For example, to calculate when certain employee benefits might start, add 90 days to employee start
+dates using the
+DATEADD
+function. Filter the list by employees whose start date occurred earlier than January 1, 2017:
+SELECT
+first_name
+,
+last_name
+,
+DATEADD
+(
+'day'
+,
+90
+,
+start_date
+)
+FROM
+emp_basic
+WHERE
+start_date
+<=
+'2017-01-01'
+;
+Copy
+The following is an example result:
++------------+-----------+------------------------------+
+| FIRST_NAME | LAST_NAME | DATEADD('DAY',90,START_DATE) |
+|------------+-----------+------------------------------|
+| Granger    | Bassford  | 2017-03-30                   |
+| Catherin   | Devereu   | 2017-03-17                   |
+| Cesar      | Hovie     | 2017-03-21                   |
+| Wallis     | Sizey     | 2017-03-30                   |
++------------+-----------+------------------------------+
+Summary, clean up, and additional resources
+¶
+Congratulations!
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/sample-data-using.txt
+
+Documentation Title:
+Using the Sample Database | Snowflake Documentation
+
+Documentation Content:
+For example, in SQL:
+show databases
+like
+'%sample%'
+;
++
+-------------------------------+-----------------------+------------+------------+-------------------------+--------------+---------+---------+----------------+
+| created_on                    | name                  | is_default | is_current | origin                  | owner        | comment | options | retention_time |
+|-------------------------------+-----------------------+------------+------------+-------------------------+--------------+---------+---------+----------------|
+| 2016-07-14 14:30:21.711 -0700 | SNOWFLAKE_SAMPLE_DATA | N          | N          | SFC_SAMPLES.SAMPLE_DATA | ACCOUNTADMIN |         |         | 1              |
++
+-------------------------------+-----------------------+------------+------------+-------------------------+--------------+---------+---------+----------------+
+Copy
+Note that this example illustrates the sample database, SNOWFLAKE_SAMPLE_DATA, has been
+shared with your account
+by Snowflake.
+The
+origin
+column in the SHOW DATABASES output (or the
+Origin
+column in the
+Databases
+page in the interface) displays the fully-qualified name of the shared
+database, SFC_SAMPLES.SAMPLE_DATA, indicating it originated from the SFC_SAMPLES account (used by Snowflake to share the sample data).
+Querying Tables and Views in the Sample Database
+¶
+To use a table or view in the sample database, you can either:
+Reference the fully-qualified name of the table in your query (in the form of
+snowflake_sample_data.
+schema_name
+.
+object_name
+).
+OR
+Specify the sample database (and schema) for your session using the
+USE DATABASE
+and/or
+USE SCHEMA
+commands.
+The following two examples illustrate using both approaches to query the
+lineitem
+table in the
+tpch_sf1
+schema:
+select
+count
+(*)
+from
+snowflake_sample_data
+.
+tpch_sf1
+.
+lineitem
+;
++
+----------+
+| COUNT(*) |
+|----------|
+|  6001215 |
++
+----------+
+use
+schema
+snowflake_sample_data
+.
+tpch_sf1
+;
+select
+count
+(*)
+from
+lineitem
+;
++
+----------+
+| COUNT(*) |
+|----------|
+|  6001215 |
++
+----------+
+Copy
+Note
+You must have a running, current warehouse in your session to perform queries.
+
+
+

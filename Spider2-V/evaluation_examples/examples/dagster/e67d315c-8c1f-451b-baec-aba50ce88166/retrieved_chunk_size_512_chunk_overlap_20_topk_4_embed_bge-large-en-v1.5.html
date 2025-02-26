@@ -1,0 +1,56 @@
+Documentation Source:
+airbyte.com/quickstart/aggregating-data-from-mysql-and-postgres-into-bigquery-with-airbyte.html
+
+Documentation Title:
+Aggregating Data from MySQL and Postgres into BigQuery with Airbyte | Airbyte
+
+Documentation Content:
+In this section, we'll walk you through setting up Dagster to oversee both the Airbyte and dbt workflows:</p><p><strong>Navigate to the Orchestration Directory</strong>:</p><p>Switch to the directory containing the Dagster orchestration configurations:</p><code>cd ../orchestration</code><p><strong>Set Environment Variables</strong>:</p><p>Dagster requires certain environment variables to be set to interact with other tools like dbt and Airbyte. Set the following variables:</p><code>export DAGSTER_DBT_PARSE_PROJECT_ON_LOAD=1
+export AIRBYTE_PASSWORD=password</code><p>Note: The AIRBYTE_PASSWORD is set to password as a default for local Airbyte instances. If you've changed this during your Airbyte setup, ensure you use the appropriate password here.</p><p><strong>Launch the Dagster UI</strong>:</p><p>With the environment variables in place, kick-start the Dagster UI:</p><code>dagster dev</code><p><strong>Access Dagster in Your Browser</strong>:</p><p>Open your browser and navigate to <a>http://127.0.0.1:3000</a>. There, you should see assets for both Airbyte and dbt. To get an overview of how these assets interrelate, click on "view global asset lineage". This will give you a clear picture of the data lineage, visualizing how data flows between the tools.</p><h2>Next Steps</h2><p>Once you've set up and launched this initial integration, the real power lies in its adaptability and extensibility. Here’s a roadmap to help you customize and harness this project tailored to your specific data needs:</p><p><strong>Add more Data(base) sources</strong>:</p><p>You can add more databases or data sources from Airbyte's <a>source catalogue</a>.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/configure-airbyte-with-python-dagster.html
+
+Documentation Title:
+Configure Airbyte Connections with Python (Dagster) | Airbyte
+
+Documentation Content:
+Dagster as a Python orchestrator implemented this, plus they created wrappers on top of the <a>source</a>and<a>destination</a>connectors.</p><p>For example, in my demo, I used the <a>GithubSource</a>, which provides all configurations that the <a>Airbyte GitHub Source</a>has to configure with Python, and the same for <a>PostgresDestination</a>. The <a>AirbyteConnection</a>sets configure both together as a connection in Airbyte.</p><p>These features open instrumental use cases for <strong>data integration as code</strong>. Imagine you need to provision Airbyte, have multi-tenancy requirements for teams or customers, or read from a dynamic API (imagine the Notion API where the content is nested into the databases and constantly evolves). Based on these configs, you can automatically apply new sync based on the latest status. Everything is versioned, which leads to changes with confidence.</p><em>How does it work</em><p>So much for when to use it. Let's explore now how it all works.</p><p>Dagster offers the interfaces that we can define our Airbyte connections with Python and a command line tool called <a>dagster-airbyte</a>that allows two functions to check or apply the defined connections to the Airbyte instance.</p><p>As the name suggests, checking is verifying against the current live Airbyte instance vs. your pythonic configurations.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/integrations/airbyte-cloud.html
+
+Documentation Title:
+Airbyte Cloud & Dagster | Dagster Docs
+
+Documentation Content:
+Check out the<a>guide on using self-hosted Airbyte with Dagster.</a></span><p>Dagster can orchestrate your Airbyte Cloud connections, making it easy to chain an Airbyte sync with upstream or downstream steps in your workflow.</p><p>This guide focuses on how to work with Airbyte Cloud connections using Dagster's <a>software-defined asset (SDA)</a>framework.</p><h2>Airbyte Cloud connections and Dagster software-defined assets<span>#</span></h2><p>An <a>Airbyte Cloud connection</a>defines a series of data streams which are synced between a source and a destination. During a sync, a replica of the data from each data stream is written to the destination, typically as one or more tables. Dagster represents each of the replicas generated in the destination as a software-defined asset. This enables you to easily:</p><ul><li>Visualize the streams involved in an Airbyte Cloud connection and execute a sync from Dagster</li><li>Define downstream computations which depend on replicas produced by Airbyte</li><li>Track data lineage through Airbyte and other tools</li></ul><h2>Prerequisites<span>#</span></h2><p>To get started, you will need to install the <code>dagster</code>and <code>dagster-airbyte</code>Python packages:</p><code>pip <span>install</span>dagster dagster-airbyte
+</code><p>You'll also need to have an Airbyte Cloud account, and have created an Airbyte API Key. For more information, see the <a>Airbyte API docs</a>.</p><h2>Step 1: Connecting to Airbyte Cloud<span>#</span></h2><p>The first step in using Airbyte Cloud with Dagster is to tell Dagster how to connect to your Airbyte Cloud account using an Airbyte Cloud <a>resource</a>.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/orchestrate-data-ingestion-and-transformation-pipelines.html
+
+Documentation Title:
+Orchestrate data ingestion and transformation pipelines with Dagster | Airbyte
+
+Documentation Content:
+Once this source is created, we can hook it up to our LocalPostgres destination:</p></div><h2>Orchestrate Airbyte data ingestion pipelines with Dagster</h2><div><p>Now that we have some Airbyte connections to work with, we can get back to Dagster.</p><p>In the first few lines of <a>slack_github_analytics.py</a>, you’ll see the following code:</p><code>from dagster_airbyte import airbyte_resource, airbyte_sync_op
+
+# …
+
+sync_github = airbyte_sync_op.configured(
+    {"connection_id": "&lt;YOUR AIRBYTE CONNECTION ID&gt;"}, name="sync_github"
+)
+sync_slack = airbyte_sync_op.configured(
+    {"connection_id": "&lt;YOUR AIRBYTE CONNECTION ID&gt;"}, name="sync_slack"
+)
+</code><p>Here, we define the first two operations (or “ops”, in Dagster) of our job. <a>Dagster’s Airbyte integration</a>offers a pre-built op that will, when configured with a particular connection id, kick off a sync of that connection and wait until it completes. We also give these ops names (“sync_github” and “sync_slack”) to help people looking at this job understand what they’re doing.</p><p>This is where you can substitute in the relevant connection ids for the connections you set up in the previous steps. A quick way to find the id for a given connection is to click on it in the Airbyte UI, and grab the last section of the URL, i.e.:</p><p>Once you’ve entered the correct values in for the `connection_id` fields, the code is ready to be executed!
+
+
+

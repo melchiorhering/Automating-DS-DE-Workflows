@@ -1,0 +1,57 @@
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/guides/dagster/testing-assets.html
+
+Documentation Title:
+Testing Assets | Dagster Docs
+
+Documentation Content:
+That returns an <code>ExecuteInProcessResult</code>object, whose methods let us investigate, in detail, the success or failure of execution, the values produced by the computation, and other events associated with execution.</p><p>Update the <code>test_assets.py</code>file to include the following code:</p><code><span>from</span>dagster <span>import</span>materialize
+<span>from</span>tutorial_project<span>.</span>assets <span>import</span><span>(</span>topstory_ids<span>,</span>topstories<span>,</span>topstories_word_cloud
+<span>)</span><span># Instead of importing one asset, import them all</span><span>def</span><span>test_hackernews_assets</span><span>(</span><span>)</span><span>:</span>assets <span>=</span><span>[</span>topstory_ids<span>,</span>topstories<span>,</span>topstories_word_cloud<span>]</span>result <span>=</span>materialize<span>(</span>assets<span>)</span><span>assert</span>result<span>.</span>success
+    df <span>=</span>result<span>.</span>output_for_node<span>(</span><span>"topstories"</span><span>)</span><span>assert</span><span>len</span><span>(</span>df<span>)</span><span>==</span><span>100</span></code><h2>Running the tests<span>#</span></h2><p>Use pytest, or your test runner of choice, to run the unit tests. Navigate to the top-level <code>tutorial_project</code>directory (the one that contains the <code>tutorial_project_tests</code>directory) and run:</p><code>pytest tutorial_project_tests
+</code><p>Wait a few seconds for the tests to run and observe the output in your terminal.</p><h2>Related<span>#</span></h2><p>Dagster is written to make testing easy in a domain where it has historically been very difficult.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/guides/dagster/testing-assets.html
+
+Documentation Title:
+Testing Assets | Dagster Docs
+
+Documentation Content:
+I can't wait to use it!"</span><span>}</span><span>,</span><span>{</span><span>"title"</span><span>:</span><span>"Pied Piper launches new product"</span><span>}</span><span>,</span><span>]</span><span>)</span>results <span>=</span>topstories_word_cloud<span>(</span>df<span>)</span><span>assert</span>results <span>is</span><span>not</span><span>None</span><span># It returned something</span></code><h2>Testing a graph of assets<span>#</span></h2><p>We'll also write a test for all the assets together. To do that, we can put them in a list and then pass it to the <code>materialize</code>function.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/building-an-asset-graph.html
+
+Documentation Title:
+Tutorial, part four: Building an asset graph | Dagster Docs
+
+Documentation Content:
+and manually materialized your asset.</p><p>Continuing from there, you will:</p><ul><li>Add more assets to your Dagster project</li><li>Connect them to finish creating the pipeline</li><li>Give users more knowledge about the assets by adding metadata and logging</li></ul><h2>Step 1: Adding the DataFrame asset<span>#</span></h2><p>Using the top Hacker News story IDs, you'll now look up each story by its ID, ingest that data, and make a DataFrame out of it. You'll connect your current asset with this new asset to establish dependencies and make an <em>asset graph</em>.</p><p>Modify your <code>assets.py</code>to add the <code>pandas</code>import and a new asset called <code>topstories</code>:</p><span>Add new imports, such as <code>import pandas as pd</code>, to the top of<code>assets.py</code></span><code><span>import</span>json
+<span>import</span>os
+
+<span>import</span>pandas <span>as</span>pd  <span># Add new imports to the top of `assets.py`</span><span>import</span>requests
+
+<span>from</span>dagster <span>import</span>asset
+
+<span># . Keep the `topstory_ids` asset from the previous section</span><span>@asset</span><span>(</span>deps<span>=</span><span>[</span>topstory_ids<span>]</span><span>)</span><span># this asset is dependent on topstory_ids</span><span>def</span><span>topstories</span><span>(</span><span>)</span><span>-</span><span>&gt;</span><span>None</span><span>:</span><span>with</span><span>open</span><span>(</span><span>"data/topstory_ids.json"</span><span>,
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/_apidocs/libraries/dagster-k8s.html
+
+Documentation Title:
+Dagster Docs
+
+Documentation Content:
+For faster development, you can either:</p><ol><p>Keep a warm kind cluster</p><p>Use a remote K8s cluster, e.g. via AWS EKS or GCP GKE</p></ol><p>Instructions are below.</p><section><h4>Faster local development (with kind)<a>¶</a></h4><p>You may find that the kind cluster creation, image loading, and kind cluster creation loop
+is too slow for effective local dev.</p><p>You may bypass cluster creation and image loading in the following way. First add the <span>--no-cleanup</span>flag to your pytest invocation:</p><pre>pytest--no-cleanup-s-vvv-m<span>"not integration"</span></pre><p>The tests will run as before, but the kind cluster will be left running after the tests are completed.</p><p>For subsequent test runs, you can run:</p><pre>pytest--kind-cluster<span>=</span><span>"cluster-d9971c84d44d47f382a2928c8c161faa"</span>--existing-helm-namespace<span>=</span><span>"dagster-test-95590a"</span>-s-vvv-m<span>"not integration"</span></pre><p>This will bypass cluster creation, image loading, and Helm chart installation, for much faster tests.</p><p>The kind cluster name and Helm namespace for this command can be found in the logs, or retrieved
+via the respective CLIs, using <code><span>kind</span><span>get</span><span>clusters</span></code>and <code><span>kubectl</span><span>get</span><span>namespaces</span></code>.
+
+
+

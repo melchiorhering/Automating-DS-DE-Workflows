@@ -1,0 +1,115 @@
+{
+    "id": "e0796d19-945b-434f-8c25-708a667e021e",
+    "snapshot": "dagster",
+    "instruction": "In the open dagster project, add one test function \"test_potions_assets\". It aims to ensure all assets are successfully materialized, and the number of potions with advanced difficulty is exactly 14.",
+    "source": [
+        "https://docs.dagster.io/guides/dagster/testing-assets"
+    ],
+    "related_apps": [
+        "dagster",
+        "vscode",
+        "terminal",
+        "chromium"
+    ],
+    "tags": [
+        "cli+gui",
+        "data_orchestration",
+        "abstract"
+    ],
+    "action_number": 5,
+    "config": [
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/raw_potions.json",
+                "dest": "/home/user/harry-potter-potions/data/raw_potions.json"
+            }
+        },
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/assets.py",
+                "dest": "/home/user/harry-potter-potions/harry_potter_potions/assets.py"
+            }
+        },
+        {
+            "type": "google_chrome_browser",
+            "parameters": {
+                "debugging_port": 1337,
+                "listening_port": 9222,
+                "urls": [
+                    "https://www.bing.com/"
+                ]
+            }
+        },
+        {
+            "type": "dagster_webui_init",
+            "parameters": {
+                "listening_port": 9222,
+                "url": "http://localhost:3000",
+                "actions": [
+                    {
+                        "type": "close_popups"
+                    }
+                ]
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [
+            {
+                "type": "copyfile_from_host_to_guest",
+                "parameters": {
+                    "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/raw_potions_negative.json",
+                    "dest": "/home/user/harry-potter-potions/data/raw_potions_negative.json"
+                }
+            }
+        ],
+        "func": [
+            "check_include_exclude",
+            "check_include_exclude"
+        ],
+        "result": [
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/eval.sh",
+                "dest": "/home/user/eval.sh"
+            },
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dagster/e0796d19-945b-434f-8c25-708a667e021e/eval_negative.sh",
+                "dest": "/home/user/eval_negative.sh"
+            }
+        ],
+        "expected": [
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "passed"
+                    ],
+                    "exclude": [
+                        "failed"
+                    ]
+                }
+            },
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "failed"
+                    ],
+                    "exclude": []
+                }
+            }
+        ]
+    },
+    "counterpart": "d245d228-fb5b-44b7-82d3-e2cee3736825"
+}

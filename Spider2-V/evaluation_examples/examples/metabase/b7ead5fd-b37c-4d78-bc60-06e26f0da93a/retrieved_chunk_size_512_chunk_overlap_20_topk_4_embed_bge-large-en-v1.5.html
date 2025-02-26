@@ -1,0 +1,77 @@
+Documentation Source:
+www.metabase.com/docs/v0.49/troubleshooting-guide/cant-log-in.html
+
+Documentation Title:
+People can't log in to Metabase
+
+Documentation Content:
+</p><p>If you’ve forgotten your Metabase Cloud admin password, you can <a>contact support</a>to reset the password.</p><h2>Related topics</h2><ul><li><a>Troubleshooting SAML</a>.</li><li><a>Troubleshooting LDAP</a>.</li><li><a>Resetting someone’s password</a>.</li><li><a>Resetting the admin password</a>.</li><li><a>Deleting an account that’s set up incorrectly</a>.</li></ul><h2>Are you still stuck?</h2><p>If you can’t solve your problem using the troubleshooting guides:</p><ul><li>Search or ask the <a>Metabase community</a>.</li><li>Search for <a>known bugs or limitations</a>.</li></ul></article><p>Read docs for other <a>versions of Metabase</a>.
+	      </p><div><div><div><p>Did this article help you?
+        </p><ul><button>Yes
+                </button><button>No
+                </button></ul></div><button>Send
+                </button></div><p>Thanks for your feedback!</p><span>Want to improve these docs? <a>Propose a change.</a></span></div></div><footer><div><h5>Subscribe to our newsletter</h5><p>Stay in touch with updates and news from Metabase.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/people-and-groups/managing.html
+
+Documentation Title:
+Managing people and groups
+
+Documentation Content:
+Otherwise, they’ll receive a password reset email.</p><h2>Resetting the admin password</h2><p>If you’re using Metabase Cloud, <a>contact support</a>to reset your admin password.</p><p>If you’re a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:</p><ol><li>Stop the running Metabase application.</li><li>Restart Metabase with <code>reset-password email@example.com</code>, where “email@example.com” is the email associated with the admin account:
+    <code>java -jar metabase.jar reset-password email@example.com
+</code></li><li><p>Metabase will print out a random token like this:</p><code>...
+Resetting password for email@example.com...
+
+OK [[[1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89]]]
+</code></li><li>Start Metabase normally again (<em>without</em>the <code>reset-password</code>option).</li><li>Navigate to it in your browser using the path <code>/auth/reset_password/:token</code>, where “:token” is the token that was generated from the step above. The full URL should look something like this:
+    <code>https://metabase.example.com/auth/reset_password/1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89
+</code></li><li>You should now see a page where you can input a new password for the admin account.</li></ol><h2>Unsubscribe from all subscriptions / alerts</h2><p>This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.</p><p>This action doesn’t affect email distribution lists that are managed outside of Metabase.</p><h2>Default user accounts</h2><p>Metabase includes default user accounts to handle various tasks. We’re documenting these accounts here so you know they’re legitimate accounts and not someone trying to spy on your Metabase.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/installation-and-operation/commands.html
+
+Documentation Title:
+Metabase CLI
+
+Documentation Content:
+Useful for profiling Metabase launch time.</p><code>reset-password email-address</code><p>Reset the password for a user with <code>email-address</code>.</p><code>rotate-encryption-key new-key</code><p>Rotate the encryption key of a Metabase database. The <code>MB_ENCRYPTION_SECRET_KEY</code>environment variable has to be set to the current key, and the parameter <code>new-key</code>has to be the new key. <code>new-key</code>has to be at least 16 chars.</p><code>version</code><p>Print version information about Metabase and the current system.</p></article><p>Read docs for other <a>versions of Metabase</a>.
+	      </p><div><div><div><p>Did this article help you?
+        </p><ul><button>Yes
+                </button><button>No
+                </button></ul></div><button>Send
+                </button></div><p>Thanks for your feedback!</p><span>Want to improve these docs? <a>Propose a change.</a></span></div></div><footer><div><h5>Subscribe to our newsletter</h5><p>Stay in touch with updates and news from Metabase.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/people-and-groups/changing-password-complexity.html
+
+Documentation Title:
+Password complexity
+
+Documentation Content:
+<body><div><div><div><span>Upcoming</span><span>Metabase for advanced users</span><a>Register Now</a></div><button>×</button></div><div><div><div><div>Product
+    </div><div><div><div><span>Use Cases</span><div><span>Self-service Analytics
+    </span><p>Business intelligence for everyone</p></div><div><span>Embedded Analytics
+    </span><p>Create seamless in-product analytics</p></div></div><div><span>Metabase Plans</span><div><span>Starter and Open Source
+    </span><p>Self-service BI in 5 minutes</p></div><div><span>Pro
+    </span><p>Advanced tools and controls</p></div><div><span>Enterprise
+    </span><p>White-glove treatment</p></div></div><div><span>Platform</span><span>Data Sources
+    </span><span>Security
+    </span><span>Cloud
+    </span><div><span>Professional Services
+    </span><span>New</span></div></div></div><div><span>Watch a 5-minute demo</span><p>to see how to set up and publish a dashboard</p></div></div></div><div><div>Features
+    </div><div><div><div><div><span>Query builder
+    </span><p>Get answers in a few clicks</p></div><div><span>Drill-through
+    </span><p>Pull threads in your data</p></div><div><span>Usage analytics
+    </span><span>New</span><p>See who did what, when</p></div></div><div><div><span>Analytics dashboards
+    </span><p>Share insights with anyone,
+
+
+

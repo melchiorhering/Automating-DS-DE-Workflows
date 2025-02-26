@@ -1,0 +1,20 @@
+# ==================================================
+# !!!NEVER ADD THIS FILE WITH REAL SECRETS TO GIT!!!
+# ==================================================
+export ROOT_DIR=$(pwd)
+export ENVIRONMENT=development
+export VOLUME_DIRECTORY=./data
+
+# RAG
+export MILVUS_URI=http://localhost:19530
+
+# TELEMETRY
+export PHOENIX_TRACE_ENDPOINT=http://0.0.0.0:6006/v1/traces
+
+# Hugging Face Token
+export HF_TOKEN=<token>
+
+# NEVER ADD THIS FILE WITH REAL SECRETS TO GIT
+export AZURE_API_KEY=<key>
+export AZURE_API_BASE=<endpoint>
+export AZURE_API_VERSION=<version>

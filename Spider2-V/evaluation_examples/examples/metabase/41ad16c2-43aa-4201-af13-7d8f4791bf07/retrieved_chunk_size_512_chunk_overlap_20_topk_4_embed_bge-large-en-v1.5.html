@@ -1,0 +1,62 @@
+Documentation Source:
+www.metabase.com/docs/v0.49/installation-and-operation/running-the-metabase-jar-file.html
+
+Documentation Title:
+Running the Metabase JAR file
+
+Documentation Content:
+If you’re on a <a>Pro</a>or <a>Enterprise</a>plan, download the <a>JAR for the Enterprise Edition</a>.</li><li>Create a new directory and move the Metabase JAR into it.</li><li>Change into your new Metabase directory and run the JAR.</li></ol><code>java -jar metabase.jar
+</code><p>Metabase will log its progress in the terminal as it starts up. Wait until you see “Metabase Initialization Complete” and visit <code>http://localhost:3000/setup</code>.</p><p>If you are using a paid version, be sure to <a>activate your license</a>.</p><h2>Local installation</h2><p>If you just want to try Metabase out, play around with Metabase, or just use Metabase on your local machine, Metabase ships with a default application database that you can use. <strong>This setup is not meant for production</strong>. If you intend to run Metabase for real at your organization, see <a>Production installation</a>.</p><p>The below instructions are the same as the quick start above, just with a little more context around each step.</p><h3>1. Install Java JRE</h3><p>You may already have Java installed. To check the version, open a terminal and run:</p><code>java -version
+</code><p>If Java isn’t installed, you’ll need to install Java before you can run Metabase. We recommend version 11 of JRE from <a>Eclipse Temurin</a>with HotSpot JVM. You can run Metabase wherever Java 11 runs. The particular processor architecture shouldn’t matter (although we only test Metabase for x86 and ARM).</p><h3>2.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/installation-and-operation/running-the-metabase-jar-file.html
+
+Documentation Title:
+Running the Metabase JAR file
+
+Documentation Content:
+Download Metabase</h3><p>Download the JAR file:</p><ul><a>Metabase OSS</a><a>Metabase Enterprise/Pro edition</a></ul><p>If you want to install the <a>Pro or Enterprise editions</a>of Metabase, see <a>Activating your Metabase commercial license</a>.</p><h3>3. Create a new directory and move the Metabase JAR into it</h3><p>When you run Metabase, Metabase will create some new files, so it’s important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).</p><p>On posix systems, the commands would look something like this:</p><p>Assuming you downloaded to <code>/Users/person/Downloads</code>:</p><code>mkdir ~/metabase
+</code><p>then</p><code>mv /Users/person/Downloads/metabase.jar ~/metabase
+</code><h3>4. Change into your new Metabase directory and run the jar</h3><p>Change into the directory you created in step 2:</p><code>cd ~/metabase
+</code><p>Now that you have Java working you can run the JAR from a terminal with:</p><code>java -jar metabase.jar
+</code><p>Metabase will start using the default settings. You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/installation-and-operation/running-metabase-on-docker.html
+
+Documentation Title:
+Running Metabase on Docker
+
+Documentation Content:
+See below for instructions on <a>running Metabase in production</a>.</p><p>Assuming you have <a>Docker</a>installed and running, get the latest Docker image:</p><code>docker pull metabase/metabase:latest
+</code><p>Then start the Metabase container:</p><code>docker run -d -p 3000:3000 --name metabase metabase/metabase
+</code><p>This will launch an Metabase server on port 3000 by default.</p><p>Optional: to view the logs as your Open Source Metabase initializes, run:</p><code>docker logs -f metabase
+</code><p>Once startup completes, you can access your Open Source Metabase at <code>http://localhost:3000</code>.</p><p>To run your Open Source Metabase on a different port, say port 12345:</p><code>docker run -d -p 12345:3000 --name metabase metabase/metabase
+</code><h2>Pro or Enterprise quick start</h2><p>Use this quick start if you have a <a>license token</a>for a <a>paid version</a>of Metabase, and you want to run Metabase locally.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/installation-and-operation/running-the-metabase-jar-file.html
+
+Documentation Title:
+Running the Metabase JAR file
+
+Documentation Content:
+Once Metabase is fully started you’ll see a confirmation such as:</p><code>...
+06-19 10:29:34 INFO metabase.task :: Initializing task CheckForNewVersions
+06-19 10:29:34 INFO metabase.task :: Initializing task SendAnonymousUsageStats
+06-19 10:29:34 INFO metabase.task :: Initializing task SendAbandomentEmails
+06-19 10:29:34 INFO metabase.task :: Initializing task SendPulses
+06-19 10:29:34 INFO metabase.task :: Initializing task SendFollowUpEmails
+06-19 10:29:34 INFO metabase.task :: Initializing task TaskHistoryCleanup
+06-19 10:29:34 INFO metabase.core :: Metabase Initialization COMPLETE
+</code><p>At this point you’re ready to go! You can access your new Metabase server on port 3000, most likely at <code>http://localhost:3000</code>.</p><p>You can use another port than 3000 by setting the <code>MB_JETTY_PORT</code><a>environment variable</a>before running the jar.</p><p>If you are using a paid version of Metabase, be sure to <a>activate your license</a>.</p><h2>Production installation</h2><p>The steps are similar to those steps above with two important differences: if you want to run Metabase in production, you’ll want to:</p><ul><li>Use a <a>production application database</a>to store your Metabase application data.</li><li>Run <a>Metabase as a service</a>.</li></ul><p>If you’d prefer to use Docker, check out <a>running Metabase on Docker</a>.</p><h3>Production application database</h3><p>Here are some <a>databases we support</a>.</p><p>For example, say you want to use <a>PostgreSQL</a>.
+
+
+

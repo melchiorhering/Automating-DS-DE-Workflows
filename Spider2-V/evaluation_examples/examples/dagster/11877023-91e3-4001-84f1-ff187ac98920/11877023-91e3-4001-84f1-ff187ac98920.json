@@ -1,0 +1,93 @@
+{
+    "id": "11877023-91e3-4001-84f1-ff187ac98920",
+    "snapshot": "dagster",
+    "instruction": "I have finished one dagster asset \"iris_dataset\". Please write another one that generates a duckdb table \"iris_virginica\". This table will extract all entries with species \"Iris-virginica\" from iris_dataset.",
+    "source": [
+        "https://docs.dagster.io/integrations/duckdb/using-duckdb-with-dagster"
+    ],
+    "related_apps": [
+        "chromium",
+        "dagster",
+        "duckdb",
+        "vscode"
+    ],
+    "tags": [
+        "cli+gui",
+        "data_orchestration",
+        "abstract"
+    ],
+    "action_number": 7,
+    "config": [
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/11877023-91e3-4001-84f1-ff187ac98920/iris-analysis.zip",
+                "dest": "/home/user/iris-analysis.zip"
+            }
+        },
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/11877023-91e3-4001-84f1-ff187ac98920/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "google_chrome_browser",
+            "parameters": {
+                "debugging_port": 1337,
+                "listening_port": 9222,
+                "urls": [
+                    "https://www.bing.com/"
+                ]
+            }
+        },
+        {
+            "type": "dagster_webui_init",
+            "parameters": {
+                "listening_port": 9222,
+                "url": "http://localhost:3000",
+                "actions": [
+                    {
+                        "type": "close_popups"
+                    }
+                ]
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [
+            {
+                "type": "copyfile_from_host_to_guest",
+                "parameters": {
+                    "src": "evaluation_examples/examples/dagster/11877023-91e3-4001-84f1-ff187ac98920/gold_iris_virginica.csv",
+                    "dest": "/home/user/iris-analysis/gold_iris_virginica.csv"
+                }
+            }
+        ],
+        "func": [
+            "check_include_exclude"
+        ],
+        "result": [
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dagster/11877023-91e3-4001-84f1-ff187ac98920/eval.sh",
+                "dest": "/home/user/eval.sh"
+            }
+        ],
+        "expected": [
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "succeeded"
+                    ],
+                    "exclude": [
+                        "failed"
+                    ]
+                }
+            }
+        ]
+    },
+    "counterpart": "a8a36525-539f-4618-8ef5-8785df2fc950"
+}

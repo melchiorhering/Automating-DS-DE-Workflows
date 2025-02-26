@@ -1,0 +1,371 @@
+Documentation Source:
+docs.snowflake.com/en/developer-guide/snowpark/python/python-worksheets.txt
+
+Documentation Title:
+Writing Snowpark Code in Python Worksheets | Snowflake Documentation
+
+Documentation Content:
+table
+(
+inputTableName
+)
+df
+.
+filter
+(
+col
+(
+"STATE"
+)
+!=
+"SKIPPED"
+)
+\
+.
+group_by
+((
+"SCHEDULED_TIME"
+),
+"STATE"
+)
+.
+count
+()
+\
+.
+write
+.
+mode
+(
+"overwrite"
+)
+.
+save_as_table
+(
+outputTableName
+)
+return
+outputTableName
++
+" table successfully written"
+Copy
+Select
+Settings
+and for the
+Return type
+, select
+String
+for the type returned by the handler function.
+Run the code.
+After you run your code in a Python worksheet, you can open a SQL worksheet and query the table. See
+Querying data using worksheets
+.
+Example: Read Files from a Stage with Python Worksheets
+¶
+Snowpark Python lets you read files from a stage and write the contents to a table or save them as a view in Snowflake.
+In this example, the Python code reads the contents of a compressed CSV-formatted file containing employee data,
+data_0_0_0.csv.gz
+from the
+db1.public.files
+named stage and writes the contents to a table called
+employees
+.
+Note
+To run this code example, you must use a role that has:
+The USAGE privilege on the stage, database, and schema used in the code.
+The CREATE TABLE privilege on the database schema to which you want to add the table.
+Sign in to Snowsight.
+Open
+Projects
+»
+Worksheets
+.
+Select
++
+»
+Python Worksheet
+.
+Select a database and schema that you want to add the table to.
+Select a warehouse to use to run the worksheet. If you have a default warehouse for your user, it is pre-selected.
+Make sure your warehouse is running.
+Write the Snowpark Python code as part of the
+main
+function:
+import
+snowflake.snowpark
+as
+snowpark
+from
+snowflake.snowpark.types
+import
+*
+schema_for_file
+=
+StructType
+([
+StructField
+(
+"name"
+,
+StringType
+()),
+StructField
+(
+"role"
+,
+StringType
+())
+])
+fileLocation
+=
+"@DB1.PUBLIC.FILES/data_0_0_0.csv.gz"
+outputTableName
+=
+"employees"
+def
+main
+(
+session
+:
+snowpark
+.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/developer-guide/snowpark/python/python-worksheets.txt
+
+Documentation Title:
+Writing Snowpark Code in Python Worksheets | Snowflake Documentation
+
+Documentation Content:
+Session
+):
+df_reader
+=
+session
+.
+read
+.
+schema
+(
+schema_for_file
+)
+df
+=
+df_reader
+.
+csv
+(
+fileLocation
+)
+df
+.
+write
+.
+mode
+(
+"overwrite"
+)
+.
+save_as_table
+(
+outputTableName
+)
+return
+outputTableName
++
+" table successfully written from stage"
+Copy
+Select
+Settings
+and for the
+Return type
+, select
+String
+for the type returned by the handler function.
+Run the code.
+After you run your code in a Python worksheet, you can open a SQL worksheet and query the table. See
+Querying data using worksheets
+.
+For more details about working with files in a stage using Snowpark, see
+Working with DataFrames in Snowpark Python
+.
+Was this page helpful?
+Yes
+No
+Visit Snowflake
+Join the conversation
+Develop with Snowflake
+Share your feedback
+Read the latest on our blog
+Get your own certification
+Privacy Notice
+Site Terms
+©
+2024
+Snowflake, Inc.
+All Rights Reserved
+.
+On this page
+About Python Worksheets
+Prerequisites for Python Worksheets
+Start Developing with Python Worksheets
+Writing Snowpark Code in Python Worksheets
+Running Python Worksheets
+Example Code for Python Worksheets
+Related content
+Managing and using worksheets in Snowsight
+Getting started with worksheets
+Snowpark Developer Guide for Python
+Getting Started with Snowpark in Snowflake Python Worksheets (Snowflake Quickstart)
+Language
+:
+English
+English
+Français
+Deutsch
+日本語
+한국어
+Português
+
+
+
+Documentation Source:
+docs.snowflake.com/en/release-notes/2024/ui/2024-02-07.txt
+
+Documentation Title:
+February 07-08, 2024 — Snowsight Release Notes | Snowflake Documentation
+
+Documentation Content:
+If you have additional questions, please feel free to contact
+Snowflake Support
+.
+Write Snowpark code in Python worksheets —–
+General Availability
+¶
+With this release, we are pleased to announce the general availability of Python worksheets in Snowsight. Python worksheets let
+you write and run Snowpark Python code in a worksheet in Snowsight. You can now use Python version 3.11 or another
+supported version.
+In a Python worksheet, you can do the following:
+Write a Python script to read data from a stage, transform it, and save it to a table, all without leaving Snowsight.
+Use included packages from Anaconda or import packages from a stage to write code more easily.
+Automate your Python code by deploying it as a stored procedure and scheduling it as a task.
+For more information, see
+Writing Snowpark Code in Python Worksheets
+.
+Recover worksheets for dropped users —–
+General Availability
+¶
+With this release, we are pleased to announce the general availability of recovering Snowsight worksheets for users that have
+been dropped from Snowflake. You can recover up to 500 worksheets for each dropped user.
+For more details, see
+Recover worksheets owned by a dropped user
+.
+Get Started page for some accounts —–
+Removed
+¶
+With this release, the
+Get Started
+page that was available to some trial and Snowflake On Demand accounts has been removed.
+Release Notes Change Log
+¶
+Announcement
+Update
+Date
+New navigation menu (Preview)
+Removed
+02-08-24
+Was this page helpful?
+Yes
+No
+Visit Snowflake
+Join the conversation
+Develop with Snowflake
+Share your feedback
+Read the latest on our blog
+Get your own certification
+Privacy Notice
+Site Terms
+©
+2024
+Snowflake, Inc.
+All Rights Reserved
+.
+On this page
+Write Snowpark code in Python worksheets —– General Availability
+Recover worksheets for dropped users —– General Availability
+Get Started page for some accounts —– Removed
+Release Notes Change Log
+Language
+:
+English
+English
+Français
+Deutsch
+日本語
+한국어
+Português
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/tasty-bytes-python-load.txt
+
+Documentation Title:
+Load and query sample data using Snowpark Python | Snowflake Documentation
+
+Documentation Content:
+The sample worksheet is not available
+for other types of accounts.
+Step 1. Sign in using Snowsight
+¶
+To access Snowsight over the public Internet, do the following:
+In a supported web browser, navigate to
+https://app.snowflake.com
+.
+Provide your
+account identifier
+or account URL.
+If you’ve previously signed in to Snowsight, you might see an account name that you can select.
+Sign in using your Snowflake account credentials.
+Step 2. Open the Python worksheet
+¶
+You can use Python worksheets to write and run Python code. Your trial account has access
+to a pre-loaded Python worksheet for this tutorial. The worksheet has the Python code that
+you will run to create a database, load data into it, and query the data. For more information
+about Python worksheets, see
+Writing Snowpark Code in Python Worksheets
+.
+To open the pre-loaded tutorial Python worksheet:
+Select
+Projects
+»
+Worksheets
+to open the list of worksheets.
+Open
+[Tutorial] Using Python to load and query sample data
+.
+Your worksheet looks similar to the following image.
+This pre-loaded Python worksheet automatically uses the ACCOUNTADMIN system role so that
+you can view and manage objects in your account. For more information, see
+Using the ACCOUNTADMIN Role
+.
+The worksheet also uses the COMPUTE_WH virtual warehouse. A warehouse provides
+the required resources to create and manage objects and run SQL commands. These
+resources include CPU, memory, and temporary storage. For more information, see
+Virtual warehouses
+.
+Step 3. Learn how to use Python worksheets
+¶
+Python worksheets let you use
+Snowpark Python
+in Snowsight to run SQL statements. This step in this tutorial describes the code in each step
+in the Python worksheet. When you use a Python worksheet, you cannot run individual blocks of
+code separately. You must run the whole worksheet. Before you select
+Run
+in the worksheet,
+review the following steps so that you better understand the Python code.
+
+
+

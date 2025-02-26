@@ -1,0 +1,298 @@
+Documentation Source:
+docs.snowflake.com/en/user-guide/querying-metadata.txt
+
+Documentation Title:
+Querying Metadata for Staged Files | Snowflake Documentation
+
+Documentation Content:
+csv
+.
+gz
+(
+file_format
+=>
+myformat
+)
+t
+);
+SELECT
+*
+FROM
+table1
+;
++
+--------------+-----------------+---------------------------+-------------------------+-------------------------------+------+------+
+| FILENAME     | FILE_ROW_NUMBER | FILE_CONTENT_KEY          | FILE_LAST_MODIFIED      |  START_SCAN_TIME              | COL1 | COL2 |
+|
+--------------+-----------------+---------------------------+-------------------------+-------------------------------+------+------+
+| data1.csv.gz | 1               | 39ab11bb2cdeacdcdac1234d9 | 2022-08-03 10:15:26.000 | 2023-02-02 01:31:00.778 +0000 | a    | b    |
+| data1.csv.gz | 2               | 2289aab2abcdeaacaaac348d0 | 2022-09-10 11:15:55.000 | 2023-02-02 01:31:00.778 +0000 | c    | d    |
++
+--------------+-----------------+---------------------------+-------------------------+-------------------------------+------+------+
+Copy
+Was this page helpful?
+Yes
+No
+Visit Snowflake
+Join the conversation
+Develop with Snowflake
+Share your feedback
+Read the latest on our blog
+Get your own certification
+Privacy Notice
+Site Terms
+©
+2024
+Snowflake, Inc.
+All Rights Reserved
+.
+On this page
+Metadata Columns
+Query Limitations
+Query Examples
+Language
+:
+English
+English
+Français
+Deutsch
+日本語
+한국어
+Português
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/data-load-dirtables-pipeline.txt
+
+Documentation Title:
+Building a data processing pipeline using a directory table | Snowflake Documentation
+
+Documentation Content:
+select
+*
+from
+prod_reviews
+;
++
+------------------+----------------------------------+
+| FILE_NAME        | FILE_DATA                        |
+|------------------+----------------------------------|
+| prod_review1.pdf | {                                |
+|                  |   "FirstName": "John",           |
+|                  |   "LastName": "Johnson",         |
+|                  |   "Middle Name": "Michael",      |
+|                  |   "Product": "Tennis Shoes",     |
+|                  |   "Purchase Date": "03/15/2022", |
+|                  |   "Recommend": "Yes"             |
+|                  | }                                |
+| prod_review2.pdf | {                                |
+|                  |   "FirstName": "Emily",          |
+|                  |   "LastName": "Smith",           |
+|                  |   "Middle Name": "Ann",          |
+|                  |   "Product": "Red Skateboard",   |
+|                  |   "Purchase Date": "01/10/2023", |
+|                  |   "Recommend": "MayBe"           |
+|                  | }                                |
++
+------------------+----------------------------------+
+Copy
+Finally, you can create a view that parses the objects in the
+FILE_DATA
+column into separate columns.
+You can then query the view to analyze and work with the file contents.
+CREATE
+OR
+REPLACE
+VIEW
+prod_review_info_v
+AS
+WITH
+file_data
+AS
+(
+SELECT
+file_name
+,
+parse_json
+(
+file_data
+)
+AS
+file_data
+FROM
+prod_reviews
+)
+SELECT
+file_name
+,
+file_data
+:FirstName
+::varchar
+AS
+first_name
+,
+file_data
+:LastName
+::varchar
+AS
+last_name
+,
+file_data
+:
+"Middle Name"
+::varchar
+AS
+middle_name
+,
+file_data
+:Product
+::varchar
+AS
+product
+,
+file_data
+:
+"Purchase Date"
+::date
+AS
+purchase_date
+,
+file_data
+:Recommend
+::varchar
+AS
+recommended
+,
+build_scoped_file_url
+(@
+my_pdf_stage
+,
+file_name
+)
+AS
+scoped_review_url
+FROM
+file_data
+;
+SELECT
+*
+FROM
+prod_review_info_v
+;
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/querying-metadata.txt
+
+Documentation Title:
+Querying Metadata for Staged Files | Snowflake Documentation
+
+Documentation Content:
+METADATA
+$
+FILE_ROW_NUMBER
+,
+METADATA
+$
+FILE_CONTENT_KEY
+,
+METADATA
+$
+FILE_LAST_MODIFIED
+,
+METADATA
+$
+START_SCAN_TIME
+,
+t
+.$
+1
+,
+t
+.$
+2
+FROM
+@
+mystage1
+(
+file_format
+=>
+myformat
+)
+t
+;
++
+-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+----+----+
+| METADATA$FILENAME | METADATA$FILE_ROW_NUMBER | METADATA$FILE_CONTENT_KEY | METADATA$FILE_LAST_MODIFIED |      METADATA$START_SCAN_TIME | $1 | $2 |
+|-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+----+----|
+| data2.csv.gz      |                        1 | aaa11bb2cccccaaaaac1234d9 |     2022-05-01 10:15:57.000 |  2023-02-02 01:31:00.713 +0000| e  | f  |
+| data2.csv.gz      |                        2 | aa387aabb2ccedaaaaac123b8 |     2022-05-01 10:05:35.000 |  2023-02-02 01:31:00.755 +0000| g  | h  |
+| data1.csv.gz      |                        1 | 39ab11bb2cdeacdcdac1234d9 |     2022-08-03 10:15:26.000 |  2023-02-02 01:31:00.778 +0000| a  | b  |
+| data1.csv.gz      |                        2 | 2289aab2abcdeaacaaac348d0 |     2022-09-10 11:15:55.000 |  2023-02-02 01:31:00.778 +0000| c  | d  |
++
+-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+----+----+
+SELECT
+METADATA
+$
+FILENAME
+,
+METADATA
+$
+FILE_ROW_NUMBER
+,
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/querying-metadata.txt
+
+Documentation Title:
+Querying Metadata for Staged Files | Snowflake Documentation
+
+Documentation Content:
+METADATA
+$
+FILE_ROW_NUMBER
+,
+METADATA
+$
+FILE_CONTENT_KEY
+,
+METADATA
+$
+FILE_LAST_MODIFIED
+,
+METADATA
+$
+START_SCAN_TIME
+,
+t
+.$
+1
+,
+t
+.$
+2
+FROM
+@
+mystage1
+t
+;
++
+-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+-----+------+
+| METADATA$FILENAME | METADATA$FILE_ROW_NUMBER | METADATA$FILE_CONTENT_KEY | METADATA$FILE_LAST_MODIFIED |      METADATA$START_SCAN_TIME | $1  | $2   |
+|-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+-----+------|
+| data2.csv.gz      |                        1 | aaa11bb2cccccaaaaac1234d9 |     2022-05-01 10:15:57.000 |  2023-02-02 01:31:00.713 +0000| e|f | NULL |
+| data2.csv.gz      |                        2 | aa387aabb2ccedaaaaac123b8 |     2022-05-01 10:05:35.000 |  2023-02-02 01:31:00.755 +0000| g|h | NULL |
+| data1.csv.gz      |                        1 | 39ab11bb2cdeacdcdac1234d9 |     2022-08-03 10:15:26.000 |  2023-02-02 01:31:00.778 +0000| a|b | NULL |
+| data1.csv.gz      |                        2 | 2289aab2abcdeaacaaac348d0 |     2022-09-10 11:15:55.000 |  2023-02-02 01:31:00.778 +0000| c|d | NULL |
++
+-------------------+--------------------------+---------------------------+-----------------------------+-------------------------------+-----+------+
+Copy
+Note
+The file format is required in this example to correctly parse the fields in the staged files.
+
+
+

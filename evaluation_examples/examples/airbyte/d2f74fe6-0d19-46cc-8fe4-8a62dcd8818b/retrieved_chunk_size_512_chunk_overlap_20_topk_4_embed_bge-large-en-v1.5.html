@@ -1,0 +1,50 @@
+Documentation Source:
+airbyte.com/tutorials/build-a-github-activity-dashboard-for-your-project.html
+
+Documentation Title:
+Build a GitHub Activity Dashboard for your Project | Airbyte | Airbyte
+
+Documentation Content:
+Then, open a terminal, and go to a location you want to download Airbyte in and run:</p><code>git clone https://github.com/airbytehq/airbyte.git
+</code><p>‍</p><p>You will need to go into the cloned airbyte repo by running cd airbyte and then you run:</p><code>docker-compose up
+</code><p>Or if you are on the newest version of the Docker CLI you can run:</p><code>docker compose up
+</code><p>The above command will create and start the Airbyte containers. After it's done, you can access Airbyte at<a>http://localhost:8000/</a>(you can go ahead and set up your preference, then leave the Airbyte web app open as we will come back to it shortly)</p><h3>Setting up a Postgres database</h3><p>This database will be the destination for the data coming in from GitHub. To set this up, we will be running a postgres container via docker like so:</p><p>‍</p><code>docker run --rm --name github-destination -e POSTGRES_PASSWORD=password -p 3003:5432 -d postgres
+</code><p>‍</p><p>If you are running the above command for the first time, it will download the Postgres image from Docker Hub registry and then run it as a container with the name of <strong>github-destination</strong>.</p><p>We are also setting the database password by passing an environment variable of <strong>POSTGRES_PASSWORD</strong>to a value of password.</p><p>We are also binding exposing the container’s 5432 port to our host machine on port 3003.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/deploying-airbyte/local-deployment.html
+
+Documentation Title:
+Local Deployment | Airbyte Documentation
+
+Documentation Content:
+After the first run
+users should be able to run the command from the terminal. Airbyte suggests mac users to use <code>brew</code>if it is available.</p></div><span>./abctl local install</span><ul><li>Your browser should open to the Airbyte Application, if it does not visit <a>http://localhost</a></li><li>You will be asked for a username and password. By default, that's username <code>airbyte</code>and password <code>password</code>. You can set these values through command line flags or environment variables.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/deploying-airbyte/local-deployment.html
+
+Documentation Title:
+Local Deployment | Airbyte Documentation
+
+Documentation Content:
+You can set these values through command line flags or environment variables. For example, to set the username and password to <code>foo</code>and <code>bar</code>respectively, you can run the following command:</li></ul><code><span>./abctl local install --username foo --password bar</span><span># Or as Environment Variables</span><span>ABCTL_LOCAL_INSTALL_PASSWORD=foo</span><span>ABCTL_LOCAL_INSTALL_USERNAME=bar</span></code><li>Start moving some data!</li><h2>Troubleshooting<a>​</a></h2><p>If you have any questions about the local setup and deployment process, head over to our <a>Getting Started FAQ</a>on our Airbyte Forum that answers the following questions and more:</p><ul><li>How long does it take to set up Airbyte?</li><li>Where can I see my data once I've run a sync?</li><li>Can I set a start time for my sync?</li></ul><p>If you encounter any issues, check out <a>Getting Support</a>documentation
+for options how to get in touch with the community or us.</p></div><a>Edit this page</a></article><nav><a><div>Previous</div><div>Deploy Airbyte</div></a><a><div>Next</div><div>Docker Compose</div></a></nav></div><div><ul><a>Setup &amp; launch Airbyte</a><a>Troubleshooting</a></ul><div><div>Was this page helpful?</div><div><button>Yes</button><button>No</button></div></div></div></div></div></div>
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/using-airbyte/getting-started/index.html
+
+Documentation Title:
+Getting Started | Airbyte Documentation
+
+Documentation Content:
+Get started immediately by deploying locally using Docker.</p><h3>Self-Managed Community (Open Source)<a>​</a></h3><p>With Airbyte Self-Managed Community (Open Source), you can use one of the following options in your infrastructure:</p><ul><li><a>Local Deployment</a>(recommended when trying out Airbyte)</li><a>On AWS</a><a>On Azure VM Cloud Shell</a><a>On Digital Ocean Droplet</a><a>On GCP</a><a>On Kubernetes</a><a>On OCI VM</a><a>On Restack</a><a>On Plural</a><li><a>On AWS ECS</a>(Spoiler alert: it doesn't work)</li></ul><h3>Self-Managed Enterprise<a>​</a></h3><p>Airbyte Self-Managed Enterprise is the best way to run Airbyte yourself. You get all 300+ pre-built connectors, data never leaves your environment, and Airbyte becomes self-serve in your organization with new tools to manage multiple users, and multiple teams using Airbyte all in one place.</p><p>To start with Self-Managed Enterprise, navigate to our <a>Enterprise setup guide</a>.</p></div><a>Edit this page</a></article><nav><a><div>Previous</div><div>Connector Support Levels</div></a><a><div>Next</div><div>Core Concepts</div></a></nav></div><div><ul><a>Sign Up for Airbyte Cloud</a><li><a>Deploy Airbyte (Self-Managed)</a><ul><a>Self-Managed Community (Open Source)</a><a>Self-Managed Enterprise</a></ul></li></ul><div><div>Was this page helpful?</div><div><button>Yes</button><button>No</button></div></div></div></div></div></div>
+
+
+

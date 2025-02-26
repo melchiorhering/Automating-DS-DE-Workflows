@@ -1,0 +1,7 @@
+{
+    "email": "xxxxx@xxx.com",
+    "password": "xxxxxxx",
+    "account_id": "xxxxxxx",
+    "token": "xxxxxxx",
+    "cloud_host": "xxxxx.com" // remove prefix https://
+}

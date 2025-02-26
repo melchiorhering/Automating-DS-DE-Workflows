@@ -1,0 +1,204 @@
+Documentation Source:
+airbyte.com/tutorials/build-a-github-activity-dashboard-for-your-project.txt
+
+Documentation Title:
+Build a GitHub Activity Dashboard for your Project | Airbyte | Airbyte
+
+Documentation Content:
+Watch that
+here
+!
+‍
+‍
+What we will need:
+Git
+Docker
+Docker Compose
+Airbyte
+Postgres Database
+GitHub access token
+Metabase
+Step 1: Replicating Data from GitHub to Postgres with Airbyte
+Setting up Airbyte
+You can skip this step if you already have Airbyte on your machine.
+To set up Airbyte on your machine, make sure you have Docker and Docker compose set-up, as well as git. Then, open a terminal, and go to a location you want to download Airbyte in and run:
+git clone https://github.com/airbytehq/airbyte.git
+‍
+You will need to go into the cloned airbyte repo by running cd airbyte and then you run:
+docker-compose up
+Or if you are on the newest version of the Docker CLI you can run:
+docker compose up
+The above command will create and start the Airbyte containers. After it's done, you can access Airbyte at
+http://localhost:8000/
+(you can go ahead and set up your preference, then leave the Airbyte web app open as we will come back to it shortly)
+Setting up a Postgres database
+This database will be the destination for the data coming in from GitHub. To set this up, we will be running a postgres container via docker like so:
+‍
+docker run --rm --name github-destination -e POSTGRES_PASSWORD=password -p 3003:5432 -d postgres
+‍
+If you are running the above command for the first time, it will download the Postgres image from Docker Hub registry and then run it as a container with the name of
+github-destination
+.
+We are also setting the database password by passing an environment variable of
+POSTGRES_PASSWORD
+to a value of password.
+We are also binding exposing the container’s 5432 port to our host machine on port 3003. Finally, we are running the container in the background with the -d flag.
+Now that we have set up the destination database, let's head over to the Airbyte web app and create a connection from the Airbyte GitHub source to our Postgres database.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/deploying-airbyte/local-deployment.txt
+
+Documentation Title:
+Local Deployment | Airbyte Documentation
+
+Documentation Content:
+If you did not use Brew to install
+abctl
+then download the latest version of
+abctl
+from the
+releases page
+and run the following command:
+info
+Mac users may need to use the finder and Open With > Terminal to run the
+abctl
+command. After the first run
+users should be able to run the command from the terminal. Airbyte suggests mac users to use
+brew
+if it is available.
+./abctl local install
+Your browser should open to the Airbyte Application, if it does not visit
+http://localhost
+You will be asked for a username and password. By default, that's username
+airbyte
+and password
+password
+. You can set these values through command line flags or environment variables. For example, to set the username and password to
+foo
+and
+bar
+respectively, you can run the following command:
+./abctl local install --username foo --password bar
+# Or as Environment Variables
+ABCTL_LOCAL_INSTALL_PASSWORD=foo
+ABCTL_LOCAL_INSTALL_USERNAME=bar
+Start moving some data!
+Troubleshooting
+​
+If you have any questions about the local setup and deployment process, head over to our
+Getting Started FAQ
+on our Airbyte Forum that answers the following questions and more:
+How long does it take to set up Airbyte?
+Where can I see my data once I've run a sync?
+Can I set a start time for my sync?
+If you encounter any issues, check out
+Getting Support
+documentation
+for options how to get in touch with the community or us.
+Edit this page
+Previous
+Deploy Airbyte
+Next
+Docker Compose
+Setup & launch Airbyte
+Troubleshooting
+Was this page helpful?
+Yes
+No
+
+
+
+Documentation Source:
+airbyte.com/tutorials/how-to-use-airflow-and-airbyte-together.txt
+
+Documentation Title:
+A step-by-step guide to setting up and configuring Airbyte and Airflow to work together | Airbyte
+
+Documentation Content:
+Versions
+There may be future modifications to the API and/or Airflow that could render some of the instructions given in this tutorial obsolete. The instructions presented in this tutorial were created in February 2023, and the following tools were used:
+Airbyte OSS 0.40.32
+Docker Desktop v4.10.1
+macOS Monterey Version 12.5.1
+MacBook Pro with the Apple M1 Pro Chip
+Airflow v2.5.1 Git Version: .release:2.5.1+49867b660b6231c1319969217bc61917f7cf9829
+Install Airbyte
+If you already have a local copy of Airbyte running, then you may skip this section. Otherwise, follow the instructions to
+deploy Airbyte
+.
+[Optional] Modify
+BASIC_AUTH_USERNAME
+and
+BASIC_AUTH_PASSWORD
+in the (hidden)
+.env
+file. For this tutorial I use the following default values:
+BASIC_AUTH_USERNAME=airbyte
+BASIC_AUTH_PASSWORD=password
+Once Airbyte is running, in your browser type in localhost:8000, which should prompt you for a username and password as follows:
+Airbyte OSS login prompt
+Create a connection
+Create a connection that sends data from the
+Sample Data (Faker)
+source to the
+Local JSON
+(file system) output. Click on “Create your first connection” as shown below:
+Create your first connection prompt
+‍
+You should then see an option to set up a source connection. Select the Faker source from the dropdown as shown below.
+Select Sample Data (Faker) as a source
+‍
+After selecting Sample Data as the source, you will see a screen that should look as follows. Click on
+Set up source
+as shown below.
+Configure Sample Data (Faker) as a source
+‍
+You will then wait a few seconds for the Sample Data source to be verified, at which point you will be prompted to configure the destination that will be used for the connection. Select
+Local JSON
+as shown below:
+Select Local JSON as a destination
+‍
+After selecting Local JSON as the output, you will need to specify where the JSON files should be written.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/deploying-airbyte/on-azure-vm-cloud-shell.txt
+
+Documentation Title:
+Deploy Airbyte on Azure (Cloud Shell) | Airbyte Documentation
+
+Documentation Content:
+In your local machine, open a terminal.
+Go to the folder where you stored the SSH key.
+Create a SSH tunnel for
+port 8000
+by typing the following command:
+ssh -N -L 8000:localhost:8000 -i <your SSH key file> <admin username>@<IP address>
+Open a web browser and navigate to
+http://localhost:8000
+. You will see Airbyte’s landing page.
+caution
+For security reasons, we strongly recommend not exposing Airbyte on Internet available ports.
+Troubleshooting
+​
+If you encounter any issues, reach out to our community on
+Slack
+.
+Edit this page
+Previous
+On AWS ECS (Coming Soon)
+Next
+Deploy Airbyte on GCP (Compute Engine)
+Set up the environment
+Install and start Airbyte
+Connect to Airbyte
+Troubleshooting
+Was this page helpful?
+Yes
+No
+
+
+

@@ -1,0 +1,47 @@
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/integrations/dagstermill/using-notebooks-with-dagster.html
+
+Documentation Title:
+Using Jupyter notebooks with Papermill and Dagster Tutorial
+
+Documentation Content:
+If you execute these cells, several plots of the Iris dataset will be created:</p><p>Next, we conduct our K-means analysis:</p><code>estimator <span>=</span>sklearn<span>.</span>cluster<span>.</span>KMeans<span>(</span>n_clusters<span>=</span><span>3</span><span>)</span>estimator<span>.</span>fit<span>(</span>iris<span>[</span><span>[</span><span>"Sepal length (cm)"</span><span>,</span><span>"Sepal width (cm)"</span><span>,</span><span>"Petal length (cm)"</span><span>,</span><span>"Petal width (cm)"</span><span>]</span><span>]</span><span>)</span></code><p>Lastly, we plot the results of the K-means analysis. From the plots, we can see that one species of Iris is separable from the other two, but a more sophisticated model will be required to distinguish the other two species:</p><p>Like many notebooks, this example does some fairly sophisticated work, including producing diagnostic plots and a statistical model. For now, this work is locked away in the <code>.ipynb</code>format, only reproducible using a complex Jupyter setup, and only programmatically accessible within the notebook context. We'll address this in the remainder of the tutorial.</p><h2>Step 2: Create a Dagster asset from the Jupyter Notebook<span>#</span></h2><p>By creating a Dagster asset from our notebook, we can integrate the notebook as part of our data platform. This enables us to make its contents more accessible to developers, stakeholders, and other assets in Dagster.</p><p>To create a Dagster asset from a Jupyter notebook, we can use the <code>define_dagstermill_asset</code>function.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/integrations/dagstermill/using-notebooks-with-dagster.html
+
+Documentation Title:
+Using Jupyter notebooks with Papermill and Dagster Tutorial
+
+Documentation Content:
+You now have working Jupyter and Dagster assets!</p><h2>Extra credit: Fetch a Dagster asset in a Jupyter notebook<span>#</span></h2><p>What if you want to do additional analysis of the Iris dataset and create a new notebook? How can you accomplish this without duplicating code or re-fetching data?</p><p>The answer is simple: use the <code>iris_dataset</code>Dagster asset!</p><p>In the Jupyter notebook, import the Dagster <code>Definitions</code>object and use the <code>Definitions.load_asset_value</code>function to load the data for the <code>iris_dataset</code>asset we created in <a>Step 5.1: Create the Iris dataset asset</a>:</p><code><span>from</span>tutorial_template <span>import</span>template_tutorial
+
+iris <span>=</span>template_tutorial<span>.</span>load_asset_value<span>(</span><span>"iris_dataset"</span><span>)</span></code><p>Then, whenever you run the notebook using Jupyter, you'll be able to work with the <code>iris_dataset</code>asset:</p><code>jupyter notebook /path/to/new/notebook.ipynb
+</code><p>Behind the scenes, when <code>load_asset_value</code>is called, Dagster fetches the value of <code>iris_dataset</code>that was most recently materialized and stored by an I/O manager.</p><p>To integrate the new notebook, follow the steps from <a>Step 5.3</a>to add the <code>parameters</code>tag to the cell that fetches the <code>iris_dataset</code>asset via <code>load_asset_value</code>.</p><h2>Conclusion<span>#</span></h2><p>Now we have successfully created an asset from a Jupyter notebook and integrated it with our Dagster project!
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/integrations/dagstermill/using-notebooks-with-dagster.html
+
+Documentation Title:
+Using Jupyter notebooks with Papermill and Dagster Tutorial
+
+Documentation Content:
+uci.edu/ml/machine-learning-databases/iris/iris.data"</span><span>,</span>names<span>=</span><span>[</span><span>"Sepal length (cm)"</span><span>,</span><span>"Sepal width (cm)"</span><span>,</span><span>"Petal length (cm)"</span><span>,</span><span>"Petal width (cm)"</span><span>,</span><span>"Species"</span><span>,</span><span>]</span><span>,</span><span>)</span></code><p>If you're following along in the template tutorial, uncomment the code block under the <code>TODO 2</code>comment.</p><p>Let's go over what's happening in this code block:</p><ul><li>Using <code>@asset</code>, we create a standard Dagster asset. The name of the Python function (<code>iris_dataset</code>) is the name of the asset.</li><li>As with the <code>iris_kmeans_jupyter</code>asset, we set the <code>group_name</code>parameter to organize our assets in the UI.</li><li>The body of the Python function fetches the Iris dataset, renames the columns, and outputs a Pandas DataFrame.</li></ul><h3>Step 5.2: Provide the iris_dataset asset to the notebook asset<span>#</span></h3><p>Next, we need to tell Dagster that the <code>iris_datset</code>asset is input data for the <code>iris-kmeans</code>notebook.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/integrations/dagstermill/using-notebooks-with-dagster.html
+
+Documentation Title:
+Using Jupyter notebooks with Papermill and Dagster Tutorial
+
+Documentation Content:
+Behind the scenes, Dagster uses <code>papermill</code>to inject parameters into notebooks. <code>papermill</code>works by replacing a notebook cell with the <code>parameters</code>tag with a custom cell that can fetch the desired data.</p><p>To accomplish this, we need to tag the cell in the <code>iris-kmeans</code>notebook that fetches the Iris dataset. This allows us to replace the cell with the data-fetching logic that loads the <code>iris_dataset</code>asset and retain the ability to run the Jupyter notebook in a standalone context. We'll cover this in more detail later in the tutorial.</p><p>To add the <code>parameters</code>tag, you may need to turn on the display of cell tags in Jupyter:</p><ol><p>In Jupyter, navigate to <strong>View &gt; Cell Toolbar &gt; Tags</strong>:</p><p>Click <strong>Add Tag</strong>to add a <code>parameters</code>tag:</p></ol><h2>Step 6: Materialize the assets<span>#</span></h2><p>Next, we'll materialize our <code>iris_dataset</code>and notebook assets.</p><ol><p>In the UI, open the <strong>Asset Graph</strong>page.</p><li><p>Click the <strong>Reload definitions</strong>button. This ensures that the UI picks up the changes you made in the previous steps.</p><p>At this point, the <code>iris_dataset</code>asset should display above the <code>iris_kmeans_jupyter</code>asset as an upstream dependency:</p></li><p>Click the <strong>Materialize all</strong>button near the top right corner of the page, which will launch a run to materialize the assets.</p></ol><p>That's it!
+
+
+

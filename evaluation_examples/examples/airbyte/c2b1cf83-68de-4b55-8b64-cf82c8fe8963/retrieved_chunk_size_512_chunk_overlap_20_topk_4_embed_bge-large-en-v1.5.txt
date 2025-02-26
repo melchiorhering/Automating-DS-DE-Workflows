@@ -1,0 +1,202 @@
+Documentation Source:
+airbyte.com/tutorials/full-data-synchronization.txt
+
+Documentation Title:
+Explore Airbyte's full refresh data synchronization | Airbyte
+
+Documentation Content:
+This is easiest to see for yourself via a hands-on example, as presented below.
+Create a full refresh append connection
+Set up a new connection that will demonstrate
+full refresh | append
+functionality, using the connectors that you created earlier in this tutorial.
+First, select
+Postgres-source
+as the source for this connection.
+‍
+Then select
+Postgres-destination
+as the destination for this connection.
+‍
+Then create a new connection and name it
+full-refresh-append
+, set the prefix to
+append
+_ ,
+and select
+full refresh | append
+as the sync mode, as shown below.
+A sync should automatically start after you create the connection. Wait for the sync to complete, and you should see a message like the following:
+‍
+Open a Postgres terminal on the destination
+If you don’t already have a shell open to your Postgres destination, execute the following commands:
+docker exec -it airbyte-destination /bin/bash
+psql --username=postgres
+‍
+You can view the tables in the destination Postgres database by executing the following command from the Postgres shell that you have just opened .
+\dt;
+‍
+Which should respond with the following:
+List of relations
+ Schema |                   Name                   | Type  |  Owner   
+--------+------------------------------------------+-------+----------
+ public | _airbyte_raw_append_full_refresh_demo    | table | postgres
+ public | _airbyte_raw_overwrite_full_refresh_demo | table | postgres
+ public | append_full_refresh_demo                 | table | postgres
+ public | overwrite_full_refresh_demo              | table | postgres
+(4 rows)
+‍
+Two new tables have been created,
+_airbyte_raw_append_full_refresh_demo
+and
+append_full_refresh_demo
+.
+You can look at the raw data as follows:
+SELECT * FROM  _airbyte_raw_append_full_refresh_demo;
+‍
+Which should respond with a table that looks very similar to the raw table that you saw created with
+full refresh | overwrite
+replication, as follows:
+_airbyte_ab_id            |        _airbyte_data        |    _airbyte_emitted_at     
+--------------------------------------+-----------------------------+----------------------------
+ 972a8d74-d840-4c43-826e-b0a1042c1681 | {"id": 1,
+
+
+
+Documentation Source:
+airbyte.com/tutorials/full-data-synchronization.txt
+
+Documentation Title:
+Explore Airbyte's full refresh data synchronization | Airbyte
+
+Documentation Content:
+Create a simple source table
+From the Postgres terminal, create a simple table called
+full_refresh_demo
+as follow:
+CREATE TABLE full_refresh_demo(
+  id integer PRIMARY KEY,
+  name VARCHAR(200)
+);
+Populate the source table
+You can populate the
+full_refresh_demo
+table with some data as follows:
+INSERT INTO full_refresh_demo(id, name) VALUES(1, 'Mary X');
+INSERT INTO full_refresh_demo(id, name) VALUES(2, 'John D');
+Look at the new table
+Have a look at the new table by executing:
+SELECT * FROM full_refresh_demo;
+‍
+Which should respond with a table that looks as follows:
+id |  name  
+----+--------
+  1 | Mary X
+  2 | John D
+(2 rows)
+‍
+Now that you have data in your source database, you are ready to set up a source connector in Airbyte!
+Configure a Postgres source
+An Airbyte source will be used in your
+Airbyte connection(s)
+to retrieve data from the source database that you have just populated. Create a Postgres source called
+Postgres-source
+, as shown below:
+Configure a Postgres destination
+To drive data into the Postgres database that you created earlier, you will first need to define a destination. Configure an Airbyte destination destination called
+Postgres-destination
+as follows:
+Database synchronization with full refresh overwrite
+In this section you will create an
+Airbyte connection
+that reads data from the Postgres source and drives it into the Postgres destination using the
+full refresh | overwrite
+replication mode. In this mode, all data in the source database is sent to the destination database, regardless of whether it has been synced before or not. You can see this for yourself by following along the steps presented below.
+Create a full refresh overwrite connection
+Create a new connection that will be used for verifying the functionality of
+full refresh | overwrite
+synchronization. Select the
+Postgres-source
+source, which you previously defined, as the source for this connection.
+‍
+And select
+Postgres-destination,
+which you previously defined, as the destination for this connection.
+‍
+You will see a set up page as shown below.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/full-data-synchronization.txt
+
+Documentation Title:
+Explore Airbyte's full refresh data synchronization | Airbyte
+
+Documentation Content:
+‍
+You will see a set up page as shown below. Set the name of the connection to
+full-refresh-overwrite
+, and the destination stream prefix as
+overwrite_
+as shown below.
+‍
+‍
+After you set up the connection, you should see that a first sync has automatically started.  Once it completes, you should see a message indicating that two records have been emitted as follows:
+.
+Open a Postgres terminal in the destination container
+‍
+Now that the first sync has completed you can take a look at the Postgres destination to see how the replicated data looks. Execute the following command to open a shell to the destination Postgres database:
+docker exec -it airbyte-destination /bin/bashpsql --username=postgres
+psql --username=postgres
+Look at the data in the Postgres destination
+You can view the tables in the destination Postgres database by executing the following command from the Postgres shell that you have just opened .
+\dt;
+‍
+Which should respond with the following:
+List of relations
+ Schema |                   Name                   | Type  |  Owner   
+--------+------------------------------------------+-------+----------
+ public | _airbyte_raw_overwrite_full_refresh_demo | table | postgres
+ public | overwrite_full_refresh_demo              | table | postgres
+(2 rows)
+‍
+ℹ️  Notice that there are two tables. As discussed earlier, Airbyte converts each source record into a JSON blob that contains all of your data, and writes it into the
+_airbyte_raw_overwrite_full_refresh_demo
+table. This is then normalized into a separate table.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/full-data-synchronization.txt
+
+Documentation Title:
+Explore Airbyte's full refresh data synchronization | Airbyte
+
+Documentation Content:
+In the log file you should find an
+alter table/rename
+command that has renamed the table, similar to the following:
+13:57:23.468838 [debug] [Thread-5  ]: On model.airbyte_utils.overwrite_full_refresh_demo: /* {"app": "dbt", "dbt_version": "1.0.0", "profile_name": "normalize", "target_name": "prod", "node_id": "model.airbyte_utils.overwrite_full_refresh_demo"} */
+alter table "postgres".public."overwrite_full_refresh_demo__dbt_tmp" rename to "overwrite_full_refresh_demo"
+Insert a new record on the source
+You will now insert a new record in the source data, and then see how this is replicated to the destination. Go back to the terminal where you opened a shell to the source Postgres database, and add a new record and then view the source table as follows:
+INSERT INTO full_refresh_demo(id, name) VALUES(3, 'Jane Y');
+SELECT * FROM full_refresh_demo;
+‍
+The source table should look as follows:
+id |  name  
+----+--------
+  1 | Mary X
+  2 | John D
+  3 | Jane Y
+(3 rows)
+‍
+Execute a new sync by clicking on
+Sync Now
+in the connection page.
+‍
+Once the sync has completed, you will see that 3 records have been emitted. This is because full refresh synchronization modes extract and emit all of the records in the source data set, regardless of whether they have previously been replicated to the destination or not.
+
+
+

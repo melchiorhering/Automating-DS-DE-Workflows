@@ -1,0 +1,100 @@
+{
+    "id": "85e31bb7-9b44-41c2-8fea-a8f9316d0b67",
+    "snapshot": "dagster",
+    "instruction": "I have a dbt project \"jaffle_shop\". Please integrate this project into dagster and add a dagster asset \"customers\" according to the schema provided by the file \"~/dbt-dagster-project/jaffle_shop/customers_schema.yml\". Materialize the asset in the opened dagster UI.",
+    "source": [
+        "https://docs.dagster.io/integrations/dbt/using-dbt-with-dagster"
+    ],
+    "related_apps": [
+        "chromium",
+        "dagster",
+        "dbt",
+        "vscode"
+    ],
+    "tags": [
+        "cli+gui",
+        "data_orchestration",
+        "abstract"
+    ],
+    "action_number": 11,
+    "config": [
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/85e31bb7-9b44-41c2-8fea-a8f9316d0b67/dbt-dagster-proj.zip",
+                "dest": "/home/user/dbt-dagster-proj.zip"
+            }
+        },
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/85e31bb7-9b44-41c2-8fea-a8f9316d0b67/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "google_chrome_browser",
+            "parameters": {
+                "debugging_port": 1337,
+                "listening_port": 9222,
+                "urls": [
+                    "https://www.bing.com/"
+                ]
+            }
+        },
+        {
+            "type": "dagster_webui_init",
+            "parameters": {
+                "listening_port": 9222,
+                "url": "http://localhost:3000",
+                "actions": [
+                    {
+                        "type": "close_popups"
+                    }
+                ]
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [
+            {
+                "type": "copyfile_from_host_to_guest",
+                "parameters": {
+                    "src": "evaluation_examples/examples/dagster/85e31bb7-9b44-41c2-8fea-a8f9316d0b67/gold_customers.csv",
+                    "dest": "/home/user/dbt-dagster-proj/gold_customers.csv"
+                }
+            },
+            {
+                "type": "copyfile_from_host_to_guest",
+                "parameters": {
+                    "src": "evaluation_examples/examples/dagster/85e31bb7-9b44-41c2-8fea-a8f9316d0b67/export_customers.py",
+                    "dest": "/home/user/dbt-dagster-proj/export_customers.py"
+                }
+            }
+        ],
+        "func": [
+            "check_include_exclude"
+        ],
+        "result": [
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dagster/85e31bb7-9b44-41c2-8fea-a8f9316d0b67/eval.sh",
+                "dest": "/home/user/eval.sh"
+            }
+        ],
+        "expected": [
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "succeeded"
+                    ],
+                    "exclude": [
+                        "failed"
+                    ]
+                }
+            }
+        ]
+    },
+    "counterpart": "8a09d205-3f9c-44bc-b6d2-32f7ca518a5b"
+}

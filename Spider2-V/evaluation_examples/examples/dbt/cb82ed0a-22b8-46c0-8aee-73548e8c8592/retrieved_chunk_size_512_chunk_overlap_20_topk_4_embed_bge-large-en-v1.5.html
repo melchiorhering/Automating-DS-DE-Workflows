@@ -1,0 +1,44 @@
+Documentation Source:
+docs.getdbt.com/docs/deploy/source-freshness.html
+
+Documentation Title:
+Source freshness | dbt Developer Hub
+
+Documentation Content:
+If you wanted your job dedicated <em>exclusively</em>to running freshness checks, you still need to include at least one placeholder step, such as <code>dbt compile</code>.</td></tr><tr><strong>Add as a run step</strong><td>Add the <code>dbt source freshness</code>command to a job anywhere in your list of run steps. However, if your source data is out of date —this step will "fail", and subsequent steps will not run. dbt Cloud will trigger email notifications (if configured) based on the end state of this step. You can create a new job to snapshot source freshness. If you <em>do not</em>want your models to run if your source data is out of date, then it could be a good idea to run <code>dbt source freshness</code>as the first step in your job. Otherwise, we recommend adding <code>dbt source freshness</code>as the last step in the job, or creating a separate job just for this task.</td></tr></tbody></table><span>Adding a step to snapshot source freshness</span><h3>Source freshness snapshot frequency<a>​</a></h3><p>It's important that your freshness jobs run frequently enough to snapshot data latency in accordance with your SLAs. You can imagine that if you have a 1 hour SLA on a particular dataset, snapshotting the freshness of that <span>table</span>once daily would not be appropriate. As a good rule of thumb, you should run your source freshness jobs with at least double the frequency of your lowest SLA.
+
+
+
+Documentation Source:
+docs.getdbt.com/reference/commands/source.html
+
+Documentation Title:
+About dbt source command | dbt Developer Hub
+
+Documentation Content:
+This command provides one subcommand, <code>dbt source freshness</code>.</p><h3>dbt source freshness<a>​</a></h3><p>If your dbt project is <a>configured with sources</a>, then the <code>dbt source freshness</code>command will query all of your defined source tables, determining the "freshness" of these tables. If the tables are stale (based on the <code>freshness</code>config specified for your sources) then dbt will report a warning or error accordingly. If a source <span>table</span>is in a stale state, then dbt will exit with a nonzero exit code.</p><h3>Specifying sources to snapshot<a>​</a></h3><p>By default, <code>dbt source freshness</code>will calculate freshness information for all of the sources in your project. To snapshot freshness for a subset of these sources, use the <code>--select</code>flag.</p><code><span># Snapshot freshness for all Snowplow tables:</span><span><span>$ dbt </span><span>source</span><span>freshness </span><span>--select</span><span>"source:snowplow"</span></span><span># Snapshot freshness for a particular source table:</span><span><span>$ dbt </span><span>source</span><span>freshness </span><span>--select</span><span>"source:snowplow.event"</span></span></code><h3>Configuring source freshness output<a>​</a></h3><p>When <code>dbt source freshness</code>completes, a <span>JSON</span>file containing information about the freshness of your sources will be saved to <code>target/sources.json</code>. An example <code>sources.json</code>will look like:</p><div><span>target/sources.json</span><code><span>{</span><span><span>"meta"</span><span>:</span><span>{</span></span><span><span>"generated_at"</span><span>:</span><span>"2019-02-15T00:53:03.971126Z"</span><span>,
+
+
+
+Documentation Source:
+docs.getdbt.com/docs/build/sources.html
+
+Documentation Title:
+Add sources to your DAG | dbt Developer Hub
+
+Documentation Content:
+</span><span>period</span><span>:</span><span>hour</span><span>}</span></span><span><span>-</span><span>name</span><span>:</span><span>customers </span><span># this will use the freshness defined above</span></span><span><span>-</span><span>name</span><span>:</span><span>product_skus</span></span><span><span>freshness</span><span>:</span><span>null</span><span># do not check freshness for this table</span></span></code></div><p>In the <code>freshness</code>block, one or both of <code>warn_after</code>and <code>error_after</code>can be provided. If neither is provided, then dbt will not calculate freshness snapshots for the tables in this source.</p><p>Additionally, the <code>loaded_at_field</code>is required to calculate freshness for a table. If a <code>loaded_at_field</code>is not provided, then dbt will not calculate freshness for the table.</p><p>These configs are applied hierarchically, so <code>freshness</code>and <code>loaded_at_field</code>values specified for a <code>source</code>will flow through to all of the <code>tables</code>defined in that source. This is useful when all of the tables in a source have the same <code>loaded_at_field</code>, as the config can just be specified once in the top-level source definition.</p><h3>Checking source freshness<a>​</a></h3><p>To snapshot freshness information for your sources, use the <code>dbt source freshness</code>command (<a>reference docs</a>):</p><span>$ dbt source freshness</span><p>Behind the scenes, dbt uses the freshness properties to construct a <code>select</code>query, shown below.
+
+
+
+Documentation Source:
+docs.getdbt.com/reference/commands/source.html
+
+Documentation Title:
+About dbt source command | dbt Developer Hub
+
+Documentation Content:
+json</code>file, use the <code>-o</code>(or <code>--output</code>) flag:</p><code><span># Output source freshness info to a different path</span><span>$ dbt source freshness --output target/source_freshness.json</span></code><h3>Using source freshness<a>​</a></h3><p>Snapshots of source freshness can be used to understand:</p><ol><li>If a specific data source is in a delayed state</li><li>The trend of data source freshness over time</li></ol><p>This command can be run manually to determine the state of your source data freshness at any time. It is also recommended that you run this command on a schedule, storing the results of the freshness snapshot at regular intervals. These longitudinal snapshots will make it possible to be alerted when source data freshness SLAs are violated, as well as understand the trend of freshness over time.</p><p>dbt Cloud makes it easy to snapshot source freshness on a schedule, and provides a dashboard out of the box indicating the state of freshness for all of the sources defined in your project. For more information on snapshotting freshness in dbt Cloud, check out the <a>docs</a>.</p></div><div>0</div><div><a>Edit this page</a><span>Last updatedon <time>May 16, 2024</time></span></div></article><nav><a><div>Previous</div><div>snapshot</div></a><a><div>Next</div><div>test</div></a></nav></div><div><ul><a>dbt source freshness</a><a>Specifying sources to snapshot</a><a>Configuring source freshness output</a><a>Using source freshness</a></ul><a>Edit this page</a></div></div></div><div><div><a>Terms of Service</a><a>Privacy Policy</a><a>Security</a><button>Cookie Settings</button></div><div>© 2024 dbt Labs, Inc. All Rights Reserved.</div></div></div>
+
+
+

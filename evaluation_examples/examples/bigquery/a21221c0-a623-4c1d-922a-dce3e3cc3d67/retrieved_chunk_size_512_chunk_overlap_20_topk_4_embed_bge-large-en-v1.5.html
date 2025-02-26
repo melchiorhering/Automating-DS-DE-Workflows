@@ -1,0 +1,70 @@
+Documentation Source:
+cloud.google.com/bigquery/docs/visualize-jupyter.html
+
+Documentation Title:
+Visualize BigQuery data in Jupyter notebooks  |  Google Cloud
+
+Documentation Content:
+</span></aside><h2>View your query history and reuse queries</h2><p>To view your query history as a tab in JupyterLab, perform the following steps:</p><ol><p>In the JupyterLab navigation menu, click
+<strong>BigQuery in Notebooks</strong>to open the
+<strong>BigQuery</strong>pane.</p><li><p>In the <strong>BigQuery</strong>pane, scroll down and click <strong>Query history</strong>.</p><p>A list of your queries opens in a new tab, where you can perform tasks such
+as the following:</p><ul><li>To view the details of a query such as its Job ID, when the query was
+run, and how long it took, click the query.</li><li>To revise the query, run it again, or copy it into your notebook for
+future use, click <strong>Open query in editor</strong>.</li></ul></li></ol><aside><strong>Note:</strong><span>If you run queries after opening this tab, click <span>refresh</span><strong>Refresh</strong>to show
+the most recent queries.</span></aside><h2>Save and download your notebook</h2><p>In this section, you save your notebook and download it if you want it for
+future use after cleaning up the resources used in this tutorial.</p><ol><li>Select <strong>File <span>&gt;</span>Save Notebook</strong>.</li><li>Select <strong>File <span>&gt;</span>Download</strong>to download a local copy of your notebook as
+an IPYNB file on your computer.</li></ol></section><section><h2>Clean up</h2><p>The easiest way to eliminate billing is to delete the Google Cloud project
+that you created for this tutorial.</p><ol><aside><strong>Caution</strong>: Deleting a project has the following effects:
+  <ul><li><strong>Everything in the project is deleted.</strong>If you used an existing project for
+      the tasks in this document, when you delete it, you also delete any other work you've
+      done in the project.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults.html
+
+Documentation Title:
+Method: jobs.getQueryResults  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+view</span><span>SHARED_DATASET_USAGE view</span><span>SCHEMATA_REPLICAS view</span></ul></div><div><span>Jobs</span><ul><span>JOBS view</span><span>JOBS_BY_USER view</span><span>JOBS_BY_FOLDER view</span><span>JOBS_BY_ORGANIZATION view</span></ul></div><div><span>Jobs by timeslice</span><ul><span>JOBS_TIMELINE view</span><span>JOBS_TIMELINE_BY_USER view</span><span>JOBS_TIMELINE_BY_FOLDER view</span><span>JOBS_TIMELINE_BY_ORGANIZATION view</span></ul></div><div><span>Reservations</span><ul><span>ASSIGNMENTS view</span><span>ASSIGNMENT_CHANGES view</span><span>CAPACITY_COMMITMENTS view</span><span>CAPACITY_COMMITMENT_CHANGES view</span><span>RESERVATIONS view</span><span>RESERVATION_CHANGES view</span><span>RESERVATIONS_TIMELINE view</span></ul></div><div><span>Routines</span><ul><span>PARAMETERS view</span><span>ROUTINES view</span><span>ROUTINE_OPTIONS view</span></ul></div><div><span>Search indexes</span><ul><span>SEARCH_INDEXES view</span><span>SEARCH_INDEX_COLUMNS view</span></ul></div><div><span>Sessions</span><ul><span>SESSIONS_BY_PROJECT view</span><span>SESSIONS_BY_USER view</span></ul></div><div><span>Streaming</span><ul><span>STREAMING_TIMELINE view</span><span>STREAMING_TIMELINE_BY_FOLDER view</span><span>STREAMING_TIMELINE_BY_ORGANIZATION view</span></ul></div><div><span>Tables</span><ul><span>COLUMNS view</span><span>COLUMN_FIELD_PATHS view</span><span>CONSTRAINT_COLUMN_USAGE view</span><span>KEY_COLUMN_USAGE view</span><span>PARTITIONS view</span><span>TABLES view</span><span>TABLE_OPTIONS
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/managing-jobs.html
+
+Documentation Title:
+Managing jobs  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+</span></devsite-feature-tooltip><div><h1>Managing jobs</h1><p>After you submit a BigQuery job, you can <a>view job details</a>,
+<a>list jobs</a>, <a>cancel a job</a>, <a>repeat a
+job</a>, or <a>delete job metadata</a>.</p><p>When a job is submitted, it can be in one of the following states:</p><ul><li><code>PENDING</code>: The job is scheduled and waiting to be run.</li><li><code>RUNNING</code>: The job is in progress.</li><li><code>DONE</code>: The job is completed. If the job completes without errors, then BigQuery reports this state as <code>SUCCESS</code>. If the job completes with errors, then BigQuery reports this state as <code>FAILURE</code>.</li></ul><h2>Before you begin</h2><p>Grant Identity and Access Management (IAM) roles that give users the necessary permissions to perform each task in this document. The permissions required to perform a task (if any) are listed in the "Required permissions" section of the task.</p><h2>View job details</h2><p>You can view job details by using the Google Cloud console, the
+bq command-line tool, the API, or the client libraries. The details include data and
+metadata, such as the job type, the job state, and the user who created the job.</p><h3>Required permissions</h3><p>To view job details, you need the <code>bigquery.jobs.get</code>IAM permission.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/bigquery-web-ui.html
+
+Documentation Title:
+Explore the Google Cloud console  |  BigQuery
+
+Documentation Content:
+One tab has a
+SQL query, and the other tab shows details about a table.</p><h3>Move a tab</h3><p>To move a tab from one pane to the other pane, follow these steps:</p><ol><p>Next to the tab name, click
+<span>arrow_drop_down</span><strong>Open menu</strong>.</p><p>Select <strong>Move tab to right pane</strong>or <strong>Move tab to left pane</strong>(whichever
+option is available).</p></ol><h3>Close a tab</h3><p>To close all tabs except for one, follow these steps:</p><ol><p>Next to the tab name, click
+<span>arrow_drop_down</span><strong>Open menu</strong>.</p><p>Select
+<span>cancel</span><strong>Close other tabs</strong>.</p></ol><h2>View personal and project history</h2><p>You can view job histories in the footer of the details pane:</p><ul><p>To view details of your own jobs, click <strong>Personal history</strong>.</p><p>To view details of recent jobs in your project, click <strong>Project history</strong>.</p></ul><p>To see the details of a job or to open the query in an editor, do the following:</p><ol><p>In the <strong>Actions</strong>column for a job or query, click
+<span>more_vert</span><strong>Actions</strong>.</p><p>Select <strong>Show job details</strong>or <strong>Open query in editor</strong>.</p></ol><p>The job histories include all load, export, copy, and query jobs that you
+submitted in the past six months (up to 1,000 entries). The limit of 1,000 jobs
+is cumulative across all job types.</p><h2>Keyboard shortcuts</h2><p>To view shortcuts in the Google Cloud console, click
+<span>keyboard</span><strong>SQL workspace shortcuts</strong>.
+The following keyboard shortcuts are supported in the Google Cloud console:</p><table><tr><th>Action</th><th>Windows or Linux shortcut</th><th>macOS shortcut</th></tr><tbody><tr><td>Create a
+
+
+

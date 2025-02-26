@@ -1,0 +1,72 @@
+{
+    "id": "52d3a685-df8d-45bf-83d2-1172c6ae09ff",
+    "snapshot": "superset",
+    "instruction": "Please create a table named 'tutorial_flights' in database 'MyDatabase' using Superset by uploading the tutorial_flights.csv in '/home/user' of my local computer and set column 'Travel Date' to be parsed as Dates.",
+    "source": [
+        "https://superset.apache.org/docs/using-superset/exploring-data/#loading-csv-data"
+    ],
+    "related_apps": [
+        "chromium",
+        "superset"
+    ],
+    "tags": [
+        "gui",
+        "data_analysis_and_visualization",
+        "abstract"
+    ],
+    "action_number": 11,
+    "config": [
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/superset/52d3a685-df8d-45bf-83d2-1172c6ae09ff/tutorial_flights.csv",
+                "dest": "/home/user/tutorial_flights.csv"
+            }
+        },
+        {
+            "type": "google_chrome_browser",
+            "parameters": {
+                "debugging_port": 1337,
+                "listening_port": 9222,
+                "urls": [
+                    "https://www.bing.com/"
+                ]
+            }
+        },
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/superset/52d3a685-df8d-45bf-83d2-1172c6ae09ff/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "superset_webui_init",
+            "parameters": {
+                "listening_port": 9222,
+                "url": "http://localhost:8088"
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [],
+        "func": "check_include_exclude",
+        "result": {
+            "type": "vm_script_output",
+            "src": "evaluation_examples/examples/superset/52d3a685-df8d-45bf-83d2-1172c6ae09ff/eval.sh",
+            "dest": "/home/user/eval.sh"
+        },
+        "expected": {
+            "type": "rule",
+            "rules": {
+                "include": [
+                    "succeed"
+                ],
+                "exclude": [
+                    "failed"
+                ]
+            }
+        }
+    },
+    "counterpart": "ff8addc7-9937-48ca-a615-77dc5dee737f"
+}

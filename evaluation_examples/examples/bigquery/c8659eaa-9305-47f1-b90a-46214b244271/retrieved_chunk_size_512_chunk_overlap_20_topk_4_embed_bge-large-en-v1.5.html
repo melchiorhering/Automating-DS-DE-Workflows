@@ -1,0 +1,155 @@
+Documentation Source:
+cloud.google.com/bigquery/docs/visualize-looker-studio.html
+
+Documentation Title:
+Analyze data with Looker Studio  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+This is useful if you want to modify the data in
+BigQuery before working with it in Looker Studio,
+or if you only need a subset of the fields in the table.</p><aside><strong>Note:</strong><span>You can visualize a maximum of 5,000 rows of data in
+Looker Studio charts.</span></aside><ol><li><p>In the Google Cloud console, go to the <strong>BigQuery</strong>page.</p><a>Go to BigQuery</a></li><p>Select your <a>billing project</a>.</p><p>In the <strong>Explorer</strong>pane, enter <code>bikeshare_trips</code>in the
+<strong>Type to search</strong>field.</p><p>Go to <strong>bigquery-public-data <span>&gt;</span>austin_bikeshare <span>&gt;</span>bikeshare_trips</strong>.</p><p>Click <span>more_vert</span><strong>View actions</strong>,
+and then click <strong>Query</strong>.</p><li><p>In the query editor, construct your query. For example:</p><pre>SELECT
+  *
+FROM
+  `bigquery-public-data.austin_bikeshare.bikeshare_trips`
+LIMIT
+  1000;
+</pre></li><p>Click <span>play_circle</span><strong>Run</strong>.</p><p>In the <strong>Query results</strong>section, click <strong>Explore data</strong>, and then click
+<strong>Explore with Looker Studio</strong>.</p><p>On the <strong>Welcome to Looker Studio</strong>page, click
+<strong>Get Started</strong>if you agree to the Google Looker Studio and
+Google Terms of Service.</p><li><p>On the <strong>Authorize Looker Studio access</strong>page, click <strong>Authorize</strong>to authorize the connection if you agree to the terms of service, and
+then select your marketing preferences.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/kmeans-tutorial.html
+
+Documentation Title:
+Create a k-means model to cluster London bicycle hires dataset  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+The results tab shows the columns you queried that are used to train
+your model: <code>station_name</code>, <code>duration</code>, <code>num_trips</code>, <code>distance_from_city_center</code>.
+The results should look like the following.</p></ol></section><section><h3>BigQuery DataFrames </h3><p>Before trying this sample, follow the BigQuery DataFrames
+    setup instructions in the <a>BigQuery quickstart
+    using BigQuery DataFrames</a>.
+    For more information, see the
+    <a>BigQuery DataFrames reference documentation</a>.</p><p>To authenticate to BigQuery, set up Application Default Credentials.
+    For more information, see <a>Set 
+    up authentication for a local development environment</a>.
+   </p><code>import datetime
+
+import pandas as pd
+
+import bigframes
+import bigframes.pandas as bpd
+
+bigframes.options.bigquery.project = your_gcp_project_id
+# Compute in the EU multi-region to query the London bicycles dataset.
+bigframes.options.bigquery.location = "EU"
+
+# Extract the information you'll need to train the k-means model in this
+# tutorial. Use the read_gbq function to represent cycle hires
+# data as a DataFrame.
+h = bpd.read_gbq(
+    "bigquery-public-data.london_bicycles.cycle_hire",
+    col_order=["start_station_name", "start_station_id", "start_date", "duration"],
+).rename(
+    columns={
+        "start_station_name": "station_name",
+        "start_station_id": "station_id",
+    }
+)
+
+s = bpd.read_gbq(
+    # Use ST_GEOPOINT and ST_DISTANCE to analyze geographical
+    # data. These functions determine spatial relationships between
+    # geographical features.
+    """
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/geospatial-get-started.html
+
+Documentation Title:
+Get started with geospatial analytics  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+</dd></dl><dl><code>FROM `bigquery-public-data.new_york.citibike_stations`</code><dd>The <code>FROM</code>clause specifies the table being queried: <code>citibike_stations</code>.</dd></dl><dl><code>WHERE num_bikes_available &gt; 30</code><dd>The <code>WHERE</code>clause filters the values in the <code>num_bikes_available</code>column to
+just those stations with more than 30 bikes.</dd></dl></ul><h3>Run the query</h3><p>To run the query by using the Google Cloud console:</p><ol><li><p>Go to the BigQuery page in the Google Cloud console.</p><a>Go to the BigQuery page</a></li><li><p>Enter the following GoogleSQL query in the <strong>Query editor</strong>text area.</p><pre>-- Finds Citi Bike stations with &gt; 30 bikes
+SELECT
+  ST_GeogPoint(longitude, latitude)  AS WKT,
+  num_bikes_available
+FROM
+  `bigquery-public-data.new_york.citibike_stations`
+WHERE num_bikes_available &gt; 30
+</pre></li><li><p>Click <strong>Run</strong>.</p><p>The query takes a moment to complete.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/kmeans-tutorial.html
+
+Documentation Title:
+Create a k-means model to cluster London bicycle hires dataset  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+For more information about these functions, see
+<a>Geography
+functions</a>. For more
+information about geospatial analytics, see <a>Introduction to
+geospatial analytics</a>.</p><strong>Run the query</strong><p>The following query compiles your training data, and is also used in the
+<code>CREATE MODEL</code>statement later in this tutorial.</p><p>To run the query:</p><li>Go to the <strong>BigQuery</strong>page.</li><a>Go to BigQuery</a><ol><li><p>In the editor pane, run the following SQL statement:</p><pre>WITH
+  hs AS (
+  SELECT
+    h.start_station_name AS station_name,
+    IF
+    (EXTRACT(DAYOFWEEK
+      FROM
+        h.start_date) = 1
+      OR EXTRACT(DAYOFWEEK
+      FROM
+        h.start_date) = 7,
+      "weekend",
+      "weekday") AS isweekday,
+    h.duration,
+    ST_DISTANCE(ST_GEOGPOINT(s.longitude,
+        s.latitude),
+      ST_GEOGPOINT(-0.1,
+        51.5))/1000 AS distance_from_city_center
+  FROM
+    `bigquery-public-data.london_bicycles.cycle_hire` AS h
+  JOIN
+    `bigquery-public-data.london_bicycles.cycle_stations` AS s
+  ON
+    h.start_station_id = s.id
+  WHERE
+    h.start_date BETWEEN CAST('2015-01-01 00:00:00' AS TIMESTAMP)
+    AND CAST('2016-01-01 00:00:00' AS TIMESTAMP) ),
+  stationstats AS (
+  SELECT
+    station_name,
+    isweekday,
+    AVG(duration) AS duration,
+    COUNT(duration) AS num_trips,
+    MAX(distance_from_city_center) AS distance_from_city_center
+  FROM
+    hs
+  GROUP BY
+    station_name, isweekday )
+SELECT
+  *
+FROM
+  stationstats
+ORDER BY
+  distance_from_city_center ASC
+
+</pre></li><p>When the query is complete, click the <strong>Results</strong>tab below the query text
+area.
+
+
+

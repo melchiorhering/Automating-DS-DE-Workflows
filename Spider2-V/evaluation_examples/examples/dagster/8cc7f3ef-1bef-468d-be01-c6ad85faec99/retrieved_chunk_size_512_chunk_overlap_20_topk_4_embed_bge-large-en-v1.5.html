@@ -1,0 +1,48 @@
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/scheduling-your-pipeline.html
+
+Documentation Title:
+Tutorial, part five: Scheduling your pipeline | Dagster Docs
+
+Documentation Content:
+The code below is how your <code>__init__.py</code>should look after making these changes:</p><code><span>from</span>dagster <span>import</span><span>(</span>AssetSelection<span>,</span>Definitions<span>,</span>ScheduleDefinition<span>,</span>define_asset_job<span>,</span>load_assets_from_modules<span>,</span><span>)</span><span>from</span><span>.</span><span>import</span>assets
+
+all_assets <span>=</span>load_assets_from_modules<span>(</span><span>[</span>assets<span>]</span><span>)</span><span># Define a job that will materialize the assets</span>hackernews_job <span>=</span>define_asset_job<span>(</span><span>"hackernews_job"</span><span>,</span>selection<span>=</span>AssetSelection<span>.</span><span>all</span><span>(</span><span>)</span><span>)</span><span># Addition: a ScheduleDefinition the job it should run and a cron schedule of how frequently to run it</span>hackernews_schedule <span>=</span>ScheduleDefinition<span>(</span>job<span>=</span>hackernews_job<span>,</span>cron_schedule<span>=</span><span>"0 * * * *"</span><span>,</span><span># every hour</span><span>)</span>defs <span>=</span>Definitions<span>(</span>assets<span>=</span>all_assets<span>,</span>schedules<span>=</span><span>[</span>hackernews_schedule<span>]</span><span>,</span><span>)</span></code><p>Go to the UI, click <strong>Overview &gt; Schedules tab</strong>, and observe your new schedule with the attached job.</p><p>To test the change, click the schedule's name to view its details. Click the <strong>Test Schedule</strong>button on the top right corner of the page to trigger the schedule immediately.</p><span>Schedules are just one way to start jobs. Jobs can also be run by using the CLI, a Python function, or the UI.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/scheduling-your-pipeline.html
+
+Documentation Title:
+Tutorial, part five: Scheduling your pipeline | Dagster Docs
+
+Documentation Content:
+</p><p>By the end of this part of the tutorial, you'll be able to:</p><ul><li>Structure your project with code locations and jobs</li><li>Refresh your assets periodically with schedules</li></ul><h2>Step 1: Defining what assets to update<span>#</span></h2><p>A <em>job</em>lets you target a selection of assets to materialize them together as a single action. Assets can belong to multiple jobs.</p><p>Your Dagster repository has a file called <code>tutorial/__init__.py</code>that is used as a top-level definition for your project. Update the code in this file to add the job using the <code>define_asset_job</code>function:</p><code><span>from</span>dagster <span>import</span><span>(</span>AssetSelection<span>,</span>Definitions<span>,</span>define_asset_job<span>,</span>load_assets_from_modules<span>,</span><span>)</span><span>from</span><span>.</span><span>import</span>assets
+
+all_assets <span>=</span>load_assets_from_modules<span>(</span><span>[</span>assets<span>]</span><span>)</span><span># Addition: define a job that will materialize the assets</span>hackernews_job <span>=</span>define_asset_job<span>(</span><span>"hackernews_job"</span><span>,</span>selection<span>=</span>AssetSelection<span>.</span><span>all</span><span>(</span><span>)</span><span>)</span>defs <span>=</span>Definitions<span>(</span>assets<span>=</span>all_assets<span>,</span>jobs<span>=</span><span>[</span>hackernews_job<span>]</span><span>,</span><span># Addition: add the job to Definitions object (see below)</span><span>)</span></code><p>Dagster's <code>AssetSelection</code>module lets you choose which assets to attach to a job.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/scheduling-your-pipeline.html
+
+Documentation Title:
+Tutorial, part five: Scheduling your pipeline | Dagster Docs
+
+Documentation Content:
+In the example above, <code>AssetSelection.all</code>selects all assets.</p><p>Once you have a job, you can execute it on a schedule, by clicking a button in the Dagster UI, the CLI, or via Dagster's GraphQL endpoints. Confirm that your job was defined by:</p><ol><li>Going to the UI</li><li>Reloading your project through the <strong>Reload Definitions</strong>button in the asset graph or on the <strong>Deployments</strong>page</li><li>Navigating to <strong>Overview &gt; Jobs</strong></li><li>Clicking on the job</li><li>Seeing your assets selected for the job</li></ol><h3>About definitions<span>#</span></h3><p>Up until this point, you defined assets using the <code>@asset</code>decorator. Dagster definitions are entities that Dagster learns about by importing your code. Just now, you used a different kind of definition: a job definition.</p><p>Managing one type of definition, such as assets, is easy. However, it can quickly become unruly as your project grows to have a variety of definitions (ex. schedules, jobs, sensors). To combine definitions and have them aware of each other, Dagster provides a utility called the <code>Definitions</code>object.</p><h2>Step 2: Scheduling the materializations<span>#</span></h2><p>After defining a job, it can be attached to a schedule. A schedule's responsibility is to start a run of the assigned job at a specified time. Schedules are added with the <code>ScheduleDefinition</code>class.</p><p>To regularly update the assets, add the new <code>ScheduleDefinition</code>import, create a new schedule for the <code>hackernews_job</code>, and add the schedule to the code location.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/scheduling-your-pipeline.html
+
+Documentation Title:
+Tutorial, part five: Scheduling your pipeline | Dagster Docs
+
+Documentation Content:
+Jobs can also be run by using the CLI, a Python function, or the UI. Refer to the<a>Jobs documentation</a>to learn more.</span><h3>Other ways to automate your pipelines<span>#</span></h3><p>You've used a schedule to update your data on a regular cadence. However, there are other ways to trigger jobs. For example, sensors can trigger a job after routinely polling a source. Check out the <a>Automation guide</a>to learn more.</p><h2>Next steps<span>#</span></h2><p>By now, you've:</p><ul><li>Grouped your objects with a code location</li><li>Defined a sequence of materializations with a job</li><li>Run the job on a schedule</li></ul><p>In the next section, you'll learn how to build more robustness, reusability, and flexibility when <a>connecting to external services</a>by using resources.</p></div></div></div><div><div><div>On This Page</div><li><a>Tutorial, part five: Scheduling your pipeline</a><ol><li><a>Step 1: Defining what assets to update</a><a>About definitions</a></li><li><a>Step 2: Scheduling the materializations</a><a>Other ways to automate your pipelines</a></li><a>Next steps</a></ol></li></div><a>Edit Page on GitHub</a><button>Share Feedback</button><a>Star</a></div></div></div></div></body>
+
+
+

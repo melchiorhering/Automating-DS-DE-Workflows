@@ -1,0 +1,56 @@
+Documentation Source:
+superset.apache.org/docs/configuration/alerts-reports/index.html
+
+Documentation Title:
+Alerts and Reports | Superset
+
+Documentation Content:
+You may get different responses depending on whether the dashboard exists - for example, you may need to change the <code>1</code>in that URL. If there's a URL in your logs from a failed report screenshot, that's a good place to start. The goal is to determine a valid value for <code>WEBDRIVER_BASEURL</code>and determine if an issue like HTTPS or authentication is redirecting your worker.</p><p>In a deployment with authentication measures enabled like HTTPS and Single Sign-On, it may make sense to have the worker navigate directly to the Superset application running in the same location, avoiding the need to sign in.  For instance, you could use <code>WEBDRIVER_BASEURL="http://superset_app:8088"</code>for a docker compose deployment, and set <code>"force_https": False,</code>in your <code>TALISMAN_CONFIG</code>.</p><h2>Scheduling Queries as Reports<a>​</a></h2><p>You can optionally allow your users to schedule queries directly in SQL Lab. This is done by adding
+extra metadata to saved queries, which are then picked up by an external scheduled (like
+<a>Apache Airflow</a>).</p><p>To allow scheduled queries, add the following to <code>SCHEDULED_QUERIES</code>in your configuration file:</p><code><span><span>SCHEDULED_QUERIES </span><span>=</span><span>{</span></span><span># This information is collected when the user clicks "Schedule query",</span><span># and saved into the `extra` field of saved queries.</span><span># See: https://github.com/mozilla-services/react-jsonschema-form</span><span><span>'JSONSCHEMA'</span><span>:</span><span>{</span></span><span><span>'title'</span><span>:</span><span>'Schedule'</span><span>,</span></span><span><span>'description'</span><span>:</span><span>(</span></span><span>'In order to schedule a query, you need to specify when it '</span><span>'should start running, when it should stop running, and how '</span><span>'often it should run.
+
+
+
+Documentation Source:
+superset.apache.org/docs/configuration/event-logging/index.html
+
+Documentation Title:
+Event Logging | Superset
+
+Documentation Content:
+</span></span><span><span>json</span><span>=</span><span>record</span><span>,</span></span><span><span>dashboard_id</span><span>=</span><span>dashboard_id</span><span>,</span></span><span><span>slice_id</span><span>=</span><span>slice_id</span><span>,</span></span><span><span>duration_ms</span><span>=</span><span>duration_ms</span><span>,</span></span><span><span>referrer</span><span>=</span><span>referrer</span><span>,</span></span><span><span>user_id</span><span>=</span><span>user_id</span></span><span>)</span><span><span>print</span><span>(</span><span>json</span><span>.</span><span>dumps</span><span>(</span><span>log</span><span>)</span><span>)</span></span></code><p>End by updating your config to pass in an instance of the logger you want to use:</p><span>EVENT_LOGGER = JSONStdOutEventLogger()</span><h2>StatsD Logging<a>​</a></h2><p>Superset can be configured to log events to <a>StatsD</a>if desired.
+
+
+
+Documentation Source:
+superset.apache.org/docs/contributing/development/index.html
+
+Documentation Title:
+Setting up a Development Environment | Superset
+
+Documentation Content:
+The value needs to be decided based on the system memory <a>(see this StackOverflow answer for more context)</a>.</p><p>Open the file in editor and add a line at the bottom specifying the max watches values.</p><span><span>fs.inotify.max_user_watches</span><span>=</span><span>524288</span></span><p>Save the file and exit editor.
+To confirm that the change succeeded, run the following command to load the updated value of max_user_watches from sysctl.conf:</p><span><span>sudo</span><span>sysctl -p</span></span><h4>Webpack dev server<a>​</a></h4><p>The dev server by default starts at <code>http://localhost:9000</code>and proxies the backend requests to <code>http://localhost:8088</code>.</p><p>So a typical development workflow is the following:</p><ol><li><a>run Superset locally</a>using Flask, on port <code>8088</code>— but don't access it directly,<code><span># Install Superset and dependencies, plus load your virtual environment first, as detailed above.</span><span><span>superset run -p </span><span>8088</span><span>--with-threads --reload --debugger --debug</span></span></code></li><li>in parallel, run the Webpack dev server locally on port <code>9000</code>,<span><span>npm</span><span>run dev-server</span></span></li><li>access <code>http://localhost:9000</code>(the Webpack server, <em>not</em>Flask) in your web browser.
+
+
+
+Documentation Source:
+superset.apache.org/docs/using-superset/exploring-data/index.html
+
+Documentation Title:
+Exploring Data in Superset | Superset
+
+Documentation Content:
+The following section
+explains how to enable this functionality for the examples database.</p><p>In the top menu, select <strong>Data ‣ Databases</strong>. Find the <strong>examples</strong>database in the list and
+select the <strong>Edit</strong>button.</p><p>In the resulting modal window, switch to the <strong>Extra</strong>tab and
+tick the checkbox for <strong>Allow Data Upload</strong>. End by clicking the <strong>Save</strong>button.</p><h3>Loading CSV Data<a>​</a></h3><p>Download the CSV dataset to your computer from
+<a>GitHub</a>.
+In the Superset menu, select <strong>Data ‣ Upload a CSV</strong>.</p><p>Then, enter the <strong>Table Name</strong>as <em>tutorial_flights</em>and select the CSV file from your computer.</p><p>Next enter the text <em>Travel Date</em>into the <strong>Parse Dates</strong>field.</p><p>Leaving all the other options in their default settings, select <strong>Save</strong>at the bottom of the page.</p><h3>Table Visualization<a>​</a></h3><p>You should now see <em>tutorial_flights</em>as a dataset in the <strong>Datasets</strong>tab. Click on the entry to
+launch an Explore workflow using this dataset.</p><p>In this section, we'll create a table visualization
+to show the number of flights and cost per travel class.</p><p>By default, Apache Superset only shows the last week of data. In our example, we want to visualize all
+of the data in the dataset. Click the <strong>Time ‣ Time Range</strong>section and change
+the <strong>Range Type</strong>to <strong>No Filter</strong>.</p><p>Click <strong>Apply</strong>to save.</p><p>Now, we want to specify the rows in our table by using the <strong>Group by</strong>option.
+
+
+

@@ -1,0 +1,313 @@
+Documentation Source:
+superset.apache.org/docs/contributing/development/index.txt
+
+Documentation Title:
+Setting up a Development Environment | Superset
+
+Documentation Content:
+​
+Setting things up to squeeze an "hello world" into any part of Superset should be as simple as
+docker-compose
+up
+Note that:
+this will pull/build docker images and run a cluster of services, including:
+A Superset
+Flask web server
+, mounting the local python repo/code
+A Superset
+Celery worker
+, also mounting the local python repo/code
+A Superset
+Node service
+, mounting, compiling and bundling the JS/TS assets
+A Superset
+Node websocket service
+to power the async backend
+Postgres
+as the metadata database and to store example datasets, charts and dashboards whic
+should be populated upon startup
+Redis
+as the message queue for our async backend and caching backend
+It'll load up examples into the database upon first startup
+all other details and pointers available in
+docker-compose.yml
+The local repository is mounted withing the services, meaning updating
+the code on the host will be reflected in the docker images
+Superset is served at localhost:8088/
+You can login with admin/admin
+caution
+Since
+docker-compose
+is primarily designed to run a set of containers on
+a single host
+and can't credibly support
+high availability
+as a result, we do not support nor recommend
+using our
+docker-compose
+constructs to support production-type use-cases. For single host
+environments, we recommend using
+minikube
+along
+our
+installing on k8s
+documentation.
+configured to be secure.
+Installing Development Tools
+​
+note
+While docker-compose simplifies a lot of the setup, there are still
+many things you'll want to set up locally to power your IDE, and things like
+commit hooks
+,
+linters
+, and
+test-runners
+. Note that you can do these
+things inside docker images with commands like
+docker-compose exec superset_app bash
+for
+instance, but many people like to run that tooling from their host.
+
+
+
+Documentation Source:
+superset.apache.org/docs/installation/docker-compose/index.txt
+
+Documentation Title:
+Docker Compose | Superset
+
+Documentation Content:
+1. Clone Superset's GitHub repository
+​
+Clone Superset's repo
+in your terminal with the
+following command:
+git
+clone --depth
+=
+1
+https://github.com/apache/superset.git
+Once that command completes successfully, you should see a new
+superset
+folder in your
+current directory.
+2. Launch Superset Through Docker Compose
+​
+First let's assume you're familiar with docker-compose mechanics. Here we'll refer generally
+to
+docker compose up
+even though in some cases you may want to force a check for newer remote
+images using
+docker compose pull
+, force a build with
+docker compose build
+or force a build
+on latest base images using
+docker compose build --pull
+. In most cases though, the simple
+up
+command should do just fine. Refer to docker compose docs for more information on the topic.
+Option #1 - for an interactive development environment
+​
+docker
+compose up
+tip
+When running in development mode the
+superset-node
+container needs to finish building assets in order for the UI to render properly. If you would just
+like to try out Superset without making any code changes follow the steps documented for
+production
+or a specific version below.
+tip
+By default, we mount the local superset-frontend folder here and run
+npm install
+as well
+as
+npm run dev
+which triggers webpack to compile/bundle the frontend code. Depending
+on your local setup, especially if you have less than 16GB of memory,  it may be very slow to
+perform those operations. In this case, we recommend you set the env var
+BUILD_SUPERSET_FRONTEND_IN_DOCKER
+to
+false
+, and to run this locally instead in a terminal.
+Simply trigger
+npm i && npm run dev
+, this should be MUCH faster.
+Option #2 - build a set of immutable images from the local branch
+​
+docker
+compose -f docker-compose-non-dev.yml up
+Option #3 - boot up an official release
+​
+export
+TAG
+=
+3.1
+.1
+docker
+compose -f docker-compose-image-tag.yml up
+Here various release tags, github SHA, and latest
+master
+can be referenced by the TAG env var.
+
+
+
+Documentation Source:
+superset.apache.org/docs/quickstart/index.txt
+
+Documentation Title:
+Quickstart | Superset
+
+Documentation Content:
+Quickstart | Superset
+Skip to main content
+Documentation
+Getting Started
+FAQ
+Community
+Resources
+GitHub
+Slack
+Mailing List
+Stack Overflow
+Get Started
+Search
+Introduction
+Quickstart
+Installation
+Configuration
+Using Superset
+Contributing
+Security
+FAQ
+API
+Edit this page on GitHub
+Quickstart
+On this page
+Quickstart
+Ready to give Apache Superset a try?
+This quickstart guide will help you
+get up and running on your local machine in
+3 simple steps
+. Note that
+it assumes that you have
+Docker
+,
+Docker Compose
+, and
+Git
+installed.
+caution
+While we recommend using
+Docker Compose
+for a quick start in a sandbox-type
+environment and for other development-type use cases,
+we
+do not recommend this setup for production
+. For this purpose please
+refer to our
+Installing on Kubernetes
+page.
+1. Get Superset
+​
+$
+git
+clone https://github.com/apache/superset
+2. Start the latest official release of Superset
+​
+# Enter the repository you just cloned
+$
+cd
+superset
+# Fire up Superset using Docker Compose
+$
+docker
+compose -f docker-compose-image-tag.yml up
+This may take a moment as Docker Compose will fetch the underlying
+container images and will load up some examples. Once all containers
+are downloaded and the output settles, you're ready to log in.
+3. Log into Superset
+​
+Now head over to
+http://localhost:8088
+and log in with the default created account:
+username: admin
+password: admin
+🎉 Congratulations! Superset is now up and running on your machine! 🎉
+​
+Wrapping Up
+​
+Once you're done with Superset, you can stop and delete just like any other container environment:
+$
+docker
+compose down
+tip
+You can use the same environment more than once, as Superset will persist data locally. However, make sure to properly stop all
+processes by running Docker Compose
+stop
+command. By doing so, you can avoid data corruption and/or loss of data.
+What's next?
+
+
+
+Documentation Source:
+superset.apache.org/docs/installation/pypi/index.txt
+
+Documentation Title:
+PyPI | Superset
+
+Documentation Content:
+In particular, Superset will not start without a user-specified value of SECRET_KEY. Please see
+Configuring Superset
+.
+Finish installing by running through the following commands:
+# Create an admin user in your metadata database (use `admin` as username to be able to load the examples)
+export FLASK_APP=superset
+superset fab create-admin
+# Load some data to play with
+superset load_examples
+# Create default roles and permissions
+superset init
+# To start a development web server on port 8088, use -p to bind to another port
+superset run -p 8088 --with-threads --reload --debugger
+If everything worked, you should be able to navigate to
+hostname:port
+in your browser (e.g.
+locally by default at
+localhost:8088
+) and login using the username and password you created.
+Edit this page
+Previous
+Kubernetes
+Next
+Docker Compose
+OS Dependencies
+Python Virtual Environment
+Installing and Initializing Superset
+We use
+Copyright © 2024,
+          The
+Apache Software Foundation
+,
+          Licensed under the Apache
+License
+.
+Apache Superset, Apache, Superset, the Superset logo, and the Apache feather logo are either registered trademarks or trademarks of The Apache Software Foundation. All other products or name brands are trademarks of their respective holders, including The Apache Software Foundation.
+Apache Software Foundation
+resources
+Security
+|
+Donate
+|
+Thanks
+|
+Events
+|
+License
+|
+Privacy
+
+
+

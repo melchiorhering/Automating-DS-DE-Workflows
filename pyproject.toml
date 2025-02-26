@@ -1,0 +1,56 @@
+[project]
+name = "master-thesis"
+version = "0.1.0"
+description = "Master thesis project: Automating (Data Science & Engineering) Workflows with AI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain-community>=0.3.16",
+    "pillow>=11.1.0",
+    "pyautogui>=0.9.54",
+    "tqdm>=4.67.1",
+    "websockets>=14.2",
+    "pynput>=1.7.7",
+    "pytest-playwright>=0.7.0",
+    "smolagents>=1.9.2",
+    "langchain-milvus>=0.1.8",
+    "sentence-transformers>=3.4.1",
+]
+
+
+[tool.uv]
+dev-dependencies = [
+    "arize-phoenix>=8.2.2",
+    "openinference-instrumentation-smolagents>=0.1.6",
+    "opentelemetry-exporter-otlp>=1.30.0",
+    "opentelemetry-sdk>=1.30.0",
+    "pytest>=8.3.4",
+    "ruff>=0.9.7",
+]
+
+[tool.ruff]
+line-length = 120
+lint.select = [
+    "E", # pycodestyle errors (settings from FastAPI, thanks, @tiangolo!)
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "C", # flake8-comprehensions
+    "B", # flake8-bugbear
+]
+lint.ignore = [
+    "E501", # line too long, handled by black
+    "C901", # too complex
+]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+docstring-code-format = true

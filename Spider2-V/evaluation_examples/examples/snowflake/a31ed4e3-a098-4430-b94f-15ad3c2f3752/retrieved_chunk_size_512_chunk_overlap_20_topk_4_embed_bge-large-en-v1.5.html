@@ -1,0 +1,63 @@
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/load-from-cloud-tutorial.html
+
+Documentation Title:
+Load data from cloud storage: Amazon S3 | Snowflake Documentation
+
+Documentation Content:
+For example, a schema might contain the database objects required for a
+specific application. For more information, see <span>Databases, Tables and Views - Overview</span>.</p><p>To create a database, a schema, and a table that you can load, do the following:</p><ol><li><p>In the open worksheet, place your cursor in the CREATE OR REPLACE DATABASE line,
+enter a name for your database and an optional comment, then select <span>Run</span>. For
+example:</p><div><pre><span>CREATE</span><span>OR</span><span>REPLACE</span><span>DATABASE</span><span>cloud_data_db</span><span>COMMENT</span><span>=</span><span>'Database for loading cloud data'</span><span>;</span></pre><span>Copy</span></div></li><li><p>Place your cursor in the CREATE OR REPLACE SCHEMA line, enter a name for your schema
+and an optional comment, then select <span>Run</span>. For example:</p><div><pre><span>CREATE</span><span>OR</span><span>REPLACE</span><span>SCHEMA</span><span>cloud_data_db</span><span>.</span><span>s3_data</span><span>COMMENT</span><span>=</span><span>'Schema for tables loaded from S3'</span><span>;</span></pre><span>Copy</span></div></li><li><p>Place your cursor in the CREATE OR REPLACE TABLE lines, complete the table
+definition, add an optional comment, and select <span>Run</span>.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/tasty-bytes-python-load.html
+
+Documentation Title:
+Load and query sample data using Snowpark Python | Snowflake Documentation
+
+Documentation Content:
+The
+tutorial uses an existing bucket with a CSV file that contains the data. It loads the data from this CSV
+file into the table that is created later in this tutorial. For more information, see <span>Bulk loading from Amazon S3</span>.</p></li><li><p>This step in the worksheet includes the following code:</p><div><pre><span># Define our Menu Schema</span><span>menu_schema</span><span>=</span><span>StructType</span><span>([</span><span>StructField</span><span>(</span><span>"menu_id"</span><span>,</span><span>IntegerType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"menu_type_id"</span><span>,</span><span>IntegerType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"menu_type"</span><span>,</span><span>StringType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"truck_brand_name"</span><span>,</span><span>StringType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"menu_item_id"</span><span>,</span><span>IntegerType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"menu_item_name"</span><span>,</span><span>StringType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"item_category"</span><span>,</span><span>StringType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"item_subcategory"</span><span>,</span><span>StringType</span><span>()),</span>\
+                     <span>StructField</span><span>(</span><span>"cost_of_goods_usd"</span><span>,</span><span>IntegerType</span><span>()),
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/tasty-bytes-python-load.html
+
+Documentation Title:
+Load and query sample data using Snowpark Python | Snowflake Documentation
+
+Documentation Content:
+</span></pre><span>Copy</span></div></section><section><h3>Summary and key points<a>¶</a></h3><p>In summary, you used a pre-loaded Python worksheet in Snowsight to complete the following
+steps in Python code:</p><ol><p>Import Snowpark modules for a Python application.</p><p>Create a Python function.</p><p>Create a database and schema.</p><p>Create a stage that holds data in an Amazon S3 bucket.</p><p>Create a DataFrame to specify the source of the data in a stage.</p><p>Create a table that contains data from files on the stage,</p><p>Set up a DataFrame to query the new table and filter the data.</p></ol><p>Here are some key points to remember about loading and querying data:</p><ul><p>You used Snowpark to execute SQL statements in Python code.</p><p>You created a stage to load data from a CSV file.</p><p>You created a database to store the data and a schema to group the database objects logically.</p><p>You used a DataFrame to specify the data source and filter data for a query.</p></ul></section><section><h3>What’s next?<a>¶</a></h3><p>Continue learning about Snowflake using the following resources:</p><ul><li><p>Complete the other tutorials provided by Snowflake:</p><span>Snowflake Tutorials</span></li><li><p>Familiarize yourself with key Snowflake concepts and features,
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/tutorials/load-from-cloud-tutorial.html
+
+Documentation Title:
+Load data from cloud storage: Amazon S3 | Snowflake Documentation
+
+Documentation Content:
+For example, the following
+table contains six columns:</p><div><pre><span>CREATE</span><span>OR</span><span>REPLACE</span><span>TABLE</span><span>cloud_data_db</span><span>.</span><span>s3_data</span><span>.</span><span>calendar</span><span>(</span><span>full_date</span><span>DATE</span><span>,</span><span>day_name</span><span>VARCHAR</span><span>(</span><span>10</span><span>)</span><span>,</span><span>month_name</span><span>VARCHAR</span><span>(</span><span>10</span><span>)</span><span>,</span><span>day_number</span><span>VARCHAR</span><span>(</span><span>2</span><span>)</span><span>,</span><span>full_year</span><span>VARCHAR</span><span>(</span><span>4</span><span>)</span><span>,</span><span>holiday</span><span>BOOLEAN</span><span>)</span><span>COMMENT</span><span>=</span><span>'Table to be loaded from S3 calendar data file'</span><span>;</span></pre><span>Copy</span></div></li><li><p>To confirm that the table was created successfully, place your cursor in the SELECT line,
+then select <span>Run</span>.</p><div><pre><span>SELECT</span><span>*</span><span>FROM</span><span>cloud_data_db</span><span>.</span><span>s3_data</span><span>.</span><span>calendar</span><span>;</span></pre><span>Copy</span></div><p>The output shows the columns of the table you created. Currently, the table does not have any rows.</p></li></ol></section><section><h2>Step 5. Create a storage integration<a>¶</a></h2><p>Before you can load data from cloud storage, you must configure a storage integration that is
+specific to your cloud provider.
+
+
+

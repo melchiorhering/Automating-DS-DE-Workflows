@@ -1,0 +1,54 @@
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/guides/running-dagster-locally.html
+
+Documentation Title:
+Running Dagster locally | Dagster Docs
+
+Documentation Content:
+</p><h2>Understanding the dagster dev command<span>#</span></h2><p>The <code>dagster dev</code>command launches <a>the Dagster webserver/UI</a>and the <a>Dagster daemon</a>, allowing you to start a full deployment of Dagster from the command line.</p><p>This command should be run in a Python environment where the <code>dagster</code>and <code>dagster-webserver</code>packages are installed. <strong>Once started, the process should be kept running.</strong></p><h2>Locating your code<span>#</span></h2><p>Before you can start developing, you need to tell Dagster how to find the Python code containing your assets and jobs. There are a few ways to do this, which are outlined in the tabs below.</p><p><strong>Note</strong>: If using an example Dagster project, or if you used the <a><code>dagster</code>CLI to create a project</a>, you can run the <code>dagster dev</code>command in the same folder as the project to load the project code.</p><div><div><button>From a file</button><button>From a module</button><button>Without command line arguments</button></div><div><div><p>Dagster can load a file directly as a code location. In the following example, we used the <code>-f</code>argument to supply the name of the file:</p><code>dagster dev -f my_file.py
+</code><p>This command loads the definitions in <code>my_file.py</code>as a code location in the current Python environment.</p><p>You can also include multiple files at a time, where each file will be loaded as a code location:</p><code>dagster dev -f my_file.py -f my_second_file.py
+</code></div><div><p>Dagster can also load Python modules as <a>code locations</a>.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/concepts/webserver/ui.html
+
+Documentation Title:
+Dagster UI | Dagster
+
+Documentation Content:
+jobs, schedules), launch runs, view launched runs, and view assets produced by those runs.</p><h2>Launching the UI<span>#</span></h2><p>The easiest way to launch the UI from the command line during local development is to run:</p><code>dagster dev
+</code><p>This command launches both the Dagster webserver (which serves the UI) and the <a>Dagster daemon</a>, allowing you to start a full local deployment of Dagster from the command line.</p><p>The command will print out the URL you can access the UI from in the browser, usually on port 3000.</p><p>When invoked, the UI will fetch definitions - such as assets, jobs, schedules, sensors, and resources - from a <code>Definitions</code>object in a Python module or package or the code locations configured in an open source deployment's <a>workspace files</a>. Refer to the <a>Code location documentation</a>for more info.</p><p>You can also launch the webserver by itself from the command line by running:</p><code>dagster-webserver
+</code><p>Note that several Dagster features, like schedules and sensors, require the Dagster daemon to be running in order to function.</p><h2>Overview<span>#</span></h2><ul><p><strong>Description</strong>: This page, also known as the "factory floor", provides a high-level look at the activity in your Dagster deployment, across all code locations.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/deployment/dagster-daemon.html
+
+Documentation Title:
+Dagster daemon | Dagster
+
+Documentation Content:
+</p><h2>Starting the daemon<span>#</span></h2><ul><a>Running locally</a><a>Deploying the daemon</a></ul><h3>Running locally<span>#</span></h3><div><div><button>Running the daemon and webserver</button><button>Running only the daemon</button></div><div><div><p>The easiest way to run the Dagster daemon locally is to run the <code>dagster dev</code>command:</p><code>dagster dev
+</code><p>This command launches both the <a>Dagster webserver/UI</a>and the Dagster daemon, allowing you to start a full local deployment of Dagster from the command line. Refer to the <a>Running Dagster locally guide</a>for more information about <code>dagster dev</code>.</p></div><div><p>To run the Dagster daemon by itself:</p><code>dagster-daemon run
+</code><p>This command takes the same arguments as <code>dagster dev</code>for specifying where to find your code.</p></div></div></div><h3>Deploying the daemon<span>#</span></h3><p>For information on deploying the daemon to environments like Docker or Kubernetes, refer to the <a>deployment guides</a>.</p><h2>Available daemons<span>#</span></h2><p>The <code>dagster-daemon</code>process reads from your <a>Dagster instance</a>file to determine which daemons should be included.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/deployment/guides/service.html
+
+Documentation Title:
+Running Dagster as a Service | Dagster"
+
+Documentation Content:
+Typically, you'll want to run the webserver inside a <a>virtualenv</a>. Then, you can install the webserver and any additional libraries you might need.</p><code>pip <span>install</span>dagster-webserver
+</code><p>To run the webserver, use a command like the following:</p><code><span>DAGSTER_HOME</span><span>=</span>/opt/dagster/dagster_home dagster-webserver -h <span>0.0</span>.0.0 -p <span>3000</span></code><p>In this configuration, the webserver will write execution logs to <code>$DAGSTER_HOME/logs</code>and listen on <em>0.0.0.0:3000</em>.</p><h2>Running the Dagster daemon<span>#</span></h2><p>If you're using <a>schedules</a>, <a>sensors</a>, or <a>backfills</a>, or want to set limits on the number of runs that can be executed at once, you'll want to also run a <a>dagster-daemon service</a>as part of your deployment. To run this service locally, run the following command:</p><code>pip <span>install</span>dagster
+
+<span>DAGSTER_HOME</span><span>=</span>/opt/dagster/dagster_home dagster-daemon run
+</code><p>The <code>dagster-daemon</code>process will periodically check your instance for any new runs that should be launched from your run queue or triggered by your running schedules or sensors.
+
+
+

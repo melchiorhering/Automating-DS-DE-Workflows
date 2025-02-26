@@ -1,0 +1,486 @@
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/tutorial/writing-your-first-asset.txt
+
+Documentation Title:
+Tutorial, part three: Writing your first asset | Dagster Docs
+
+Documentation Content:
+json
+(
+)
+[
+:
+100
+]
+os
+.
+makedirs
+(
+"data"
+,
+exist_ok
+=
+True
+)
+with
+open
+(
+"data/topstory_ids.json"
+,
+"w"
+)
+as
+f
+:
+json
+.
+dump
+(
+top_new_story_ids
+,
+f
+)
+That's all it takes to get started 🎉. Dagster now knows that this is an asset. In future sections, you'll see how you can add metadata, schedule when to refresh the asset, and more.
+And now you're done! Time to go into the Dagster UI and see what you've built.
+Exploring the Dagster UI
+#
+Using Dagster's UI, you can explore your data assets, manually launch runs, and observe what's happening during pipeline runs.
+As a reminder, to launch the UI, set your terminal's current directory to
+/tutorial
+and run the following command:
+dagster dev
+Navigate to
+localhost:3000
+in your browser to see the Dagster UI.
+You should see a screen that looks similar to below. If you do not see it, go the top navigation bar, click on
+Assets
+, then go the top-right region and click on
+View global asset lineage
+. You can also navigate directly to this page by going to
+localhost:3000/asset-groups
+. As more assets are built, this graph will show your entire data platform in one place. This page can also be referred to as the
+Global Asset Lineage
+.
+Observe that Dagster has detected your
+topstory_ids
+asset, but it says that the asset has never been
+“materialized”
+.
+Step 2: Materialize your asset
+#
+To
+materialize
+a Software-defined asset means to create or update it. Dagster materializes assets by executing the asset's function or triggering an integration.
+To manually materialize an asset in the UI, click the
+Materialize
+button in the upper right corner of the screen. This will create a Dagster run that will materialize your assets.
+To follow the progress of the materialization and monitor the logs, each run has a dedicated page.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/getting-started/quickstart.txt
+
+Documentation Title:
+Quickstart | Dagster Docs
+
+Documentation Content:
+json
+(
+)
+with
+open
+(
+config
+.
+hn_top_story_ids_path
+,
+"w"
+)
+as
+f
+:
+json
+.
+dump
+(
+top_story_ids
+[
+:
+config
+.
+top_stories_limit
+]
+,
+f
+)
+@asset
+(
+deps
+=
+[
+hackernews_top_story_ids
+]
+)
+def
+hackernews_top_stories
+(
+config
+:
+HNStoriesConfig
+)
+-
+>
+MaterializeResult
+:
+"""Get items based on story ids from the HackerNews items endpoint."""
+with
+open
+(
+config
+.
+hn_top_story_ids_path
+,
+"r"
+)
+as
+f
+:
+hackernews_top_story_ids
+=
+json
+.
+load
+(
+f
+)
+results
+=
+[
+]
+for
+item_id
+in
+hackernews_top_story_ids
+:
+item
+=
+requests
+.
+get
+(
+f"https://hacker-news.firebaseio.com/v0/item/
+{
+item_id
+}
+.json"
+)
+.
+json
+(
+)
+results
+.
+append
+(
+item
+)
+df
+=
+pd
+.
+DataFrame
+(
+results
+)
+df
+.
+to_csv
+(
+config
+.
+hn_top_stories_path
+)
+return
+MaterializeResult
+(
+metadata
+=
+{
+"num_records"
+:
+len
+(
+df
+)
+,
+"preview"
+:
+MetadataValue
+.
+md
+(
+str
+(
+df
+[
+[
+"title"
+,
+"by"
+,
+"url"
+]
+]
+.
+to_markdown
+(
+)
+)
+)
+,
+}
+)
+Next steps
+#
+Congratulations on successfully running your first Dagster pipeline! In this example, we used
+assets
+, which are a cornerstone of Dagster projects. They empower data engineers to:
+Think in the same terms as stakeholders
+Answer questions about data quality and lineage
+Work with the modern data stack (dbt, Airbyte/Fivetran, Spark)
+Create declarative freshness policies instead of task-driven cron schedules
+Dagster also offers
+ops and jobs
+, but we recommend starting with assets.
+To create your own project, consider the following options:
+Scaffold a new project using our
+new project guide
+.
+Begin with an official example, like the
+dbt & Dagster project
+, and explore
+all examples on GitHub
+.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/getting-started/quickstart.txt
+
+Documentation Title:
+Quickstart | Dagster Docs
+
+Documentation Content:
+dagster dev
+Navigate to
+localhost:3000
+in your web browser.
+Success!
+Option 2: Using GitHub Codespaces
+#
+Fork the
+Dagster Quickstart
+repository
+Select
+Create codespace on main
+from the
+Code
+dropdown menu.
+After the codespace loads, start Dagster by running
+dagster dev
+in the terminal:
+dagster dev
+Click
+Open in Browser
+when prompted.
+Success!
+Navigating the User Interface
+#
+You should now have a running instance of Dagster! From here, we can run our data pipeline.
+To run the pipeline, click the
+Materialize All
+button in the top right. In Dagster,
+materialization
+refers to executing the code associated with an asset to produce an output.
+Congratulations! You have successfully materialized two Dagster assets:
+But wait - there's more. Because the
+hackernews_top_stories
+asset returned some
+metadata
+, you can view the metadata right in the UI:
+Click the asset
+In the sidebar, click the
+Show Markdown
+link in the
+Materialization in Last Run
+section. This opens a preview of the pipeline result, allowing you to view the top 10 HackerNews stories:
+Understanding the Code
+#
+The Quickstart project defines two
+Assets
+using the
+@asset
+decorator:
+hackernews_top_story_ids
+retrieves the top stories from the Hacker News API and saves them as a JSON file.
+hackernews_top_stories
+asset builds upon the first asset, retrieving data for each story as a CSV file, and returns a
+MaterializeResult
+with a markdown preview of the top stories.
+import
+json
+import
+pandas
+as
+pd
+import
+requests
+from
+dagster
+import
+(
+MaterializeResult
+,
+MetadataValue
+,
+asset
+,
+)
+from
+.
+configurations
+import
+HNStoriesConfig
+@asset
+def
+hackernews_top_story_ids
+(
+config
+:
+HNStoriesConfig
+)
+:
+"""Get top stories from the HackerNews top stories endpoint."""
+top_story_ids
+=
+requests
+.
+get
+(
+"https://hacker-news.firebaseio.com/v0/topstories.json"
+)
+.
+json
+(
+)
+with
+open
+(
+config
+.
+
+
+
+Documentation Source:
+release-1-7-2.dagster.dagster-docs.io/concepts/webserver/ui.txt
+
+Documentation Title:
+Dagster UI | Dagster
+
+Documentation Content:
+On this page, you can:
+Filter assets by
+group
+Filter a subset of assets by using
+asset selection syntax
+Reload definitions
+Materialize all or a selection of assets
+View
+run details
+for the latest materialization of any asset
+Accessed by
+:
+From the
+Asset catalog
+: Clicking
+View global asset lineage
+, located near the top right corner of the page
+From the
+Asset details
+page
+: Clicking the
+Lineage tab
+Asset details
+#
+Description
+: The
+Asset details
+page contains details about a single asset. Use the tabs on this page to view detailed information about the asset:
+Overview
+- Information about the asset such as its description, resources, config, type, etc. If you have the
+Use new asset overview page
+user setting
+enabled, this tab will display instead of
+Definition
+.
+Partitions
+- The asset's partitions, including their materialization status, metadata, and run information
+Events
+- The asset's materialization history
+Checks
+- The
+Asset checks
+defined for the asset
+Plots
+- Any plots associated with the asset
+Definition
+- The same information as the
+Overview
+tab. This tab will display if the
+Use new asset overview page
+user setting isn't enabled.
+Lineage
+- The asset's lineage in the
+Global asset lineage
+page
+Automation
+- The
+Auto-materialize policies
+associated with the asset
+Insights
+-
+Dagster+ only.
+Historical information about the asset, such as failures and credit usage. Refer to the
+Dagster+ Insights
+documentation for more information.
+Accessed by
+: Clicking an asset in the
+Asset catalog
+Runs
+#
+All runs
+Run details
+Run logs
+All runs
+#
+Description
+: The
+Runs
+page lists all job runs, which can be filtered by job name, run ID, execution status, or tag. Click a run ID to open the
+Run details
+page
+and view details for that run.
+Accessed by
+: Clicking
+Runs
+in the top navigation bar
+Run details
+#
+Description
+: The
+Run details
+page contains details about a single run, including timing information, errors, and logs.
+
+
+

@@ -1,0 +1,60 @@
+Documentation Source:
+airbyte.com/tutorials/configure-airbyte-with-python-dagster.html
+
+Documentation Title:
+Configure Airbyte Connections with Python (Dagster) | Airbyte
+
+Documentation Content:
+your pythonic configurations. Apply will delete an existing source, destination, and connection and re-apply based on your updated configs.</p><p>📝 Below, I will skip the step on setting up Airbyte and Postgres database; You can find that in the <a>ReadMe</a>or <a>Postgres Replication Tutorial</a>.</p><em>Configure Airbyte Connections in Python</em><p>For my <a>demo</a>, I am scraping a GitHub repo that is evolving.</p><strong>Define Airbyte Instance</strong><p>First, I define the airbyte instance in my dagster python code:</p><code>airbyte_instance = airbyte_resource.configured(
+    {
+        "host": "localhost",
+        "port": "8000",
+        "username": "airbyte",
+        "password": {"env": "AIRBYTE_PASSWORD"},
+    }
+)</code><p>➡️ Make sure you set the environment variable &lt;span class="text-style-code"&gt;AIRBYTE_PASSWORD&lt;/span&gt; on your laptop. The default password is password. As well as <a>create</a>a token &lt;span class="text-style-code"&gt;AIRBYTE_PERSONAL_GITHUB_TOKEN&lt;/span&gt; for fetching the stargazers from the public repositories in the below code.</p><strong>Define Airbyte GitHub Source</strong><p>After we create our Airbyte source with:</p><code>gh_awesome_de_list_source = GithubSource(
+    name="gh_awesome_de_list",
+    credentials=GithubSource.PATCredentials(AIRBYTE_PERSONAL_GITHUB_TOKEN),
+    start_date="2020-01-01T00:00:00Z",
+    repository=get_awesome_repo_list(),  # The magic happens here
+    page_size_for_large_streams=100,
+)</code><em>Web Scraping GitHub List with Beautiful Soup</em><p>The &lt;span class="text-style-code"&gt;get_awesome_repo_list()&lt;/span&gt; could be any arbitrary Python code. In this demo, this function does web scraping with Beautiful Soup from the awesome repo list.
+
+
+
+Documentation Source:
+airbyte.com/tutorials/build-a-github-activity-dashboard-for-your-project.html
+
+Documentation Title:
+Build a GitHub Activity Dashboard for your Project | Airbyte | Airbyte
+
+Documentation Content:
+Enter the values for the Postgres container we created earlier:</p><ul><li>host - localhost</li><li>post - 3003</li><li>schema - public (leave default)</li><li>database - postgres</li><li>Password - password</li><li>username - postgres</li></ul><p>Then click on the basic normalization toggle button to check it on as we want Airbyte to normalize the data coming in from GitHub. Overall the UI should look like this:</p><p>Then click on the Set up destination button. If your credentials are all good for the database, the postgres destination would have been set, and now you will need to make the connection from the source (GitHub) to the destination (Postgres).</p><p>You should check the boxes that are checked in the screenshot below, and then choose how often Airbyte will attempt to replicate data to be every hour in the Sync frequency drop down. Then, click on the <em>Set up connection</em>button.</p><p>You will be taken to the source page, click on the source and you will see the status of your sync. The sync should take a while to complete.</p><p>When done, you will see the status change from running to Succeeded. Also, the byte count will be referring to the byte of data Airbyte has pulled from GitHub into your Postgres database.</p><p>‍</p><p>That wasn’t a lot of work, was it? You can pat yourself in the back as you just synced data from GitHub to a Postgres database.</p><p>Let's move on to connecting that database to Metabase, so we can start creating our dashboard.</p></div><h2>Step 2: Connecting the PostgreSQL database to Metabase</h2><div><h3>Installing Metabase</h3><p>‍Metabase is an open source analytic tool that you can get started working with in a couple of ways; using the .jar file, installing it as a Mac app or using a Docker container.For this tutorial we will be using the Mac app(you can alternatively look up the installation that suits you <a>here</a>).
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/integrations/sources/faker.html
+
+Documentation Title:
+Faker | Airbyte Documentation
+
+Documentation Content:
+(Yes/No)</th><th>Notes</th></tr><tbody><tr><td>Full Refresh Sync</td><td>Yes</td></tr><tr><td>Incremental Sync</td><td>Yes</td></tr><tr><td>Namespaces</td><td>No</td></tr></tbody></table><p>Of note, if you choose <code>Incremental Sync</code>, state will be maintained between syncs, and once you hit
+<code>count</code>records, no new records will be added.</p><p>You can choose a specific <code>seed</code>(integer) as an option for this connector which will guarantee that
+the same fake records are generated each time. Otherwise, random data will be created on each
+subsequent sync.</p><h3>Requirements<a>​</a></h3><p>None!</p><h2>Reference<a>​</a></h2><div><h4>Config fields reference</h4><div><div>Field</div><div>Type</div><div>Property name</div><button><div>›</div><div>Count</div></button><div>integer</div><div>count</div><button><div>›</div><div>Seed</div></button><div>integer</div><div>seed</div><button><div>›</div><div>Records Per Stream Slice</div></button><div>integer</div><div>records_per_slice</div><button><div>›</div><div>Always Updated</div></button><div>boolean</div><div>always_updated</div><button><div>›</div><div>Parallelism</div></button><div>integer</div><div>parallelism</div></div></div><h2>Changelog<a>​</a></h2><table><tr><th>Version</th><th>Date</th><th>Pull Request</th><th>Subject</th></tr><tbody><tr><td>6.1.0</td><td>2024-04-08</td><a>36898</a><td>Update car prices and years</td></tr><tr><td>6.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/integrations/sources/faker.html
+
+Documentation Title:
+Faker | Airbyte Documentation
+
+Documentation Content:
+0.3</td><td>2024-03-15</td><a>36167</a><td>Make 'count' an optional config parameter.</td></tr><tr><td>6.0.2</td><td>2024-02-12</td><a>35174</a><td>Manage dependencies with Poetry.</td></tr><tr><td>6.0.1</td><td>2024-02-12</td><a>35172</a><td>Base image migration: remove Dockerfile and use the python-connector-base image</td></tr><tr><td>6.0.0</td><td>2024-01-30</td><a>34644</a><td>Declare 'id' columns as primary keys.</td></tr><tr><td>5.0.2</td><td>2024-01-17</td><a>34344</a><td>Ensure unique state messages</td></tr><tr><td>5.0.1</td><td>2023-01-08</td><a>34033</a><td>Add standard entrypoints for usage with AirbyteLib</td></tr><tr><td>5.0.0</td><td>2023-08-08</td><a>29213</a><td>Change all <code>*id</code>fields and <code>products.year</code>to be integer</td></tr><tr><td>4.0.0</td><td>2023-07-19</td><a>28485</a><td>Bump to test publication</td></tr><tr><td>3.0.2</td><td>2023-07-07</td><a>27807</a><td>Bump to test publication</td></tr><tr><td>3.0.1</td><td>2023-06-28</td><a>27807</a><td>Fix bug with purchase stream updated_at</td></tr><tr><td>3.0.
+
+
+

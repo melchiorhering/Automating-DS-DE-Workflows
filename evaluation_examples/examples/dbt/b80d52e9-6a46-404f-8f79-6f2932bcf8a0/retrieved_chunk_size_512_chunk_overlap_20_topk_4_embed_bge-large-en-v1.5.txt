@@ -1,0 +1,631 @@
+Documentation Source:
+docs.getdbt.com/guides/databricks8722.txt
+
+Documentation Title:
+Quickstart for dbt Cloud and Databricks | dbt Developer Hub
+
+Documentation Content:
+Does my test file need to be named `schema.yml`?
+Document your models
+​
+Adding
+documentation
+to your project allows you to describe your models in rich detail, and share that information with your team. Here, we're going to add some basic documentation to our project.
+Update your
+models/schema.yml
+file to include some descriptions, such as those below.
+models/schema.yml
+version
+:
+2
+models
+:
+-
+name
+:
+customers
+description
+:
+One record per customer
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+first_order_date
+description
+:
+NULL when a customer has not yet placed an order.
+-
+name
+:
+stg_customers
+description
+:
+This model cleans up customer data
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+stg_orders
+description
+:
+This model cleans up order data
+columns
+:
+-
+name
+:
+order_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+status
+tests
+:
+-
+accepted_values
+:
+values
+:
+[
+'placed'
+,
+'shipped'
+,
+'completed'
+,
+'return_pending'
+,
+'returned'
+]
+-
+name
+:
+customer_id
+tests
+:
+-
+not_null
+-
+relationships
+:
+to
+:
+ref('stg_customers')
+field
+:
+customer_id
+Run
+dbt docs generate
+to generate the documentation for your project. dbt introspects your project and your warehouse to generate a
+JSON
+file with rich documentation about your project.
+Click the book icon in the Develop interface to launch documentation in a new tab.
+FAQs
+​
+Commit your changes
+​
+Now that you've built your customer model, you need to commit the changes you made to the project so that the repository has your latest code.
+If you edited directly in the protected primary branch:
+Click the
+Commit and sync git
+button. This action prepares your changes for commit.
+A modal titled
+Commit to a new branch
+will appear.
+In the modal window, name your new branch
+add-customers-model
+.
+
+
+
+Documentation Source:
+docs.getdbt.com/guides/databricks121c.txt
+
+Documentation Title:
+Quickstart for dbt Cloud and Databricks | dbt Developer Hub
+
+Documentation Content:
+Does my test file need to be named `schema.yml`?
+Document your models
+​
+Adding
+documentation
+to your project allows you to describe your models in rich detail, and share that information with your team. Here, we're going to add some basic documentation to our project.
+Update your
+models/schema.yml
+file to include some descriptions, such as those below.
+models/schema.yml
+version
+:
+2
+models
+:
+-
+name
+:
+customers
+description
+:
+One record per customer
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+first_order_date
+description
+:
+NULL when a customer has not yet placed an order.
+-
+name
+:
+stg_customers
+description
+:
+This model cleans up customer data
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+stg_orders
+description
+:
+This model cleans up order data
+columns
+:
+-
+name
+:
+order_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+status
+tests
+:
+-
+accepted_values
+:
+values
+:
+[
+'placed'
+,
+'shipped'
+,
+'completed'
+,
+'return_pending'
+,
+'returned'
+]
+-
+name
+:
+customer_id
+tests
+:
+-
+not_null
+-
+relationships
+:
+to
+:
+ref('stg_customers')
+field
+:
+customer_id
+Run
+dbt docs generate
+to generate the documentation for your project. dbt introspects your project and your warehouse to generate a
+JSON
+file with rich documentation about your project.
+Click the book icon in the Develop interface to launch documentation in a new tab.
+FAQs
+​
+Commit your changes
+​
+Now that you've built your customer model, you need to commit the changes you made to the project so that the repository has your latest code.
+If you edited directly in the protected primary branch:
+Click the
+Commit and sync git
+button. This action prepares your changes for commit.
+A modal titled
+Commit to a new branch
+will appear.
+In the modal window, name your new branch
+add-customers-model
+.
+
+
+
+Documentation Source:
+docs.getdbt.com/guides/databricks5f72.txt
+
+Documentation Title:
+Quickstart for dbt Cloud and Databricks | dbt Developer Hub
+
+Documentation Content:
+Does my test file need to be named `schema.yml`?
+Document your models
+​
+Adding
+documentation
+to your project allows you to describe your models in rich detail, and share that information with your team. Here, we're going to add some basic documentation to our project.
+Update your
+models/schema.yml
+file to include some descriptions, such as those below.
+models/schema.yml
+version
+:
+2
+models
+:
+-
+name
+:
+customers
+description
+:
+One record per customer
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+first_order_date
+description
+:
+NULL when a customer has not yet placed an order.
+-
+name
+:
+stg_customers
+description
+:
+This model cleans up customer data
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+stg_orders
+description
+:
+This model cleans up order data
+columns
+:
+-
+name
+:
+order_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+status
+tests
+:
+-
+accepted_values
+:
+values
+:
+[
+'placed'
+,
+'shipped'
+,
+'completed'
+,
+'return_pending'
+,
+'returned'
+]
+-
+name
+:
+customer_id
+tests
+:
+-
+not_null
+-
+relationships
+:
+to
+:
+ref('stg_customers')
+field
+:
+customer_id
+Run
+dbt docs generate
+to generate the documentation for your project. dbt introspects your project and your warehouse to generate a
+JSON
+file with rich documentation about your project.
+Click the book icon in the Develop interface to launch documentation in a new tab.
+FAQs
+​
+Commit your changes
+​
+Now that you've built your customer model, you need to commit the changes you made to the project so that the repository has your latest code.
+If you edited directly in the protected primary branch:
+Click the
+Commit and sync git
+button. This action prepares your changes for commit.
+A modal titled
+Commit to a new branch
+will appear.
+In the modal window, name your new branch
+add-customers-model
+.
+
+
+
+Documentation Source:
+docs.getdbt.com/guides/bigquery.txt
+
+Documentation Title:
+Quickstart for dbt Cloud and BigQuery | dbt Developer Hub
+
+Documentation Content:
+Here, we're going to add some basic documentation to our project.
+Update your
+models/schema.yml
+file to include some descriptions, such as those below.
+models/schema.yml
+version
+:
+2
+models
+:
+-
+name
+:
+customers
+description
+:
+One record per customer
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+first_order_date
+description
+:
+NULL when a customer has not yet placed an order.
+-
+name
+:
+stg_customers
+description
+:
+This model cleans up customer data
+columns
+:
+-
+name
+:
+customer_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+stg_orders
+description
+:
+This model cleans up order data
+columns
+:
+-
+name
+:
+order_id
+description
+:
+Primary key
+tests
+:
+-
+unique
+-
+not_null
+-
+name
+:
+status
+tests
+:
+-
+accepted_values
+:
+values
+:
+[
+'placed'
+,
+'shipped'
+,
+'completed'
+,
+'return_pending'
+,
+'returned'
+]
+-
+name
+:
+customer_id
+tests
+:
+-
+not_null
+-
+relationships
+:
+to
+:
+ref('stg_customers')
+field
+:
+customer_id
+Run
+dbt docs generate
+to generate the documentation for your project. dbt introspects your project and your warehouse to generate a
+JSON
+file with rich documentation about your project.
+Click the book icon in the Develop interface to launch documentation in a new tab.
+FAQs
+​
+Commit your changes
+​
+Now that you've built your customer model, you need to commit the changes you made to the project so that the repository has your latest code.
+If you edited directly in the protected primary branch:
+Click the
+Commit and sync git
+button. This action prepares your changes for commit.
+A modal titled
+Commit to a new branch
+will appear.
+In the modal window, name your new branch
+add-customers-model
+. This branches off from your primary branch with your new changes.
+Add a commit message, such as "Add customers model, tests, docs" and and commit your changes.
+Click
+Merge this branch to main
+to add these changes to the main branch on your repo.
+
+
+

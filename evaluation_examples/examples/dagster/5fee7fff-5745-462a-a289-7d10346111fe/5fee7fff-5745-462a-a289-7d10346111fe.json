@@ -1,0 +1,117 @@
+{
+    "id": "5fee7fff-5745-462a-a289-7d10346111fe",
+    "snapshot": "dagster",
+    "instruction": "I have created an asset to download the top 10 story ids in the opened project. Could you help me extend it into a pipeline `top10_story_ids -> top10_stories -> top5_mfw`, which further downloads the list of these 10 stories into data/stories.json and calculates top 5 most frequent words in titles into data/mfw.json (dict with format word: count)? Oh, please exclude words in stopwords.txt during counting. For splitting text into words, just use the basic text.split() method and ignore case.",
+    "source": [
+        "https://docs.dagster.io/tutorial/writing-your-first-asset"
+    ],
+    "related_apps": [
+        "chromium",
+        "vscode",
+        "dagster"
+    ],
+    "tags": [
+        "cli+gui",
+        "data_orchestration",
+        "abstract"
+    ],
+    "action_number": 9,
+    "config": [
+        {
+            "type": "copyfile_from_host_to_guest",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/5fee7fff-5745-462a-a289-7d10346111fe/hacker_news.zip",
+                "dest": "/home/user/hacker_news.zip"
+            }
+        },
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/dagster/5fee7fff-5745-462a-a289-7d10346111fe/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "google_chrome_browser",
+            "parameters": {
+                "debugging_port": 1337,
+                "listening_port": 9222,
+                "urls": [
+                    "https://www.bing.com/"
+                ]
+            }
+        },
+        {
+            "type": "dagster_webui_init",
+            "parameters": {
+                "listening_port": 9222,
+                "url": "http://localhost:3000",
+                "actions": [
+                    {
+                        "type": "close_popups"
+                    },
+                    {
+                        "type": "materialize_assets"
+                    }
+                ]
+            }
+        }
+    ],
+    "evaluator": {
+        "postconfig": [
+            {
+                "type": "copyfile_from_host_to_guest",
+                "parameters": {
+                    "src": "evaluation_examples/examples/dagster/5fee7fff-5745-462a-a289-7d10346111fe/golden_hacker_news.zip",
+                    "dest": "/home/user/hacker_news.zip"
+                }
+            }
+        ],
+        "func": [
+            "check_include_exclude",
+            "compare_json_file",
+            "compare_json_file"
+        ],
+        "result": [
+            {
+                "type": "vm_script_output",
+                "src": "evaluation_examples/examples/dagster/5fee7fff-5745-462a-a289-7d10346111fe/eval.sh",
+                "dest": "/home/user/eval.sh"
+            },
+            {
+                "type": "vm_file",
+                "path": "/home/user/projects/hacker_news/data/stories.json",
+                "dest": "stories.json"
+            },
+            {
+                "type": "vm_file",
+                "path": "/home/user/projects/hacker_news/data/mfw.json",
+                "dest": "mfw.json"
+            }
+        ],
+        "expected": [
+            {
+                "type": "rule",
+                "rules": {
+                    "include": [
+                        "succeed"
+                    ],
+                    "exclude": [
+                        "failed"
+                    ]
+                }
+            },
+            {
+                "type": "vm_file",
+                "path": "/home/user/hacker_news/data/stories.json",
+                "dest": "golden_stories.json"
+            },
+            {
+                "type": "vm_file",
+                "path": "/home/user/hacker_news/data/mfw.json",
+                "dest": "golden_mfw.json"
+            }
+        ]
+    },
+    "counterpart": "a8378f30-da83-44cf-ab21-b9ea3a68bab8"
+}

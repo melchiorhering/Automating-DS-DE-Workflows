@@ -1,0 +1,44 @@
+Documentation Source:
+www.metabase.com/docs/v0.49/questions/query-builder/introduction.html
+
+Documentation Title:
+Asking questions
+
+Documentation Content:
+Click <strong>Add or remove columns</strong>to search for and pick columns, including columns from related tables.</p><h2>Sorting results</h2><p>The sorting step lets you pick one or more columns to sort your results by. For each column you pick, you can also choose whether to sort ascending or descending; just click the arrow to change from ascending (up arrow) to descending (down arrow).</p><h2>Setting a row limit</h2><p>The row limit step lets you limit how many rows you want from the previous results. When used in conjunction with sorting, this can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question.</p><h2>Viewing the SQL that powers your question</h2><p>Under the hood, all Metabase questions are SQL (gasp!). If you’re curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you’ll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have <a>SQL permissions</a>to that database). It’s a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.</p><h2>Play around with saved questions</h2><p>Each time you start modifying a saved question, Metabase will create a new question for you. The query builder will display the name of your starting question under <strong>Data</strong>.</p><p>Feel free to play around with any saved question, as you won’t have any effect on the existing question.
+
+
+
+Documentation Source:
+www.metabase.com/docs/v0.49/questions/query-builder/introduction.html
+
+Documentation Title:
+Asking questions
+
+Documentation Content:
+Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.</li><li><strong>Raw data</strong>. You’ll need to specify the database and the table in that database as the starting point for your question.</li><li>A <strong>saved question</strong>. You can use the results of any question as the starting point for a new question.</li></ul><p>Note that there are some kinds of saved questions that can’t be used as source data:</p><ul><li>Druid questions</li><li>Mongo questions</li><li>Questions that use <code>Cumulative Sum</code>or <code>Cumulative Count</code>aggregations</li><li>Questions that have columns that are named the same or similar thing, like <code>Count</code>and <code>Count 2</code></li></ul><h2>The query builder</h2><p>Once you select your data, Metabase will take you to the query builder. Say you selected <strong>Raw data</strong>&gt; <strong>Sample database</strong>&gt; <strong>Orders</strong>, then you’ll see something like this:</p><p>This is the query builder’s notebook editor. It has three default steps.</p><ul><a>Picking data</a><a>Filtering</a><a>Summarizing and grouping by</a></ul><p>To the right of each completed step is a <strong>Preview</strong>button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.</p><h2>Picking data</h2><p>The data section is where you select the data you want to work with. Here you’ll pick a <a>model</a>, a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+
+
+
+Documentation Source:
+www.metabase.com/learn/getting-started/introduction.html
+
+Documentation Title:
+Getting started with Metabase
+
+Documentation Content:
+Questions have titles, IDs, and unique URLs you can copy and share with others.</p><p>You can play around with a question by filtering and summarizing its results, save those explorations as new questions, and add questions to dashboards. But we’re getting ahead of ourselves; for the next few examples, we’ll be using the <a>Sample Database</a>that comes with Metabase.</p><p>Click on <strong>+ New</strong>in the main nav, and select <strong>Question</strong>. You can start a new question from:</p><ul><li>A model</li><li>A raw table</li><li>A saved question</li></ul><p>For now, let’s start from <strong>Raw data</strong>&gt; <strong>Sample database</strong>&gt; <strong>Orders</strong>. Metabase will open up the query builder.</p><h2>Filtering data</h2><p>The <code>Orders</code>table has a bunch of fake data in it about product orders from a made-up company. Let’s say we want to know:</p><em>How many orders have been placed with a subtotal (before tax) greater than $40?</em><p>More precisely, this question translates to: “How many records (or rows) are in the <code>Orders</code>table that have a value greater than 40 in the <code>Subtotal</code>column?”</p><p>To find out, we want to filter the data by the field we’re interested in, which in this case is the <code>Subtotal</code>. Then we want to count the filtered rows.</p><p>In the <strong>Filter</strong>step, we’ll click the purple <strong>Add filters to narrow your answer</strong>button, and we’ll select <code>Subtotal</code>as the column to filter on.
+
+
+
+Documentation Source:
+www.metabase.com/learn/getting-started/tour-of-metabase.html
+
+Documentation Title:
+A tour of Metabase
+
+Documentation Content:
+For questions written in SQL, you can use variables in your code to create <a>SQL templates</a>, including <a>field filter</a>variables that can create smart dropdown filters.</p><p>Like query builder questions, you can use the results of models or <a>saved questions</a>as starting points for new questions, just as you would a table or view. For example, to reference question 123 like so:</p><code><span>WITH</span><span>gizmo_orders</span><span>AS</span><span>#</span><span>{</span><span>123</span><span>}</span></code><h3>Create models to use as starting data for new questions</h3><p><a>Models</a>are built with questions from either the query builder or the SQL editor. You can use them to pull together data from multiple tables, with custom, calculated columns, and column descriptions and other metadata, to create great starting data for people to ask new questions. For example, you could build a model for “Active users”, or “Priority orders”, or however you want to model your business.</p><p>If you find that you’re using the same saved question over and over as your starting data for new questions, you may want to convert that saved question to a model, which will let you add metadata like column descriptions and column types. You can also refer to models in SQL queries, just like we did above with saved questions.</p><h3>Upload spreadsheets</h3><p>You can <a>upload CSVs</a>to query and visualize in Metabase. This feature is handy for quick ad hoc analysis of spreadsheet data.</p><h3>Visualize results</h3><p>When you ask a question, Metabase will guess at the most appropriate visualization type for the results, but you can select from sixteen different visualization options.</p><p>Additionally, each visualization type has their own set of options to customize.
+
+
+

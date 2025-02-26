@@ -1,0 +1,56 @@
+Documentation Source:
+airbyte.com/tutorials/creating-duckdb-destination-with-python.html
+
+Documentation Title:
+How to Create an Airbyte Python Destination: DuckDB | Airbyte
+
+Documentation Content:
+:param logger: Logging object to display debug/info/error to the logs
+            (logs will not be accessible via airbyte UI if they are not passed to this logger)
+        :param config: Json object containing the configuration of this destination, content of this json is as specified in
+        the properties of the spec.json file
+
+        :return: AirbyteConnectionStatus indicating a Success or Failure</code><p>The way we can achieve that is by checking the input `config` parameters and setting up a connection to the database. If all parameters are ok and the connection establishes, we return the `Status.SUCCEEDED`.</p><strong>Function write()</strong><p>The write function reads the data passed from the source connector to our destination. You can see below in the function definition that we get a list of<a>Airbyte Messages</a>. This is important to know as Airbyte serialized data into JSON Messages, making it possible to convert any source to any destination.</p><p>We also get the<a>ConfiguredAirbyteCatalog</a>, which describes the schema of the messages and how it's persisted in the destination.</p><code>def write(
+        self, config: Mapping[str, Any], configured_catalog: ConfiguredAirbyteCatalog, input_messages: Iterable[AirbyteMessage]
+    ) -&gt; Iterable[AirbyteMessage]:
+
+        """
+        Reads the input stream of messages, config, and catalog to write data to the destination.
+
+        This method returns an iterable (typically a generator of AirbyteMessages via yield) containing state messages received in the input message stream. Outputting a state message means that every AirbyteRecordMessage which came before it has been successfully persisted to the destination. This is used to ensure fault tolerance in the case that a sync fails before fully completing, then the source is given the last state message output from this method as the starting point of the next sync.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/cloud/managing-airbyte-cloud/configuring-connections.html
+
+Documentation Title:
+Configuring Connections | Airbyte Documentation
+
+Documentation Content:
+connection links a source to a destination and defines how your data will sync. After you have created a connection, you can modify any of the configuration settings or stream settings.</p><h2>Configure Connection Settings<a>​</a></h2><p>Configuring the connection settings allows you to manage various aspects of the sync, such as how often data syncs and where data is written.</p><p>To configure these settings:</p><ol><p>In the Airbyte UI, click <strong>Connections</strong>and then click the connection you want to change.</p><p>Click the <strong>Settings</strong>tab.</p><p>Click the <strong>Configuration</strong>dropdown to expand the options.</p></ol><div><div>note</div><p>These settings apply to all streams in the connection.</p></div><p>You can configure the following settings:</p><table><tr><th>Setting</th><th>Description</th></tr><tbody><tr><td>Connection Name</td><td>A custom name for your connection</td></tr><tr><a>Schedule Type</a><td>How often data syncs (can be scheduled, cron, API-triggered or manual)</td></tr><tr><a>Destination Namespace</a><td>Where the replicated data is written to in the destination</td></tr><tr><td>Destination Stream Prefix</td><td>A prefix added to each table name in the destination</td></tr><tr><a>Detect and propagate schema changes</a><td>How Airbyte handles schema changes in the source</td></tr><tr><a>Connection Data Residency</a><td>Where data will be processed (Cloud only)</td></tr></tbody></table><h2>Modify Streams<a>​</a></h2><p>On the "Schema" tab, you choose which streams to sync and how they are loaded to the destination.</p><div><div>info</div><p>A connection's schema consists of one or many streams. Each stream is most commonly associated with a database table or an API endpoint.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/connector-development/config-based/tutorial/connecting-to-the-API-source.html
+
+Documentation Title:
+Step 3: Connecting to the API | Airbyte Documentation
+
+Documentation Content:
+It describes what data is available in a source</li><li><code>source-exchange-rates-tutorial/integration_tests/sample_state.json</code>: This is a sample state object to be used to test <a>incremental syncs</a>.</li></ul><p>We'll also be creating the following files:</p><ul><li><code>source-exchange-rates-tutorial/secrets/config.json</code>: This is the configuration file we'll be using to test the connector. Its schema should match the schema defined in the spec file.</li><li><code>source-exchange-rates-tutorial/secrets/invalid_config.json</code>: This is an invalid configuration file we'll be using to test the connector. Its schema should match the schema defined in the spec file.</li><li><code>source_exchange_rates_tutorial/schemas/rates.json</code>: This is the <a>schema definition</a>for the stream we'll implement.</li></ul><h2>Updating the connector spec and config<a>​</a></h2><p>Let's populate the specification (<code>spec</code>) and the configuration (<code>secrets/config.json</code>) so the connector can access the access key and base currency.</p><li>We'll add these properties to the <code>spec</code>block in the <code>source-exchange-rates-tutorial/source_exchange_rates_tutorial/manifest.yaml</code></li><code><span><span>spec</span><span>:</span></span><span><span>documentation_url</span><span>:</span><span>https</span><span>:</span><span>//docs.airbyte.com/integrations/sources/exchangeratesapi</span></span><span><span>connection_specification</span><span>:</span></span><span><span>$schema</span><span>:</span><span>http</span><span>:</span><span>//json</span><span>-</span><span>schema.org/draft</span><span>-</span><span>07/schema</span><span>#</span></span><span><span>title</span><span>:</span><span>exchangeratesapi.
+
+
+
+Documentation Source:
+airbyte.com/docs.airbyte.com/using-airbyte/getting-started/set-up-a-connection.html
+
+Documentation Title:
+Set up a Connection | Airbyte Documentation
+
+Documentation Content:
+you will now see three tabs created in your Google Sheet, <code>products</code>, <code>users</code>, and <code>purchases</code>.</p><div><p>If you followed along and created your own connection using a <code>Local JSON</code>destination, you can use this command to check the file's contents to make sure the replication worked as intended (be sure to replace YOUR_PATH with the path you chose in your destination setup, and YOUR_STREAM_NAME with the name of an actual stream you replicated):</p><span>cat /tmp/airbyte_local/YOUR_PATH/_airbyte_raw_YOUR_STREAM_NAME.jsonl</span><p>You should see a list of JSON objects, each containing a unique <code>airbyte_ab_id</code>, an <code>emitted_at</code>timestamp, and <code>airbyte_data</code>containing the extracted record.</p><div><div>tip</div><p>If you are using Airbyte on Windows with WSL2 and Docker, refer to <a>this guide</a>to locate the replicated folder and file.</p></div></div></div></div><h2>What's next?<a>​</a></h2><p>Congratulations on successfully setting up your first connection using Airbyte! We hope that this will be just the first step on your journey with us. We support a large, ever-growing <a>catalog of sources and destinations</a>, and you can even <a>contribute your own</a>.</p><p>If you have any questions at all, please reach out to us on <a>Slack</a>. If you would like to see a missing feature or connector added, please create an issue on our <a>Github</a>.
+
+
+

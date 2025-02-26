@@ -1,0 +1,77 @@
+Documentation Source:
+superset.apache.org/docs/quickstart/index.html
+
+Documentation Title:
+Quickstart | Superset
+
+Documentation Content:
+Start the latest official release of Superset<a>​</a></h3><code><span># Enter the repository you just cloned</span><span><span>$ </span><span>cd</span><span>superset</span></span><span># Fire up Superset using Docker Compose</span><span><span>$ </span><span>docker</span><span>compose -f docker-compose-image-tag.yml up</span></span></code><p>This may take a moment as Docker Compose will fetch the underlying
+container images and will load up some examples. Once all containers
+are downloaded and the output settles, you're ready to log in.</p><h3>3. Log into Superset<a>​</a></h3><p>Now head over to <a>http://localhost:8088</a>and log in with the default created account:</p><code><span>username: admin</span><span>password: admin</span></code><h4>🎉 Congratulations! Superset is now up and running on your machine! 🎉<a>​</a></h4><h3>Wrapping Up<a>​</a></h3><p>Once you're done with Superset, you can stop and delete just like any other container environment:</p><span><span>$ </span><span>docker</span><span>compose down</span></span><div><div>tip</div><p>You can use the same environment more than once, as Superset will persist data locally. However, make sure to properly stop all
+processes by running Docker Compose <code>stop</code>command.
+
+
+
+Documentation Source:
+superset.apache.org/docs/contributing/development/index.html
+
+Documentation Title:
+Setting up a Development Environment | Superset
+
+Documentation Content:
+)<a>​</a></h2><p>Setting things up to squeeze an "hello world" into any part of Superset should be as simple as</p><span><span>docker-compose</span><span>up</span></span><p>Note that:</p><ul><li>this will pull/build docker images and run a cluster of services, including:<ul><li>A Superset <strong>Flask web server</strong>, mounting the local python repo/code</li><li>A Superset <strong>Celery worker</strong>, also mounting the local python repo/code</li><li>A Superset <strong>Node service</strong>, mounting, compiling and bundling the JS/TS assets</li><li>A Superset <strong>Node websocket service</strong>to power the async backend</li><li><strong>Postgres</strong>as the metadata database and to store example datasets, charts and dashboards whic
+should be populated upon startup</li><li><strong>Redis</strong>as the message queue for our async backend and caching backend</li></ul></li><li>It'll load up examples into the database upon first startup</li><li>all other details and pointers available in
+<a>docker-compose.yml</a></li><li>The local repository is mounted withing the services, meaning updating
+the code on the host will be reflected in the docker images</li><li>Superset is served at localhost:8088/</li><li>You can login with admin/admin</li></ul><div><div>caution</div><p>Since <code>docker-compose</code>is primarily designed to run a set of containers on <strong>a single host</strong>and can't credibly support <strong>high availability</strong>as a result, we do not support nor recommend
+using our <code>docker-compose</code>constructs to support production-type use-cases. For single host
+environments, we recommend using <a>minikube</a>along
+our <a>installing on k8s</a>documentation.
+
+
+
+Documentation Source:
+superset.apache.org/docs/installation/docker-compose/index.html
+
+Documentation Title:
+Docker Compose | Superset
+
+Documentation Content:
+Note that many browsers now default to <code>https</code>- if
+yours is one of them, please make sure it uses <code>http</code>.</p><p>Log in with the default username and password:</p><span>username: admin</span><span>password: admin</span><h2>4. Connecting Superset to your local database instance<a>​</a></h2><p>When running Superset using <code>docker</code>or <code>docker compose</code>it runs in its own docker container, as if
+the Superset was running in a separate machine entirely. Therefore attempts to connect to your local
+database with the hostname <code>localhost</code>won't work as <code>localhost</code>refers to the docker container
+Superset is running in, and not your actual host machine. Fortunately, docker provides an easy way
+to access network resources in the host machine from inside a container, and we will leverage this
+capability to connect to our local database instance.</p><p>Here the instructions are for connecting to postgresql (which is running on your host machine) from
+Superset (which is running in its docker container). Other databases may have slightly different
+configurations but gist would be same and boils down to 2 steps -</p><li><strong>(Mac users may skip this step)</strong>Configuring the local postgresql/database instance to accept
+public incoming connections. By default, postgresql only allows incoming connections from
+<code>localhost</code>and under Docker, unless you use <code>--network=host</code>, <code>localhost</code>will refer to different
+endpoints on the host machine and in a docker container respectively. Allowing postgresql to accept
+connections from the Docker involves making one-line changes to the files <code>postgresql.conf</code>and
+<code>pg_hba.conf</code>; you can find helpful links tailored to your OS / PG version on the web easily for
+this task.
+
+
+
+Documentation Source:
+superset.apache.org/docs/installation/docker-compose/index.html
+
+Documentation Title:
+Docker Compose | Superset
+
+Documentation Content:
+Here we'll refer generally
+to <code>docker compose up</code>even though in some cases you may want to force a check for newer remote
+images using <code>docker compose pull</code>, force a build with <code>docker compose build</code>or force a build
+on latest base images using <code>docker compose build --pull</code>. In most cases though, the simple
+<code>up</code>command should do just fine. Refer to docker compose docs for more information on the topic.</p><h3>Option #1 - for an interactive development environment<a>​</a></h3><span><span>docker</span><span>compose up</span></span><div><div>tip</div><p>When running in development mode the <code>superset-node</code>container needs to finish building assets in order for the UI to render properly. If you would just
+like to try out Superset without making any code changes follow the steps documented for
+<code>production</code>or a specific version below.</p></div><div><div>tip</div><p>By default, we mount the local superset-frontend folder here and run <code>npm install</code>as well
+as <code>npm run dev</code>which triggers webpack to compile/bundle the frontend code. Depending
+on your local setup, especially if you have less than 16GB of memory,  it may be very slow to
+perform those operations. In this case, we recommend you set the env var
+<code>BUILD_SUPERSET_FRONTEND_IN_DOCKER</code>to <code>false</code>, and to run this locally instead in a terminal.
+
+
+

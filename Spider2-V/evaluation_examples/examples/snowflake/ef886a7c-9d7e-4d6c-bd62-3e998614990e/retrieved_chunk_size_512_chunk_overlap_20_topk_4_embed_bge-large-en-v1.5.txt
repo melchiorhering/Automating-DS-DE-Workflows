@@ -1,0 +1,273 @@
+Documentation Source:
+docs.snowflake.com/en/user-guide/ui-snowsight-visualizations.txt
+
+Documentation Title:
+Visualizing worksheet data | Snowflake Documentation
+
+Documentation Content:
+Each query supports one type of chart at a time.
+Hover over the chart to view details about each data point. For example, you can view your results as a line chart:
+You can modify the type of chart used to display your query results.
+Select the chart type to choose a different type, for example,
+Bar
+.
+You can manage the columns in your chart with the
+Data
+section:
+Select a column to modify the column attributes:
+Add or remove columns.
+Choose a different column in the query results to use in the chart.
+Modify how column data is represented in the chart. For example, change the bucketing for a time column from day to minutes.
+You can modify the column attributes to configure how data in that column is rendered in the chart. See
+Aggregate and bucket data
+for more details about managing aggregate data.
+Style your chart in the
+Appearance
+section. The available settings depend on the type of chart. For example, for a heatgrid
+chart:
+The exact content of your charts depends on your query results. To generate the examples in this topic, use the following query based
+on the Snowflake sample data:
+SELECT
+COUNT
+(
+O_ORDERDATE
+)
+as
+orders
+,
+O_ORDERDATE
+as
+date
+FROM
+SNOWFLAKE_SAMPLE_DATA
+.
+TPCH_SF1
+.
+ORDERS
+WHERE
+O_ORDERDATE
+=
+:daterange
+GROUP
+BY
+:datebucket
+(
+O_ORDERDATE
+),
+O_ORDERDATE
+ORDER
+BY
+O_ORDERDATE
+LIMIT
+10
+;
+Copy
+Charts and new query results
+¶
+Your chart updates automatically as long as the columns used by the chart are available in the query results. If a column name changes, you
+must update the chart to use the new column name. Charts indicate any columns that cannot be found.
+Aggregate and bucket data
+¶
+Charts simplify grouping numbers, dates, and timestamps of more or less continuous values into various
+buckets
+. For example, suppose your
+query retrieves per-day data over a period of time. Without modifying your query, you can easily select a different bucket of time (e.g.
+weekly or monthly data) in the inspector panel to change the time dimension of the results displayed in the chart.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/ui-snowsight-worksheets-gs.txt
+
+Documentation Title:
+Getting started with worksheets | Snowflake Documentation
+
+Documentation Content:
+Select
++
+and select
+SQL Worksheet
+or
+Python Worksheet
+to create a worksheet.
+The worksheet opens in the same window with the date and time of creation as the default title.
+You can then start writing in your worksheet. For a SQL worksheet,
+start writing queries
+.
+For a Python worksheet,
+start writing code
+.
+Create worksheets from a SQL file
+¶
+To create a SQL worksheet from an existing SQL file, do the following:
+Sign in to Snowsight.
+Select
+Projects
+»
+Worksheets
+to open the list of worksheets.
+Select the
+…
+more menu »
+Create Worksheet from SQL File
+.
+Browse to the SQL file to upload.
+A new worksheet opens with a title that matches the file name.
+You can also add a SQL file to an existing SQL worksheet. Refer to
+Append a SQL script to an existing worksheet
+.
+Opening worksheets in tabs
+¶
+You can use tabs to refer to multiple active worksheets and explore the databases and schemas in Snowflake while writing SQL
+statements or Python code in Snowsight. Your scroll position is preserved in each tab, making comparisons across worksheets easier
+to perform. Worksheet tabs are preserved across sessions, so you can pick up your work where you left off.
+To open your Snowsight worksheets in tabs, do the following:
+Sign in to Snowsight.
+Select
+Projects
+»
+Worksheets
+.
+Select an existing worksheet, or select
++ Worksheet
+to open a new worksheet. A worksheet opens in a tab.
+Select a role to run the worksheet as, and select a warehouse to allocate the compute resources for your query.
+In the
+Worksheets
+menu, select an existing worksheet or select
++
+to open a new worksheet tab. By default, the new worksheet
+uses your default role and warehouse.
+(Optional) Make changes to the role or warehouse used to run the new worksheet.
+After you open a worksheet, you can
+update the contents
+,
+run SQL statements
+or
+write Python code
+, and manage the worksheet.
+Was this page helpful?
+Yes
+No
+Visit Snowflake
+Join the conversation
+Develop with Snowflake
+Share your feedback
+Read the latest on our blog
+Get your own certification
+Privacy Notice
+Site Terms
+©
+2024
+Snowflake, Inc.
+All Rights Reserved
+.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/ui-snowsight-quick-tour.txt
+
+Documentation Title:
+Snowsight quick tour | Snowflake Documentation
+
+Documentation Content:
+Export the results for a selected statement, while results are still available.
+For more details, see:
+Getting started with worksheets
+Managing and using worksheets in Snowsight
+Querying data using worksheets
+Writing Snowpark Code in Python Worksheets
+Visualize query results with charts and dashboards
+¶
+When you run a query in Snowsight, you can choose to view your results as a chart. You can also create a collection of charts
+as a
+Dashboard
+, allowing you to review your data more easily. Dashboards provide flexible collections of charts arranged as tiles.
+Dashboard charts start with SQL to generate results and associated charts. You can share these charts with others, modify the charts,
+and display them as dashboard tiles.
+To learn more about charts, see
+Visualizing worksheet data
+. To learn more about dashboards,
+see
+Visualizing data with dashboards
+Explore and manage your database objects
+¶
+You can explore and manage your database objects in Snowsight as follows:
+Explore databases and objects, including tables, functions, views, and more using the database object explorer.
+Create objects like databases, tables, file formats, and more.
+Search within the object explorer to browse database objects across your account.
+Preview the contents of database objects like tables, and view the files uploaded to a stage.
+Load files to an existing table, or create a table from a file so that you can start working with data in Snowflake faster.
+To learn more, see:
+Explore and manage database objects in Snowsight
+Loading data using the web interface
+Staging files using Snowsight
+Share and publish data products
+¶
+Collaborate with users in other Snowflake accounts by sharing data and application packages with them, or publishing those data products
+on the Snowflake Marketplace. When you share or publish data products with a listing, you can use auto-fulfillment to easily provide your data
+products in other Snowflake regions.
+As a consumer of data, you can access datasets and application packages shared with your account or published on the Snowflake Marketplace,
+helping you derive real time data insights without needing to set up a data pipeline or write any code.
+
+
+
+Documentation Source:
+docs.snowflake.com/en/user-guide/sample-data-using.txt
+
+Documentation Title:
+Using the Sample Database | Snowflake Documentation
+
+Documentation Content:
+You set the current warehouse in a session using the
+USE WAREHOUSE
+command (or within the Worksheet in the web interface.)
+Using the Tutorial SQL Scripts
+¶
+Snowflake provides a set of tutorials, which are annotated SQL statements that query the sample data sets to answer a set of practical business questions.
+To access the tutorials from Classic Console:
+In the
+Worksheets
+page, click on the down-arrow next to the worksheet tabs and select
+Open Tutorials
+:
+The
+Open Worksheet
+dialog displays the list of available tutorials. In the dialog, select a tutorial and click on the
+Open
+button:
+A new worksheet is created containing the contents of the tutorial:
+You can then execute the queries in the tutorial as you would in any worksheet. You can also alter the tutorial in the worksheet and save it as a custom worksheet.
+Was this page helpful?
+Yes
+No
+Visit Snowflake
+Join the conversation
+Develop with Snowflake
+Share your feedback
+Read the latest on our blog
+Get your own certification
+Privacy Notice
+Site Terms
+©
+2024
+Snowflake, Inc.
+All Rights Reserved
+.
+On this page
+Viewing the Sample Database
+Querying Tables and Views in the Sample Database
+Using the Tutorial SQL Scripts
+Language
+:
+English
+English
+Français
+Deutsch
+日本語
+한국어
+Português
+
+
+

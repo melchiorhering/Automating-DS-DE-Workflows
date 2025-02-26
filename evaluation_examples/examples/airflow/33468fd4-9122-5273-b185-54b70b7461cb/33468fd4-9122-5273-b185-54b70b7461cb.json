@@ -1,0 +1,60 @@
+{
+    "id": "33468fd4-9122-5273-b185-54b70b7461cb",
+    "snapshot": "airflow",
+    "instruction": "I want to build an airflow project connecting to a local postgres database. Could you install docker, astro and postgresql for me. The sudo password is 'password' (' not included). By the way, configure docker and postgresql to auto-start on boot, and allow me to prevent typing sudo when using docker each time.",
+    "source": [
+        "https://docs.docker.com/engine/install/ubuntu/",
+        "https://docs.docker.com/engine/install/linux-postinstall/"
+    ],
+    "config": [
+        {
+            "type": "script_and_execute",
+            "parameters": {
+                "src": "evaluation_examples/examples/airflow/33468fd4-9122-5273-b185-54b70b7461cb/init.sh",
+                "dest": "/home/user/init.sh"
+            }
+        },
+        {
+            "type": "launch",
+            "parameters": {
+                "command": [
+                    "gnome-terminal",
+                    "--maximize",
+                    "--working-directory=/home/user/"
+                ]
+            }
+        }
+    ],
+    "action_number": 9,
+    "related_apps": [
+        "docker",
+        "postgresql",
+        "airflow",
+        "terminal"
+    ],
+    "tags": [
+        "cli",
+        "data_orchestration",
+        "abstract"
+    ],
+    "evaluator": {
+        "func": "check_include_exclude",
+        "result": {
+            "type": "vm_script_output",
+            "src": "evaluation_examples/examples/airflow/33468fd4-9122-5273-b185-54b70b7461cb/eval.sh",
+            "dest": "/home/user/eval.sh"
+        },
+        "expected": {
+            "type": "rule",
+            "rules": {
+                "include": [
+                    "succeed"
+                ],
+                "exclude": [
+                    "failed"
+                ]
+            }
+        }
+    },
+    "counterpart": "28096b5c-4d8c-485a-a1ec-7e54d41dd636"
+}

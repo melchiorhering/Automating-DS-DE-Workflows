@@ -1,0 +1,136 @@
+Documentation Source:
+cloud.google.com/bigquery/docs/samples/bigquerydatatransfer-create-ads-transfer.html
+
+Documentation Title:
+Load data from Google Ads  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+table properties</span><span>Get view properties</span><span>Grant view access</span><span>Import a local file</span><span>Insert GeoJSON data</span><span>Insert rows with no IDs</span><span>Insert WKT data</span><span>List by label</span><span>List datasets</span><span>List jobs</span><span>List models</span><span>List models using streaming</span><span>List routines</span><span>List tables</span><span>Load a CSV file</span><span>Load a CSV file to replace a table</span><span>Load a CSV file with autodetect schema</span><span>Load a DataFrame to BigQuery with pandas-gbq</span><span>Load a JSON file</span><span>Load a JSON file to replace a table</span><span>Load a JSON file with autodetect schema</span><span>Load a Parquet file</span><span>Load a Parquet to replace a table</span><span>Load a table in JSON format</span><span>Load an Avro file</span><span>Load an Avro file to replace a table</span><span>Load an ORC file</span><span>Load an ORC file to replace a table</span><span>Load data from DataFrame</span><span>Load data into a column-based time partitioning table</span><span>Migration Guide: pandas-gbq</span><span>Migration Guide: pandas-gbq</span><span>Named parameters</span><span>Named parameters and provided types</span><span>Nested repeated schema</span><span>Positional parameters</span><span>Positional parameters and provided types</span><span>Preview table data</span><span>Query a clustered table</span><span>Query a column-based time-partitioned table</span><span>Query a table</span><span>Query Bigtable using a permanent table</span><span>Query Bigtable using a temporary table</span><span>Query Cloud Storage with a permanent table</span><span>Query Cloud Storage with a temporary table</span><span>Query materialized view</span><span>Query
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/samples/bigquerydatatransfer-create-ads-transfer.html
+
+Documentation Title:
+Load data from Google Ads  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+Connection Samples</span><ul><span>Create a Cloud SQL connection</span><span>Create an AWS connection</span><span>Delete a connection</span><span>Get connection metadata</span><span>List connections</span><span>List connections</span><span>Share a connection</span><span>Update connection metadata</span></ul></div><div><span>BigQuery Data Transfer Service Samples</span><ul><span>Copy a dataset</span><span>Create a scheduled query</span><span>Create a scheduled query with a service account</span><span>Create a transfer configuration with run notifications</span><span>Delete a scheduled query</span><span>Delete a transfer configuration</span><span>Disable a transfer configuration</span><span>Get configuration metadata</span><span>Get transfer run metadata</span><span>List run history</span><span>List supported data sources</span><span>List transfer configurations</span><span>Load data from Amazon Redshift</span><span>Load data from Amazon S3</span><span>Load data from Campaign Manager</span><span>Load data from Cloud Storage</span><span>Load data from Google Ad Manager</span><span>Load data from Google Ads</span><span>Load data from Google Play</span><span>Load data from Teradata</span><span>Load data from YouTube Channel reports</span><span>Load data from YouTube Content Owner reports</span><span>Re-enable a transfer configuration</span><span>Schedule a backfill run</span><span>Update configuration metadata</span><span>Update transfer configuration credentials</span></ul></div><div><span>BigQuery Migration Samples</span><span>Demonstrate batch query translation</span></div><div><span>BigQuery Reservation Samples</span><span>Report capacity commitments and reservations</span></div><div><span>BigQuery Storage Samples</span><ul><span>Append buffered records</span><span>Append committed records</span><span>Append data for a complex schema</span><span>Append pending records</span><span>Append records using default client</span><span>Append rows with a static protocol buffer</span><span>Download table data in the Arrow data format</span><span>Download table
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv.html
+
+Documentation Title:
+Loading CSV data from Cloud Storage  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+</p><p>To authenticate to BigQuery, set up Application Default Credentials.
+      For more information, see
+      
+        <a>Set up authentication for client libraries</a>.
+      
+    </p><code>require "google/cloud/bigquery"
+
+def load_table_gcs_csv dataset_id = "your_dataset_id"
+  bigquery = Google::Cloud::Bigquery.new
+  dataset  = bigquery.dataset dataset_id
+  gcs_uri  = "gs://cloud-samples-data/bigquery/us-states/us-states.csv"
+  table_id = "us_states"
+
+  load_job = dataset.load_job table_id, gcs_uri, skip_leading: 1 do |schema|
+    schema.string "name"
+    schema.string "post_abbr"
+  end
+  puts "Starting job #{load_job.job_id}"
+
+  load_job.wait_until_done! # Waits for table load to complete.
+  puts "Job finished."
+
+  table = dataset.table table_id
+  puts "Loaded #{table.rows_count} rows to table #{table.id}"
+end</code></section></section></div><h2>Loading CSV data into a table that uses column-based time partitioning</h2><p>To load CSV data from Cloud Storage into a BigQuery table
+that uses column-based time partitioning:</p><div><section><span>Go</span><p>Before trying this sample, follow the <span>Go</span>setup instructions in the
+          <a>BigQuery quickstart using
+            client libraries</a>.
+        
+      
+      
+  For more information, see the
+  <a>BigQuery <span>Go</span>API
+    reference documentation</a>.
+  
+    </p><p>To authenticate to BigQuery, set up Application Default Credentials.
+      For more information, see
+      
+        <a>Set up authentication for client libraries</a>.
+      
+    </p><code>import (
+	"context"
+	"fmt"
+	"time"
+
+	"cloud.google.com/go/bigquery"
+)
+
+// importPartitionedTable demonstrates specifing time partitioning for a BigQuery table when loading
+// CSV data from Cloud Storage.
+
+
+
+Documentation Source:
+cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv.html
+
+Documentation Title:
+Loading CSV data from Cloud Storage  |  BigQuery  |  Google Cloud
+
+Documentation Content:
+</p><code>import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryException;
+import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.CsvOptions;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Job;
+import com.google.cloud.bigquery.JobInfo;
+import com.google.cloud.bigquery.LoadJobConfiguration;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
+
+// Sample to load CSV data from Cloud Storage into a new BigQuery table
+public class LoadCsvFromGcs {
+
+  public static void runLoadCsvFromGcs() throws Exception {
+    // TODO(developer): Replace these variables before running the sample.
+    String datasetName = "MY_DATASET_NAME";
+    String tableName = "MY_TABLE_NAME";
+    String sourceUri = "gs://cloud-samples-data/bigquery/us-states/us-states.csv";
+    Schema schema =
+        Schema.of(
+            Field.of("name", StandardSQLTypeName.STRING),
+            Field.of("post_abbr", StandardSQLTypeName.STRING));
+    loadCsvFromGcs(datasetName, tableName, sourceUri, schema);
+  }
+
+  public static void loadCsvFromGcs(
+      String datasetName, String tableName, String sourceUri, Schema schema) {
+    try {
+      // Initialize client that will be used to send requests. This client only needs to be created
+      // once, and can be reused for multiple requests.
+      BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+
+      // Skip header row in the file.
+      CsvOptions csvOptions = CsvOptions.newBuilder().setSkipLeadingRows(1).build();
+
+      TableId tableId = TableId.of(datasetName, tableName);
+      LoadJobConfiguration loadConfig =
+          LoadJobConfiguration.newBuilder(tableId, sourceUri, csvOptions).setSchema(schema).build();
+
+      // Load data from a GCS CSV file into the table
+      Job job = bigquery.create(JobInfo.of(loadConfig));
+      // Blocks until this load table job completes its execution, either failing or succeeding.
+
+
+
