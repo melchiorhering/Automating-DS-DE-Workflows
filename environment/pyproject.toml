@@ -1,0 +1,12 @@
+[project]
+name = "environment"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow>=11.1.0",
+    "pyautogui>=0.9.54",
+    "pynput>=1.7.7",
+    "websockets>=15.0",
+]

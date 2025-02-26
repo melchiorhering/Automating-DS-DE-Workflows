@@ -72,8 +72,8 @@ WORKDIR $HOME/server
 
 # Copy and synchronize server code
 COPY src/controller/ controller/
-COPY uv.lock pyproject.toml src/sandbox_server.py ./
-RUN uv sync --frozen --no-dev
+COPY environment/pyproject.toml src/sandbox_server.py ./
+RUN uv sync
 
 # Custom Startup Script
 # https://kasmweb.com/docs/latest/how_to/building_images.html#custom-startup

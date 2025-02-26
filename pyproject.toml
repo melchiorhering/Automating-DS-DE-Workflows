@@ -15,6 +15,7 @@ dependencies = [
     "smolagents>=1.9.2",
     "langchain-milvus>=0.1.8",
     "sentence-transformers>=3.4.1",
+    "uvicorn>=0.34.0",
 ]
 
 
@@ -27,6 +28,9 @@ dev-dependencies = [
     "pytest>=8.3.4",
     "ruff>=0.9.7",
 ]
+
+[tool.uv.workspace]
+members = ["environment"]
 
 [tool.ruff]
 line-length = 120

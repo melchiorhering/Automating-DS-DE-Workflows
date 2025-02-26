@@ -11,7 +11,7 @@ services:
         BASE_IMAGE: "core-ubuntu-noble"
     environment:
       VNC_PW: password # Directly set the VNC password
-      VNC_RESOLUTION: 1280x1024 # Set the VNC resolution
+      VNC_RESOLUTION: 1120x1120 # Set the VNC resolution
       SANDBOX_HOST: "0.0.0.0" # Set the sandbox server host
       SANDBOX_PORT: "8765" # Set the sandbox server port
     ports:

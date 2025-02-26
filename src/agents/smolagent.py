@@ -29,17 +29,21 @@ model = LiteLLMModel(
 )
 
 # Standard HF Model
-model = HfApiModel(
+hf_model = HfApiModel(
     model_id="Qwen/Qwen2.5-Coder-32B-Instruct",
 )
 
+# CogAgent Model; Specialized for GUI Automation
+cogagent = HfApiModel(model_id="THUDM/cogagent-9b-20241220", flatten_messages_as_text=False)
+# Or like this
+# cogagent = AutoModel.from_pretrained("THUDM/cogagent-9b-20241220", trust_remote_code=True)
 
 # AGENTS
 # ========================
 agent = CodeAgent(
     name="CodeAgent",
     tools=[DuckDuckGoSearchTool()],
-    model=model,
+    model=hf_model,
     planning_interval=3,  # This is where you activate planning!
     add_base_tools=True,
 )
