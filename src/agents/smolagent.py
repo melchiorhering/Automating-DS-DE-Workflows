@@ -8,7 +8,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from sentence_transformers import SentenceTransformer
-from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel, LiteLLMModel
+from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel, LiteLLMModel, ToolCallingAgent
 
 # TELEMETRY
 # ========================
@@ -36,10 +36,14 @@ hf_model = HfApiModel(
 # CogAgent Model; Specialized for GUI Automation
 cogagent = HfApiModel(model_id="THUDM/cogagent-9b-20241220", flatten_messages_as_text=False)
 # Or like this
+# High Level API
+# pipe = pipeline("image-text-to-text", model="THUDM/cogagent-9b-20241220", trust_remote_code=True)
+# Low Level API
 # cogagent = AutoModel.from_pretrained("THUDM/cogagent-9b-20241220", trust_remote_code=True)
 
 # AGENTS
 # ========================
+# CodeAgent: Code agent generates code (e.g. Python) to answer questions
 agent = CodeAgent(
     name="CodeAgent",
     tools=[DuckDuckGoSearchTool()],
@@ -49,9 +53,19 @@ agent = CodeAgent(
 )
 # agent.run("How many seconds would it take for a leopard at full speed to run through Pont des Arts?")
 
+# Tool Agent: Tool agent uses tools to answer questions (more JSON-like output)
+tool_agent = ToolCallingAgent(
+    name="ToolAgent",
+    tools=[DuckDuckGoSearchTool()],
+    model=hf_model,
+    planning_interval=3,  # This is where you activate planning!
+    add_base_tools=True,
+)
+# agent.run("How many seconds would it take for a leopard at full speed to run through Pont des Arts?")
 
 # TOOLS
 # ========================
+
 # search_tool = Tool.from_langchain(load_tools(["serpapi"])[0])
 
 
