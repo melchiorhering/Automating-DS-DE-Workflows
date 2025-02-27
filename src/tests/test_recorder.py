@@ -1,7 +1,7 @@
 import time
 import unittest
 
-from server.lib.recorder import ActionRecorder
+from controllers.recorder import ActionRecorder
 
 
 # Dummy objects for simulation

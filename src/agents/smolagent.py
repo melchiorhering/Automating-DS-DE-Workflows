@@ -8,7 +8,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from sentence_transformers import SentenceTransformer
-from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel, LiteLLMModel, ToolCallingAgent
+from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel, ToolCallingAgent
 
 # TELEMETRY
 # ========================
@@ -21,12 +21,12 @@ SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
 # SETUP
 # ========================
 # Specify Other Models (e.g. Ollama)
-model = LiteLLMModel(
-    model_id="ollama_chat/llama3.2",  # This model is a bit weak for agentic behaviours though
-    api_base="http://localhost:11434",  # replace with 127.0.0.1:11434 or remote open-ai compatible server if necessary
-    api_key="YOUR_API_KEY",  # replace with API key if necessary
-    num_ctx=8192,  # ollama default is 2048 which will fail horribly. 8192 works for easy tasks, more is better. Check https://huggingface.co/spaces/NyxKrage/LLM-Model-VRAM-Calculator to calculate how much VRAM this will need for the selected model.
-)
+# model = LiteLLMModel(
+#     model_id="ollama_chat/llama3.2",  # This model is a bit weak for agentic behaviours though
+#     api_base="http://localhost:11434",  # replace with 127.0.0.1:11434 or remote open-ai compatible server if necessary
+#     api_key="YOUR_API_KEY",  # replace with API key if necessary
+#     num_ctx=8192,  # ollama default is 2048 which will fail horribly. 8192 works for easy tasks, more is better. Check https://huggingface.co/spaces/NyxKrage/LLM-Model-VRAM-Calculator to calculate how much VRAM this will need for the selected model.
+# )
 
 # Standard HF Model
 hf_model = HfApiModel(
@@ -62,6 +62,10 @@ tool_agent = ToolCallingAgent(
     add_base_tools=True,
 )
 # agent.run("How many seconds would it take for a leopard at full speed to run through Pont des Arts?")
+
+# AGENT VISION
+
+agent.write_inner_memory_from_logs()
 
 # TOOLS
 # ========================

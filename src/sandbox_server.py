@@ -10,9 +10,8 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import pyautogui
 import websockets
-from websockets import ServerConnection
 
-from controller.recorder import ActionRecorder
+from controllers.recorder import ActionRecorder
 
 
 class SandboxServer:
@@ -162,7 +161,7 @@ class SandboxServer:
             self.logger.error(f"Exception during code execution: {e}")
             return {"stdout": "", "stderr": f"Execution error: {str(e)}"}
 
-    async def handle_client(self, websocket: ServerConnection) -> None:
+    async def handle_client(self, websocket: websockets.ServerConnection) -> None:
         """
         Main loop for each connected client.
         Receives messages, parses JSON, and calls the appropriate handler.
