@@ -16,6 +16,8 @@ dependencies = [
     "langchain-milvus>=0.1.8",
     "sentence-transformers>=3.4.1",
     "uvicorn>=0.34.0",
+    "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.5",
 ]
 
 
@@ -33,6 +35,10 @@ dev-dependencies = [
 members = ["environment"]
 
 [tool.ruff]
+# In addition to the standard set of inclusions, include `.pyw` files.
+extend-include = ["*.ipynb"]
+
+
 line-length = 120
 lint.select = [
     "E", # pycodestyle errors (settings from FastAPI, thanks, @tiangolo!)

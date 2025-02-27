@@ -27,6 +27,15 @@ class SandboxClient:
         self.uri = uri
         self.websocket = None
 
+    async def __aenter__(self):
+        """Support for async context manager."""
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Cleanup for async context manager."""
+        await self.disconnect()
+
     async def connect(self) -> None:
         """
         Connect to the WebSocket server.

@@ -221,19 +221,23 @@ class SandboxServer:
     async def take_screenshot(self) -> str:
         """
         Take and save a screenshot, returning the path.
+        We have a volume mounted to /tmp/sandbox_screenshots in the container.
+        So we save the screenshot there and return the filename.
         Raises an exception if screenshot fails.
         """
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
         filename = f"pyautogui-{timestamp}.png"
-        screenshot_path = os.path.join(self.SCREENSHOT_DIR, filename)
+
+        # This is the container path to the screenshot;
+        container_screenshot_path = os.path.join(self.SCREENSHOT_DIR, filename)
 
         try:
             with contextlib.suppress(FileNotFoundError):
-                os.remove(screenshot_path)
+                os.remove(filename)
 
-            pyautogui.screenshot().save(screenshot_path)
-            self.logger.info(f"Screenshot saved: {screenshot_path}")
-            return screenshot_path
+            pyautogui.screenshot().save(container_screenshot_path)
+            self.logger.info(f"Screenshot saved: {container_screenshot_path}")
+            return filename
         except Exception as e:
             self.logger.error(f"Failed to take screenshot: {e}")
             raise
