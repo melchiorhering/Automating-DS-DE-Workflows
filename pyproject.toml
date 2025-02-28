@@ -18,6 +18,8 @@ dependencies = [
     "uvicorn>=0.34.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
+    "docker>=7.1.0",
+    "podman>=5.4.0.1",
 ]
 
 

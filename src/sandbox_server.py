@@ -8,16 +8,19 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+import numpy as np
 import pyautogui
 import websockets
+from PIL import Image, ImageDraw, ImageFont
 
-from controllers.recorder import ActionRecorder
+from server.pyxcursor import Xcursor
+from server.recorder import ActionRecorder
 
 
 class SandboxServer:
     """A modular WebSocket server for sandboxed code execution and optional GUI interaction."""
 
-    SCREENSHOT_DIR = "/tmp/sandbox_screenshots"
+    SANDBOX_SCREENSHOTS = "/tmp/screenshots"  # Update this to match the container mount point
     MAX_MESSAGE_SIZE = 2**27  # 128 MB limit for inbound/outbound messages
 
     def __init__(self, host: str, port: int):
@@ -35,7 +38,15 @@ class SandboxServer:
         }
 
         self._setup_logging()
-        os.makedirs(self.SCREENSHOT_DIR, exist_ok=True)
+        os.makedirs(self.SANDBOX_SCREENSHOTS, exist_ok=True)
+
+        # Initialize Xcursor for screenshot cursor overlay
+        try:
+            self.cursor = Xcursor()
+            self.logger.info("Xcursor initialized successfully")
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize Xcursor: {e}. Screenshots will not have cursor overlay.")
+            self.cursor = None
 
     def _setup_logging(self) -> None:
         """Configure the server's logging settings."""
@@ -58,31 +69,81 @@ class SandboxServer:
         """
         code = data.get("code", "")
         packages = data.get("packages", [])
+        client_id = data.get("client_id", "default")
 
-        # Optionally, ensure code references pyautogui
-        # if "pyautogui" not in code:
-        #    return {"stdout": "", "stderr": "Code must reference pyautogui"}
+        # Add import statement at the beginning if not present
+        if "import pyautogui" not in code:
+            code = "import pyautogui\n" + code
 
         result = await self.run_code(code, packages)
         if not result["stderr"]:
             # Only take a screenshot if code ran successfully
-            screenshot_path = await self.take_screenshot()
-            result["screenshot"] = screenshot_path
+            screenshot_result = await self._handle_screenshot({"client_id": client_id})
+            result["screenshot"] = screenshot_result.get("screenshot_path")
         return result
 
     async def _handle_screenshot(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Take a screenshot and return path plus metadata (mouse position, screen size).
-        """
+        """Take a screenshot and return path plus metadata."""
         try:
-            screenshot_path = await self.take_screenshot()
+            client_id = data.get("client_id", "default")
+
+            # Create client-specific screenshot directory in container
+            client_dir = os.path.join(self.SANDBOX_SCREENSHOTS, client_id)
+            os.makedirs(client_dir, exist_ok=True)
+
+            # Screenshot file name includes client ID and timestamp
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
+            filename = f"pyautogui-{timestamp}.png"
+            screenshot_path = os.path.join(client_id, filename)
+            container_screenshot_path = os.path.join(client_dir, filename)
+
+            # Take screenshot and process
+            screenshot = pyautogui.screenshot()
+            screenshot_array = np.array(screenshot)
+
+            # Get cursor position
             mouse_x, mouse_y = pyautogui.position()
+
+            # Convert to PIL Image and add annotations
+            screenshot_img = Image.fromarray(screenshot_array)
+            draw = ImageDraw.Draw(screenshot_img)
+
+            # Draw box around cursor
+            box_size = 50
+            draw.rectangle(
+                [mouse_x - box_size // 2, mouse_y - box_size // 2, mouse_x + box_size // 2, mouse_y + box_size // 2],
+                outline="red",
+                width=2,
+            )
+
+            # Add "mouse" label
+            font = ImageFont.load_default()
+            draw.text((mouse_x - box_size // 2, mouse_y - box_size // 2 - 20), "mouse", fill="red", font=font)
+
+            # Overlay cursor if available
+            if self.cursor is not None:
+                try:
+                    cursor_array = self.cursor.getCursorImageArrayFast()
+                    if cursor_array is not None:
+                        cursor_img = Image.fromarray(cursor_array)
+                        # Get cursor dimensions to properly center it
+                        cursor_width, cursor_height = cursor_img.size
+                        # Offset by half the cursor size to center it at the mouse position
+                        cursor_x = mouse_x - cursor_width // 2
+                        cursor_y = mouse_y - cursor_height // 2
+                        screenshot_img.paste(cursor_img, (cursor_x, cursor_y), cursor_img)
+                except Exception as e:
+                    self.logger.warning(f"Failed to overlay cursor: {e}")
+
+            # Save the final image
+            screenshot_img.save(container_screenshot_path)
             width, height = pyautogui.size()
 
             return {
                 "screenshot_path": screenshot_path,
                 "mouse_position": [mouse_x, mouse_y],
                 "screen_size": [width, height],
+                "client_id": client_id,
             }
         except Exception as e:
             self.logger.error(f"Error taking screenshot with metadata: {e}")
@@ -145,6 +206,18 @@ class SandboxServer:
             error = await self.install_packages(packages)
             if error:
                 return {"stdout": "", "stderr": error}
+
+        # Clean up the code indentation more aggressively
+        lines = code.split("\n")
+        # Remove any common indentation
+        if len(lines) > 1:
+            # Find minimum non-zero indentation
+            indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
+            if indents:
+                min_indent = min(indents)
+                # Remove that amount of indentation from all lines
+                lines = [line[min_indent:] if line.strip() else line for line in lines]
+            code = "\n".join(lines)
 
         output_buffer = io.StringIO()
         error_buffer = io.StringIO()
@@ -217,30 +290,6 @@ class SandboxServer:
             self.logger.info("Recording stopped.")
             self.recorder = ActionRecorder()  # give yourself a fresh instance
         return {"status": "recording stopped"}
-
-    async def take_screenshot(self) -> str:
-        """
-        Take and save a screenshot, returning the path.
-        We have a volume mounted to /tmp/sandbox_screenshots in the container.
-        So we save the screenshot there and return the filename.
-        Raises an exception if screenshot fails.
-        """
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
-        filename = f"pyautogui-{timestamp}.png"
-
-        # This is the container path to the screenshot;
-        container_screenshot_path = os.path.join(self.SCREENSHOT_DIR, filename)
-
-        try:
-            with contextlib.suppress(FileNotFoundError):
-                os.remove(filename)
-
-            pyautogui.screenshot().save(container_screenshot_path)
-            self.logger.info(f"Screenshot saved: {container_screenshot_path}")
-            return filename
-        except Exception as e:
-            self.logger.error(f"Failed to take screenshot: {e}")
-            raise
 
     async def start(self) -> None:
         """Start the WebSocket server and run indefinitely until canceled."""

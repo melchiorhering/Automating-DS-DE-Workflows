@@ -48,6 +48,7 @@ RUN apt-get update && apt-get install -y \
     python3-tk \
     libx11-6 \
     libx11-dev \
+    libxfixes-dev \
     libxext-dev \
     libxrender-dev \
     libxtst-dev \
@@ -71,7 +72,7 @@ ENV UV_HTTP_TIMEOUT=60
 WORKDIR $HOME/server
 
 # Copy and synchronize server code
-COPY src/controllers/ controllers/
+COPY src/server/ server/
 COPY environment/pyproject.toml environment/.python-version src/sandbox_server.py ./
 RUN uv sync
 
