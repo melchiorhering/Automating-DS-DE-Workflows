@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Terminal
-Comment=Open Terminal
-Exec=gnome-terminal
-Icon=terminal
-Terminal=false
-Categories=System;TerminalEmulator;

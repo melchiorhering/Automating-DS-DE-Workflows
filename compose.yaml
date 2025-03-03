@@ -25,9 +25,9 @@ services:
     restart: unless-stopped
     volumes:
       - ${VOLUME_DIRECTORY:-.}/screenshots:/tmp/screenshots
-      - profiles/kasm_user:/home/kasm-user
-      - profiles/config:/home/kasm-default-profile/.config
-      - profiles/vscode:/home/kasm-default-profile/.vscode
+      - ./profiles/kasm_user:/home/kasm-user
+      - ./profiles/config:/home/kasm-default-profile/.config
+      - ./profiles/vscode:/home/kasm-default-profile/.vscode
 
   # TELEMETRY - https://docs.arize.com/phoenix
   phoenix:

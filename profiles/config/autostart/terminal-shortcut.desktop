@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Terminal Shortcut Setup
-Exec=bash -c "dconf write /org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/name \"'Launch Terminal'\" && dconf write /org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/command \"'gnome-terminal'\" && dconf write /org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/binding \"'<Ctrl><Alt>t'\""
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true

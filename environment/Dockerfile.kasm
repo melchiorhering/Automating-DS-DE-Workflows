@@ -55,6 +55,7 @@ RUN apt-get update && apt-get install -y \
     libxi6 \
     scrot \
     gnome-screenshot \
+    # xfce4-terminal \
     && rm -rf /var/lib/apt/lists/*
 
 # Define a build argument for additional packages
