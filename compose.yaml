@@ -1,20 +1,21 @@
-include:
-  - compose.vector-db.yaml
+# include:
+#   - compose.vector-db.yaml
 
 services:
   kasm-ubuntu:
+    container_name: kasm-ubuntu
     build:
       context: .
-      dockerfile: environment/Dockerfile
+      dockerfile: environment/Dockerfile.kasm
       args:
         BASE_TAG: "develop"
         BASE_IMAGE: "core-ubuntu-noble"
     environment:
-      VNC_PW: password # Directly set the VNC password
-      VNC_RESOLUTION: 1120x1120 # Set the VNC resolution
+      # VNC_PW: password # Directly set the VNC password
+      # VNC_RESOLUTION: 1120x1120 # Set the VNC resolution
       SANDBOX_HOST: "0.0.0.0" # Set the sandbox server host
       SANDBOX_PORT: "8765" # Set the sandbox server port
-      KASM_PROFILE_PERSISTENCE: "on" # Enable profile persistence
+      VNCOPTIONS: -disableBasicAuth
     ports:
       - "6901:6901"
       - "4901:4901"
@@ -25,9 +26,6 @@ services:
     restart: unless-stopped
     volumes:
       - ${VOLUME_DIRECTORY:-.}/screenshots:/tmp/screenshots
-      - ./profiles/kasm_user:/home/kasm-user
-      - ./profiles/config:/home/kasm-default-profile/.config
-      - ./profiles/vscode:/home/kasm-default-profile/.vscode
 
   # TELEMETRY - https://docs.arize.com/phoenix
   phoenix:
