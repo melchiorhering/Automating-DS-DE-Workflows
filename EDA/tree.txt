@@ -1,0 +1,61 @@
+📦examples
+ ┣ 📂airbyte
+ ┃ ┣ 📂09bf6f69-4f65-4f76-a573-0385ec5ea699
+ ┃ ┃ ┣ 📜09bf6f69-4f65-4f76-a573-0385ec5ea699.json
+ ┃ ┃ ┣ 📜connection.json
+ ┃ ┃ ┣ 📜eval.sh
+ ┃ ┃ ┣ 📜init.sh
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┃ ┗ 📜verbose_instruction.txt
+ ┃ ┣ 📂09cd634a-db75-4ee0-a186-b7f47f37063c
+ ┃ ┃ ┣ 📜09cd634a-db75-4ee0-a186-b7f47f37063c.json
+ ┃ ┃ ┣ 📜connection.json
+ ┃ ┃ ┣ 📜eval.sh
+ ┃ ┃ ┣ 📜init.sh
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┃ ┗ 📜verbose_instruction.txt
+ ...
+ 📦airflow
+ ┣ 📂06b8d673-f953-4f82-86b3-5f5cfe5c8aec
+ ┃ ┣ 📜06b8d673-f953-4f82-86b3-5f5cfe5c8aec.json
+ ┃ ┣ 📜SQL_Check.zip
+ ┃ ┣ 📜eval.sh
+ ┃ ┣ 📜init.sh
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┗ 📜verbose_instruction.txt
+ ┣ 📂0d3ffd3a-2034-47fb-b33f-1a849b641484
+ ┃ ┣ 📜0d3ffd3a-2034-47fb-b33f-1a849b641484.json
+ ┃ ┣ 📜Dag_Explorer.zip
+ ┃ ┣ 📜eval.sh
+ ┃ ┣ 📜init.sh
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┗ 📜verbose_instruction.txt
+ ...
+ 📦bigquery
+ ┣ 📂06f5c71a-55b5-4bd7-97bc-1df04fa4463f
+ ┃ ┣ 📜06f5c71a-55b5-4bd7-97bc-1df04fa4463f.json
+ ┃ ┣ 📜data.jsonl
+ ┃ ┣ 📜gold.csv
+ ┃ ┣ 📜information.txt
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┣ 📜schema.txt
+ ┃ ┗ 📜verbose_instruction.txt
+ ┣ 📂0ad83ae7-223e-4a3a-879a-5097198aee56
+ ┃ ┣ 📜0ad83ae7-223e-4a3a-879a-5097198aee56.json
+ ┃ ┣ 📜gold.csv
+ ┃ ┣ 📜information.txt
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.html
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.md
+ ┃ ┣ 📜retrieved_chunk_size_512_chunk_overlap_20_topk_4_embed_bge-large-en-v1.5.txt
+ ┃ ┗ 📜verbose_instruction.txt
+ ...

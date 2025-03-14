@@ -20,6 +20,8 @@ dependencies = [
     "ipywidgets>=8.1.5",
     "docker>=7.1.0",
     "podman>=5.4.0.1",
+    "matplotlib>=3.10.1",
+    "seaborn>=0.13.2",
 ]
 
 
