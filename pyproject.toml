@@ -36,7 +36,7 @@ dev-dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["environment"]
+members = ["environment", "EDA"]
 
 [tool.ruff]
 # In addition to the standard set of inclusions, include `.pyw` files.

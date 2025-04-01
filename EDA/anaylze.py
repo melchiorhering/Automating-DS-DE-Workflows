@@ -408,7 +408,7 @@ class BenchmarkAnalyzer:
         )
 
         # Enhance styling
-        plt.title("File Type Distribution by Tool (%)", fontsize=18, fontweight="bold", pad=20)
+        plt.title("File Type Distribution by Tool (%) — Enhanced", fontsize=18, fontweight="bold", pad=20)
         plt.xlabel("File Type", fontsize=14, fontweight="bold")
         plt.ylabel("Tool", fontsize=14, fontweight="bold")
 
@@ -416,6 +416,10 @@ class BenchmarkAnalyzer:
         cbar = ax.collections[0].colorbar
         cbar.ax.tick_params(labelsize=10)
         cbar.set_label("Percentage of Files", fontsize=12, fontweight="bold")
+
+        # Annotate the maximum cell
+        y_idx, x_idx = divmod(pivot_filtered.values.argmax(), pivot_filtered.shape[1])
+        plt.text(x_idx + 0.5, y_idx + 0.5, "Max", ha="center", va="center", color="red", fontweight="bold")
 
         plt.tight_layout()
         plt.show()
@@ -425,11 +429,13 @@ class BenchmarkAnalyzer:
 
         # Prepare data for grouped bar chart - select top 6 file types for clarity
         top6_types = file_type_totals.head(6).index.tolist()
-        chart_data = file_data[file_data["file_type"].isin(top6_types)]
+        # Create an explicit copy of the filtered DataFrame to prevent SettingWithCopyWarning
+        chart_data = file_data[file_data["file_type"].isin(top6_types)].copy()
 
         # Sort tools by benchmark count
         tool_order = tool_summary.sort_values("benchmark_count", ascending=False)["tool"].tolist()
         chart_data["tool"] = pd.Categorical(chart_data["tool"], categories=tool_order, ordered=True)
+
         chart_data = chart_data.sort_values(["tool", "count"], ascending=[True, False])
 
         # Create a grouped bar chart
@@ -533,6 +539,8 @@ class BenchmarkAnalyzer:
                 edgecolor="white",
                 linewidth=1.5,
                 alpha=0.7,
+                hue="tool",
+                legend=False,
             )
 
             # Highlight the tool with connections
@@ -626,6 +634,8 @@ class BenchmarkAnalyzer:
                     sns.barplot(
                         x="count",
                         y="source",
+                        hue="source",
+                        legend=False,
                         data=top_sources,
                         palette="Blues_d",
                         edgecolor="white",
@@ -642,6 +652,8 @@ class BenchmarkAnalyzer:
                     sns.barplot(
                         x="count",
                         y="destination",
+                        hue="count",
+                        legend=False,
                         data=top_dests,
                         palette="Greens_d",
                         edgecolor="white",
@@ -763,7 +775,9 @@ class BenchmarkAnalyzer:
         plt.figure(figsize=(12, 6))
 
         # Create violin plots showing file count distribution
-        ax = sns.violinplot(x="tool", y="file_count", data=benchmark_stats, palette="Set3", inner="box", cut=0)
+        ax = sns.violinplot(
+            x="tool", y="file_count", hue="tool", data=benchmark_stats, palette="Set3", inner="box", cut=0, legend=False
+        )
 
         # Add data points for individual benchmarks
         sns.stripplot(x="tool", y="file_count", data=benchmark_stats, size=3, color="black", alpha=0.3, jitter=True)
@@ -1299,6 +1313,8 @@ class BenchmarkAnalyzer:
         ax = sns.barplot(
             x="tool",
             y="benchmark_count",
+            hue="tool",
+            legend=False,
             data=summary,
             palette="Blues_d",  # Use a color gradient
             alpha=0.85,  # Slightly transparent
@@ -1323,6 +1339,15 @@ class BenchmarkAnalyzer:
                 fontsize=11,
                 path_effects=[path_effects.withSimplePatchShadow(offset=(1, -1), shadow_rgbFace="white", alpha=0.8)],
             )
+
+        # Highlight the tool with the highest benchmark_count
+        max_benchmarks = summary["benchmark_count"].max()
+        max_index = summary["benchmark_count"].idxmax()
+
+        # Draw a red star on the highest bar
+        for i, v in enumerate(summary["benchmark_count"]):
+            if v == max_benchmarks:
+                ax.text(i, v + 0.5, "★", ha="center", color="red", fontsize=14, fontweight="bold")
 
         # Add horizontal line for average
         avg = summary["benchmark_count"].mean()
@@ -1352,7 +1377,7 @@ class BenchmarkAnalyzer:
         # Make the plot background a gradient
         ax.set_facecolor("#f8f9fa")
 
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
 
     def plot_json_complexity(self) -> None:
@@ -1753,7 +1778,7 @@ class BenchmarkAnalyzer:
         html.append("</div>")
         html.append("</div>")  # End file type section
 
-        # JSON Structure Analysis
+        # JSON Structure Analysis Section
         html.append('<div class="section">')
         html.append("<h2>JSON Structure Analysis</h2>")
 
@@ -1766,27 +1791,25 @@ class BenchmarkAnalyzer:
                 .agg({"depth": ["mean", "max"], "keys": ["mean", "max"], "size": ["mean", "max"]})
                 .reset_index()
             )
-
             json_complexity.columns = ["_".join(col).strip("_") for col in json_complexity.columns.values]
             html.append(json_complexity.to_html(index=False))
 
-            # JSON complexity plot
+            # Corrected JSON complexity plot
             html.append('<div class="plot">')
             html.append("<h3>JSON Complexity by Tool</h3>")
-
             plt.figure(figsize=(14, 6))
-            sns.barplot(x="tool", y="depth_mean", data=json_complexity)
+            sns.barplot(x="tool", y="depth_mean", data=json_complexity, palette="Blues_d")
             plt.title("Average JSON Depth by Tool")
             plt.xlabel("Tool")
             plt.ylabel("Average Depth")
             plt.xticks(rotation=45)
             plt.tight_layout()
-
             plot_data = fig_to_base64(plt.gcf())
             html.append(f'<img src="data:image/png;base64,{plot_data}" alt="JSON Complexity">')
             html.append("</div>")
-
-        html.append("</div>")  # End JSON section
+        else:
+            html.append("<p>No JSON files found for complexity analysis.</p>")
+        html.append("</div>")
 
         # Connection Analysis
         html.append('<div class="section">')
@@ -1993,7 +2016,7 @@ class BenchmarkAnalyzer:
                             {
                                 "tool": tool,
                                 "benchmark_id": benchmark["id"],
-                                "full_name": name,
+                                "name": name,
                                 "source": source,
                                 "destination": destination,
                                 "has_arrow": "→" in name,
@@ -2002,17 +2025,16 @@ class BenchmarkAnalyzer:
 
         return pd.DataFrame(name_patterns)
 
-    def export_data(self, output_dir: str = "benchmark_analysis_exports") -> None:
+    def export_analysis(self, output_dir: str) -> None:
         """
-        Export all analysis data to CSV files.
+        Export analysis results to CSV files.
 
         Parameters:
-            output_dir (str): Directory to save CSV files
+            output_dir (str): Directory to save the CSV files
         """
-        # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Get all analysis data
+        # Perform analysis
         tool_summary = self.get_tool_summary()
         json_structure = self.get_json_structure_stats()
         connections = self.analyze_connections()
@@ -2037,5 +2059,3 @@ class BenchmarkAnalyzer:
         file_patterns.to_csv(f"{output_dir}/file_patterns.csv", index=False)
         file_signatures.to_csv(f"{output_dir}/file_signatures.csv", index=False)
         file_insights.to_csv(f"{output_dir}/file_insights.csv", index=False)
-
-        print(f"All data exported to {output_dir}/")

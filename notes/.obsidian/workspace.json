@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "93bf6e9ea7b8365b",
+        "id": "e1eadc165ee48408",
         "type": "tabs",
         "children": [
           {
-            "id": "45a910774da57bee",
+            "id": "773db36e667b1b2a",
             "type": "leaf",
             "state": {
-              "type": "release-notes",
+              "type": "markdown",
               "state": {
-                "currentVersion": "1.8.9"
+                "file": "Research Questions.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-book-up",
-              "title": "Release Notes 1.8.9"
+              "icon": "lucide-file",
+              "title": "Research Questions"
             }
           }
         ]
@@ -161,12 +163,12 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "45a910774da57bee",
+  "active": "1c13ba6ce4526f72",
   "lastOpenFiles": [
-    "Research Questions.md",
-    "Improvement Ideas.md",
-    "Improving Spider2-V Benchmark Scores.md",
     "Description.md",
+    "Research Questions.md",
+    "Improving Spider2-V Benchmark Scores.md",
+    "Improvement Ideas.md",
     "Base Lever Improvements Ideas.md"
   ]
 }
