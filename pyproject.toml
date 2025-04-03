@@ -5,38 +5,26 @@ description = "Master thesis project: Automating (Data Science & Engineering) Wo
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "langchain-community>=0.3.16",
     "pillow>=11.1.0",
     "pyautogui>=0.9.54",
     "tqdm>=4.67.1",
     "websockets>=14.2",
-    "pynput>=1.7.7",
-    "pytest-playwright>=0.7.0",
     "smolagents>=1.9.2",
-    "langchain-milvus>=0.1.8",
-    "sentence-transformers>=3.4.1",
     "uvicorn>=0.34.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "docker>=7.1.0",
-    "podman>=5.4.0.1",
     "matplotlib>=3.10.1",
     "seaborn>=0.13.2",
+    "filelock>=3.18.0",
 ]
 
 
 [tool.uv]
-dev-dependencies = [
-    "arize-phoenix>=8.2.2",
-    "openinference-instrumentation-smolagents>=0.1.6",
-    "opentelemetry-exporter-otlp>=1.30.0",
-    "opentelemetry-sdk>=1.30.0",
-    "pytest>=8.3.4",
-    "ruff>=0.9.7",
-]
+dev-dependencies = ["pytest>=8.3.4", "ruff>=0.9.7"]
 
 [tool.uv.workspace]
-members = ["environment", "EDA"]
+members = ["environment"]
 
 [tool.ruff]
 # In addition to the standard set of inclusions, include `.pyw` files.
