@@ -5,9 +5,6 @@ data
 docker/volumes/
 docker/vms
 
-# Spider
-Spider2-V
-
 # Python
 __pycache__/
 *.py[cod]
