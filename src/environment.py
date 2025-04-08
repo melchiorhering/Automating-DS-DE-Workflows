@@ -1,425 +1,201 @@
-import asyncio
+# src/environment.py
+"""
+Environment Management for VM Containers with Dataclass Configuration
+
+This module provides classes for managing Docker-based VM environments,
+using dataclasses for configuration management.
+"""
+
+import dataclasses
+import hashlib
 import logging
 import os
 import platform
+import shutil
+import tarfile
 import time
+import urllib.parse
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Optional, Union, List
+from typing import Dict, Optional
 
-import docker
 import psutil
 import urllib3
 from filelock import FileLock
-from smolagents import CodeAgent
 from tqdm import tqdm
 
-from sandbox_client import SandboxClient
+import docker
 
-# Create a urllib3 PoolManager with better connection handling
-http = urllib3.PoolManager(
-    retries=urllib3.Retry(3, redirect=2, backoff_factor=0.5),
-    timeout=urllib3.Timeout(connect=30.0, read=60.0),
-    maxsize=10
-)
-
-PROJECT_ROOT = str(os.getenv("ROOT_DIR", "./"))
-VOLUME_DIRECTORY = os.getenv("VOLUME_DIRECTORY", "./volumes")
-
-# Global URL definitions
-UBUNTU_X86_URL = "https://huggingface.co/datasets/xlangai/ubuntu_osworld/resolve/main/Ubuntu.qcow2.zip"
-WINDOWS_X86_URL = "https://huggingface.co/datasets/xlangai/windows_osworld/resolve/main/Windows-10-x64.qcow2.zip"
-
+# BASED ON THE FOLLOWING DOCKER-COMPOSE FILE FOR RUNNING THE VM
+# ```yaml
+# THIS DOCKER-COMPOSE FILE IS FOR RUNNING MANUALLY TO SETUP THE INITIAL ENVIRONMENT
 # Global VM resource settings
-VM_DISK_SIZE = os.getenv("VM_DISK_SIZE", "32G")
-VM_RAM_SIZE = os.getenv("VM_RAM_SIZE", "4G")
-VM_CPU_CORES = os.getenv("VM_CPU_CORES", "4")
+# Configuration can be found here: https://github.com/qemus/qemu
+# services:
+#   qemu:
+#     image: qemux/qemu
+#     container_name: qemu
+#     environment:
+#       BOOT: "ubuntu" # Default boot image
+#       # BOOT: "https://huggingface.co/datasets/xlangai/ubuntu_osworld/resolve/main/Ubuntu.qcow2.zip" # Downloads the Spider2-V image
+#       DEBUG: "Y"
+#       RAM_SIZE: "4G"
+#       CPU_CORES: "4"
+#       DISK_SIZE: "32G"
+#     devices:
+#       - /dev/kvm
+#       - /dev/net/tun
+#     cap_add:
+#       - NET_ADMIN
+#     ports:
+#       - 8006:8006
+#     volumes:
+#       - ${ROOT}/docker/volumes/ubuntu:/storage # FOR READ ONLY APPEND `:ro`
+#     restart: always
+#     stop_grace_period: 2m
+# ```
 
 
-class PortAllocationError(Exception):
-    """Raised when unable to find available port."""
+@dataclasses.dataclass
+class VMConfig:
+    """Configuration settings for VM and container management."""
+
+    # Paths and directories
+    project_root: str | Path
+    initial_image: str | Path  # Path to the initial image dir, used for creating new images
+    # These should be computed in __post_init__ rather than directly
+    docker_directory: str | Path = dataclasses.field(default=None)
+    vm_environments: str | Path = dataclasses.field(default=None)
+
+    # VM settings
+    vm_os: str = os.getenv("VM_OS", "ubuntu")
+    vm_disk_size: str = os.getenv("VM_DISK_SIZE", "32G")
+    vm_ram_size: str = os.getenv("VM_RAM_SIZE", "4G")
+    vm_cpu_cores: str = os.getenv("VM_CPU_CORES", "4")
+    vm_debug: str = os.getenv("VM_DEBUG", "Y")
+
+    # Timeouts
+    download_timeout: int = int(os.getenv("DOWNLOAD_TIMEOUT", "300"))
+    vm_ready_timeout: int = int(os.getenv("VM_READY_TIMEOUT", "300"))
+    container_stop_timeout: int = int(os.getenv("CONTAINER_STOP_TIMEOUT", "5"))
+
+    # Default ports - using higher ports to avoid common conflicts
+    default_port_ranges: Dict[str, int] = dataclasses.field(default_factory=lambda: {"vnc": 8006, "server": 8765})
+
+    # Docker image settings
+    # Image for using the QEMU VM setup
+    default_vm_image: str = "qemux/qemu"
+    default_hardlink_threshold: int = 100 * 1024 * 1024  # 100MB
+
+    def __post_init__(self):
+        """Initialize derived fields after the object is created."""
+        # Convert project_root to Path if it's not already
+        if isinstance(self.project_root, str):
+            self.project_root = Path(self.project_root)
+
+        # Set volumes_directory if not provided
+        if self.docker_directory is None:
+            self.docker_directory = self.project_root / "docker"
+
+        # Set vm_environments if not provided
+        if self.vm_environments is None:
+            self.vm_environments = self.docker_directory / "environments"
+
+    def get_lock_file_path(self) -> Path:
+        """Get the appropriate path for lock files based on platform."""
+        temp_dir = Path(os.getenv("TEMP") if platform.system() == "Windows" else "/tmp")
+        return temp_dir / "docker_port_allocation.lck"
+
+    @staticmethod
+    def is_kvm_available() -> bool:
+        """Check if KVM is available."""
+        return os.path.exists("/dev/kvm") and os.access("/dev/kvm", os.R_OK | os.W_OK)
+
+
+# Custom exceptions
+class SandboxError(Exception):
+    """Base class for all sandbox-related exceptions."""
+
     pass
 
 
-class ContainerConfig:
+class PortAllocationError(SandboxError):
+    """Raised when unable to find or allocate an available port."""
+
+    pass
+
+
+class VMImageError(SandboxError):
+    """Raised when there's an error with VM image handling."""
+
+    pass
+
+
+class ContainerError(SandboxError):
+    """Raised when there's an error with container operations."""
+
+    pass
+
+
+class NetworkError(SandboxError):
+    """Raised when there's a network-related error."""
+
+    pass
+
+
+# Common utilities
+def create_http_client(retries=3, connect_timeout=30.0, read_timeout=60.0, maxsize=10):
+    """Create a properly configured HTTP client."""
+    return urllib3.PoolManager(
+        retries=urllib3.Retry(retries, redirect=2, backoff_factor=0.5),
+        timeout=urllib3.Timeout(connect=connect_timeout, read=read_timeout),
+        maxsize=maxsize,
+    )
+
+
+# Global HTTP client for reuse
+http = create_http_client()
+
+
+def is_url(path):
     """
-    Configuration class for Docker containers and images.
-    Handles image selection, build configuration, and container settings.
+    Check if the provided path is a valid URL with an allowed scheme.
+
+    Args:
+        path: The path or URL to check
+
+    Returns:
+        bool: True if it's a valid URL, False otherwise
     """
+    if not isinstance(path, str):
+        return False
 
-    def __init__(
-        self,
-        image_name: str,
-        dockerfile_path: str = None,
-        build_args: Dict[str, str] = None,
-        is_vm: bool = True,
-        os_type: str = "Ubuntu",
-        vm_image_url: str = None,
-        shm_size: str = "512m",
-        environment: Dict[str, str] = None,
-        ports: Dict[int, Optional[int]] = None,
-        volumes: Dict[str, Dict[str, str]] = None,
-        caps: List[str] = None,
-        devices: List[str] = None,
-    ):
-        """
-        Initialize container configuration.
-
-        Args:
-            image_name: Name of the Docker image to use
-            dockerfile_path: Path to Dockerfile if building image
-            build_args: Arguments for Docker build
-            is_vm: Whether this is a VM-based container
-            os_type: OS type for VM containers ("Ubuntu" or "Windows")
-            vm_image_url: URL for VM image download (overrides default)
-            shm_size: Shared memory size
-            environment: Environment variables for container
-            ports: Port mappings (container:host)
-            volumes: Volume mappings
-            caps: Linux capabilities to add
-            devices: Devices to expose to container
-        """
-        self.image_name = image_name
-        self.dockerfile_path = dockerfile_path
-        self.build_args = build_args or {}
-        self.is_vm = is_vm
-        self.os_type = os_type
-        self.shm_size = shm_size
-        self.environment = environment or {}
-        self.ports = ports or {}
-        self.volumes = volumes or {}
-        self.capabilities = caps or []
-        self.devices = devices or []
-
-        # Set VM image URL based on OS type if not provided
-        self.vm_image_url = vm_image_url
-        if is_vm and not vm_image_url:
-            self.vm_image_url = UBUNTU_X86_URL if os_type == "Ubuntu" else WINDOWS_X86_URL
-
-    @classmethod
-    def standard_container(cls, image_name: str = "kasm-ubuntu", dockerfile_path: str = "environment/Dockerfile.kasm", **kwargs):
-        """Create configuration for a standard (non-VM) container."""
-        return cls(
-            image_name=image_name,
-            dockerfile_path=dockerfile_path,
-            is_vm=False,
-            build_args={"BASE_TAG": "develop", "BASE_IMAGE": "core-ubuntu-noble"},
-            **kwargs
-        )
-
-    @classmethod
-    def ubuntu_vm(cls, **kwargs):
-        """Create configuration for Ubuntu VM container."""
-        return cls(
-            image_name="happysixd/osworld-ubuntu-docker",
-            is_vm=True,
-            os_type="Ubuntu",
-            vm_image_url=UBUNTU_X86_URL,
-            capabilities=["NET_ADMIN"],
-            devices=["/dev/kvm"],
-            **kwargs
-        )
-
-    @classmethod
-    def windows_vm(cls, **kwargs):
-        """Create configuration for Windows VM container."""
-        return cls(
-            image_name="happysixd/osworld-windows-docker",
-            is_vm=True,
-            os_type="Windows",
-            vm_image_url=WINDOWS_X86_URL,
-            capabilities=["NET_ADMIN"],
-            devices=["/dev/kvm"],
-            **kwargs
-        )
-
-    def build_image(self, docker_client, logger=None):
-        """Build Docker image from Dockerfile."""
-        if not self.dockerfile_path:
-            if logger:
-                logger.info(f"Using existing image: {self.image_name}")
-            return
-
-        try:
-            if logger:
-                logger.info(f"Building image '{self.image_name}' from {self.dockerfile_path}")
-
-            image, build_logs = docker_client.images.build(
-                path=PROJECT_ROOT,
-                dockerfile=self.dockerfile_path,
-                tag=self.image_name,
-                buildargs=self.build_args,
-                rm=True,
-            )
-
-            # Log build output if logger is provided
-            if logger:
-                for log in build_logs:
-                    if "stream" in log:
-                        log_line = log["stream"].strip()
-                        if log_line:
-                            logger.debug(log_line)
-                logger.info(f"Successfully built image: {self.image_name}")
-
-            return image
-
-        except Exception as e:
-            if logger:
-                logger.error(f"Error building Docker image: {str(e)}")
-            raise
+    try:
+        result = urllib.parse.urlparse(path)
+        return all([result.scheme, result.netloc]) and result.scheme in ["http", "https", "ftp"]
+    except Exception:
+        return False
 
 
-class Sandbox:
+def verify_file_checksum(file_path, expected_checksum, logger):
     """
-    Manages a sandbox client connecting to a sandbox server in a Docker container.
-    Supports both standard sandbox environments and VM-based environments.
+    Verify file integrity using SHA256 checksum.
+
+    Args:
+        file_path: Path to the file to verify
+        expected_checksum: Expected SHA256 checksum
+        logger: Logger instance
+
+    Returns:
+        bool: True if checksum matches, False otherwise
     """
+    if not os.path.exists(file_path):
+        logger.warning(f"File not found for checksum verification: {file_path}")
+        return False
 
-    def __init__(
-        self,
-        agent: CodeAgent,
-        task: str,
-        container_config: Optional[ContainerConfig] = None,
-        host: str = "localhost",
-        port: int = 8765,
-        client_prefix: str = "sandbox",
-        container_name: str = None,
-        build_image: bool = False,
-        docker_env: dict = {},
-        volume_directory: str = None,
-        vms_dir: str = None,
-        download_retries: int = 3,
-        vm_ready_timeout: int = 300,
-        container_stop_timeout: int = 5,
-        start_port_range: dict = None,
-    ):
-        """
-        Initialize the sandbox with a Docker container.
-
-        Args:
-            agent: The agent that will use this sandbox
-            task: Description of the task
-            container_config: Container configuration (if None, defaults to Ubuntu VM)
-            host: The hostname where sandbox server will be accessible
-            port: The port number for the sandbox server
-            client_prefix: Prefix for client ID
-            container_name: Optional custom container name
-            build_image: Whether to build the image before creating containers
-            docker_env: Environment variables for Docker client
-            volume_directory: Directory for persistent volumes
-            vms_dir: Directory for VM images
-            download_retries: Number of retries for downloading VM images
-            vm_ready_timeout: Maximum time to wait for VM to be ready (seconds)
-            container_stop_timeout: Timeout when stopping containers (seconds)
-            start_port_range: Dict with starting ports for different services
-        """
-        self.agent = agent
-        self.task = task
-        self.host = host
-        self.port = port
-        self.client_prefix = client_prefix
-
-        # Initialize logger early
-        self.logger = logging.getLogger(f"{agent.name}.Sandbox")
-
-        # Set timeout configurations early so they're available during setup
-        self.download_retries = download_retries
-        self.vm_ready_timeout = vm_ready_timeout
-        self.container_stop_timeout = container_stop_timeout
-
-        # Use default Ubuntu VM container config if none provided
-        self.config = container_config or ContainerConfig.ubuntu_vm()
-
-        self.container_name = container_name or f"{client_prefix}-{agent.name}"
-
-        # Configure directories
-        self.project_root = PROJECT_ROOT
-        self.volume_directory = volume_directory or VOLUME_DIRECTORY
-        self.vms_dir = vms_dir or os.path.join(self.project_root, "vms")
-
-        # Create directories if they don't exist
-        os.makedirs(self.vms_dir, exist_ok=True)
-        os.makedirs(self.volume_directory, exist_ok=True)
-
-        # Additional ports for VM mode
-        self.vnc_port = None
-        self.server_port = None
-        self.chromium_port = None
-        self.vlc_port = None
-        self.client = None
-        self.container = None
-        self.vm_path = None
-
-        # Default port ranges that can be overridden
-        self.start_port_range = {
-            "vnc": 8006,
-            "server": 5000,
-            "chromium": 9222,
-            "vlc": 8080
-        }
-        if start_port_range:
-            self.start_port_range.update(start_port_range)
-
-        try:
-            # Initialize Docker client
-            self.docker_client = docker.from_env(**(docker_env or {}))
-
-            # VM preparation (only if using VM)
-            if self.config.is_vm:
-                temp_dir = Path(os.getenv("TEMP") if platform.system() == "Windows" else "/tmp")
-                self.lock_file = temp_dir / "docker_port_allocation.lck"
-                self.lock_file.parent.mkdir(parents=True, exist_ok=True)
-
-                # Get VM image
-                self.vm_path = self._get_vm_image()
-
-            # Build the image if requested and a dockerfile is specified
-            if build_image and self.config.dockerfile_path:
-                self.config.build_image(self.docker_client, self.logger)
-
-            # Create the container
-            self.container = self._create_container()
-
-            # Initialize sandbox client after container is created (non-VM mode only)
-            if not self.config.is_vm:
-                self.client = SandboxClient(f"ws://{host}:{port}", client_id=client_prefix)
-
-        except Exception as e:
-            self.logger.error(f"Error initializing sandbox: {e}")
-            # Clean up any resources that might have been created
-            self.cleanup()
-            raise
-
-    def _get_vm_image(self):
-        """Get the path to the VM image for the configured OS type."""
-        url = self.config.vm_image_url
-        vm_name = url.split("/")[-1]
-
-        if vm_name.endswith(".zip"):
-            vm_name = vm_name[:-4]
-
-        vm_path = os.path.join(self.vms_dir, vm_name)
-
-        if not os.path.exists(vm_path):
-            self.logger.info(f"VM image not found locally. Downloading {self.config.os_type} image...")
-            vm_path = self._download_vm_image(url, self.vms_dir)
-
-        self.logger.info(f"Using VM image: {vm_path}")
-        return vm_path
-
-    def _download_vm_image(self, url, vms_dir):
-        """Download a VM image from the given URL using urllib3."""
-        self.logger.info(f"Downloading VM image from: {url}")
-        downloaded_file_name = url.split("/")[-1]
-        downloaded_size = 0
-
-        os.makedirs(vms_dir, exist_ok=True)
-        downloaded_file_path = os.path.join(vms_dir, downloaded_file_name)
-
-        retry_count = 0
-        max_retries = self.download_retries
-
-        while retry_count <= max_retries:
-            headers = {}
-            if os.path.exists(downloaded_file_path):
-                downloaded_size = os.path.getsize(downloaded_file_path)
-                headers["Range"] = f"bytes={downloaded_size}-"
-
-            try:
-                # Try to download the file
-                response = http.request(
-                    "GET",
-                    url,
-                    headers=headers,
-                    preload_content=False,  # Don't read data into memory yet
-                )
-
-                # Handle Range Not Satisfiable (416) case
-                if response.status == 416:
-                    self.logger.info("VM image already fully downloaded.")
-                    break
-
-                # Check for errors
-                if response.status >= 400:
-                    raise Exception(f"HTTP Error: {response.status}")
-
-                # Get content length for progress tracking
-                total_size = int(response.headers.get("content-length", 0))
-
-                with open(downloaded_file_path, "ab") as file:
-                    with tqdm(
-                        desc="Progress",
-                        total=total_size,
-                        unit="iB",
-                        unit_scale=True,
-                        unit_divisor=1024,
-                        initial=downloaded_size,
-                        ascii=True,
-                    ) as progress_bar:
-                        try:
-                            for chunk in response.stream(1024):
-                                size = file.write(chunk)
-                                progress_bar.update(size)
-                            self.logger.info("Download completed successfully.")
-                            # Break out of the retry loop on success
-                            break
-                        except (urllib3.exceptions.HTTPError, IOError) as e:
-                            self.logger.error(f"Download error: {e}")
-                            retry_count += 1
-                            if retry_count <= max_retries:
-                                time.sleep(5)
-                                self.logger.info(f"Retrying download (attempt {retry_count}/{max_retries})...")
-                            else:
-                                self.logger.error("Maximum retry attempts reached.")
-                                raise
-                finally:
-                    # Make sure to release resources even if an exception occurs
-                    response.release_conn()
-
-                # Verify checksum after successful download
-                try:
-                    checksum_url = f"{url}.sha256"
-                    checksum_response = http.request("GET", checksum_url)
-                    if checksum_response.status == 200:
-                        expected_checksum = checksum_response.data.decode('utf-8').strip()
-                        if self._verify_file_checksum(downloaded_file_path, expected_checksum):
-                            self.logger.info("Checksum verification passed.")
-                        else:
-                            self.logger.warning("Checksum verification failed, but continuing anyway.")
-                except Exception as e:
-                    self.logger.warning(f"Could not verify checksum: {e}")
-
-            except Exception as e:
-                self.logger.error(f"Error during download: {e}")
-                retry_count += 1
-                if retry_count <= max_retries:
-                    time.sleep(5)
-                    self.logger.info(f"Retrying download (attempt {retry_count}/{max_retries})...")
-                else:
-                    self.logger.error("Maximum retry attempts reached.")
-                    raise
-
-        # Extract zip file if download was successful
-        if downloaded_file_name.endswith(".zip"):
-            # Unzip the downloaded file
-            self.logger.info("Extracting VM image...")
-            with zipfile.ZipFile(downloaded_file_path, "r") as zip_ref:
-                zip_ref.extractall(vms_dir)
-            self.logger.info(f"VM image extracted to: {vms_dir}")
-
-            # Return path to the extracted VM image
-            return os.path.join(vms_dir, downloaded_file_name[:-4])
-
-        return downloaded_file_path
-
-    def _verify_file_checksum(self, file_path, expected_checksum):
-        """Verify file integrity using SHA256 checksum."""
-        import hashlib
-
-        if not os.path.exists(file_path):
-            return False
-
-        sha256_hash = hashlib.sha256()
+    sha256_hash = hashlib.sha256()
+    try:
         with open(file_path, "rb") as f:
             # Read and update hash in chunks for memory efficiency
             for byte_block in iter(lambda: f.read(4096), b""):
@@ -428,451 +204,1068 @@ class Sandbox:
         file_hash = sha256_hash.hexdigest()
 
         if file_hash != expected_checksum:
-            self.logger.warning(f"Checksum verification failed for {file_path}")
+            logger.warning(f"Checksum verification failed for {file_path}")
             return False
 
-        self.logger.info(f"Checksum verified for {file_path}")
+        logger.info(f"Checksum verified for {file_path}")
         return True
+    except Exception as e:
+        logger.error(f"Error during checksum verification: {e}")
+        return False
 
-    def _get_available_port(self, start_port: int) -> int:
-        """Find next available port starting from start_port."""
+
+@contextmanager
+def acquire_port_lock(lock_file):
+    """
+    Context manager for safely acquiring a file lock for port allocation.
+
+    Args:
+        lock_file: Path to the lock file
+
+    Yields:
+        None when lock is acquired
+
+    Raises:
+        PortAllocationError: If lock cannot be acquired
+    """
+    lock = FileLock(str(lock_file), timeout=10)
+    try:
+        lock.acquire()
+        yield
+    except Exception as e:
+        raise PortAllocationError(f"Failed to acquire port allocation lock: {e}") from e
+    finally:
+        if lock.is_locked:
+            lock.release()
+
+
+class NetworkManager:
+    """Manages network resources and port allocation."""
+
+    def __init__(
+        self,
+        docker_client: docker.client,
+        logger: logging.Logger,
+        config: VMConfig,
+    ):
+        """
+        Initialize the network manager.
+
+        Args:
+            docker_client: Docker client instance
+            logger: Logger instancec
+            config: VMConfig instance
+            start_port_ranges: Dict with starting ports for different services
+        """
+        self.docker_client = docker_client
+        self.logger = logger
+        self.config = config
+
+        # Initialize with higher port numbers to avoid conflicts with system services
+        self.start_port_ranges = config.default_port_ranges
+
+        self.lock_file = config.get_lock_file_path()
+
+    def find_available_port(self, start_port, max_retries=100):
+        """
+        Find the next available port starting from start_port.
+
+        Args:
+            start_port: Starting port number to check from
+            max_retries: Maximum number of ports to check before giving up
+
+        Returns:
+            int: Available port number
+
+        Raises:
+            PortAllocationError: If no available port is found
+        """
         # Get system ports
-        system_ports = {conn.laddr.port for conn in psutil.net_connections()}
+        try:
+            system_ports = {
+                conn.laddr.port
+                for conn in psutil.net_connections()
+                if hasattr(conn, "laddr") and hasattr(conn.laddr, "port")
+            }
+        except (psutil.AccessDenied, psutil.NoSuchProcess) as e:
+            self.logger.warning(f"Limited access to network connections, port detection may be incomplete: {e}")
+            system_ports = set()
 
         # Get Docker container ports
         docker_ports = set()
-        for container in self.docker_client.containers.list():
-            ports = container.attrs["NetworkSettings"]["Ports"]
-            if ports:
-                for port_mappings in ports.values():
-                    if port_mappings:
-                        docker_ports.update(int(p["HostPort"]) for p in port_mappings)
-
-        used_ports = system_ports | docker_ports
-        port = start_port
-        while port < 65354:
-            if port not in used_ports:
-                return port
-            port += 1
-        raise PortAllocationError(f"No available ports found starting from {start_port}")
-
-    def _create_container(self):
-        """Create or use existing Docker container."""
         try:
-            # Check if container already exists
-            try:
-                container = self.docker_client.containers.get(self.container_name)
-                # If container exists but not running, start it
-                if container.status != "running":
-                    try:
-                        container.start()
-                        # Verify container started successfully
-                        container.reload()
-                        if container.status != "running":
-                            raise Exception(f"Container exists but could not be started")
-                    except Exception as e:
-                        self.logger.error(f"Error starting existing container: {e}")
-                        # If we can't start it, try to remove it and create new
-                        try:
-                            container.remove(force=True)
-                            self.logger.info(f"Removed non-startable container: {self.container_name}")
-                        except Exception:
-                            self.logger.warning(f"Could not remove non-startable container: {self.container_name}")
-                        # Create new container
-                        return self._create_new_container()
-                self.logger.info(f"Using existing container: {self.container_name}")
-                return container
-            except docker.errors.NotFound:
-                return self._create_new_container()
-
+            for container in self.docker_client.containers.list():
+                ports = container.attrs.get("NetworkSettings", {}).get("Ports", {})
+                if ports:
+                    for port_mappings in ports.values():
+                        if port_mappings:
+                            docker_ports.update(int(p["HostPort"]) for p in port_mappings if p and "HostPort" in p)
         except Exception as e:
-            self.logger.error(f"Error creating container: {e}")
-            raise
+            self.logger.warning(f"Error retrieving Docker ports: {e}")
 
-    def _create_new_container(self):
-        """Create appropriate container based on configuration."""
-        if self.config.is_vm:
-            return self._create_vm_container()
-        else:
-            return self._create_standard_container()
+        # Combine all used ports
+        used_ports = system_ports | docker_ports
 
-    def _create_standard_container(self):
-        """Create a standard (non-VM) sandbox container."""
-        # Get host screenshot directory
-        host_screenshot_dir = os.path.join(self.volume_directory, "screenshots")
-        os.makedirs(host_screenshot_dir, exist_ok=True)
+        # Log used ports in port range (for debugging)
+        used_in_range = [p for p in used_ports if start_port <= p <= start_port + 100]
+        if used_in_range:
+            self.logger.debug(f"Used ports in search range: {used_in_range}")
 
-        # Set up volumes
-        volumes = {host_screenshot_dir: {"bind": "/tmp/screenshots", "mode": "rw"}}
-        if self.config.volumes:
-            volumes.update(self.config.volumes)
+        # Find an available port with a retry limit
+        port = start_port
+        retries = 0
 
-        # Set up environment
-        environment = {"SANDBOX_HOST": "0.0.0.0", "SANDBOX_PORT": "8765", "VNCOPTIONS": "-disableBasicAuth"}
-        if self.config.environment:
-            environment.update(self.config.environment)
+        while retries < max_retries:
+            if port not in used_ports:
+                # Double-check port availability with a direct socket test
+                if self._test_port_availability(port):
+                    return port
+                else:
+                    self.logger.debug(f"Port {port} appears free but failed socket test")
 
-        # Set up ports
-        ports = {
-            "6901/tcp": None,
-            "4901/tcp": None,
-            "8765/tcp": self.port,
-        }
+            port += 1
+            retries += 1
 
-        # Create container
-        container = self.docker_client.containers.run(
-            image=self.config.image_name,
-            name=self.container_name,
-            detach=True,
-            ports=ports,
-            environment=environment,
-            volumes=volumes,
-            shm_size=self.config.shm_size,
-            tty=True,
-            stdin_open=True,
-            restart_policy={"Name": "unless-stopped"},
-        )
+            # Avoid well-known ports
+            if port < 1024:
+                port = 1024
 
-        self.logger.info(f"Created new standard container: {self.container_name}")
-        return container
+        raise PortAllocationError(f"No available ports found after {max_retries} attempts starting from {start_port}")
 
-    def _create_vm_container(self):
-        """Create a VM-based container."""
-        # Use a lock for port allocation to avoid race conditions
-        lock = FileLock(str(self.lock_file), timeout=10)
+    def _test_port_availability(self, port):
+        """
+        Test if a port is truly available by attempting to bind a socket.
 
-        # Get host volume directory for persistence
-        host_data_dir = os.path.join(self.volume_directory, f"vm_data_{self.config.os_type.lower()}")
-        os.makedirs(host_data_dir, exist_ok=True)
+        Args:
+            port: Port number to test
 
-        # Screenshots directory
-        host_screenshot_dir = os.path.join(self.volume_directory, f"screenshots_{self.config.os_type.lower()}")
-        os.makedirs(host_screenshot_dir, exist_ok=True)
+        Returns:
+            bool: True if port is available, False otherwise
+        """
+        import socket
 
-        # Directory for custom server code
-        custom_server_dir = os.path.join(self.project_root, "custom_server")
-        if not os.path.exists(custom_server_dir):
-            self.logger.info(f"Creating custom server directory at: {custom_server_dir}")
-            os.makedirs(custom_server_dir, exist_ok=True)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = False
 
         try:
-            with lock:
-                # Allocate all required ports using configured ranges
-                self.vnc_port = self._get_available_port(self.start_port_range["vnc"])
-                self.server_port = self._get_available_port(self.start_port_range["server"])
-                self.chromium_port = self._get_available_port(self.start_port_range["chromium"])
-                self.vlc_port = self._get_available_port(self.start_port_range["vlc"])
+            # Try to bind to the port
+            sock.bind(("0.0.0.0", port))
+            result = True
+        except OSError:
+            # Port is in use
+            result = False
+        finally:
+            sock.close()
 
-                # Environment settings for the VM container
-                environment = {
-                    "DISK_SIZE": VM_DISK_SIZE,
-                    "RAM_SIZE": VM_RAM_SIZE,
-                    "CPU_CORES": VM_CPU_CORES,
-                }
+        return result
 
-                # Add custom environment variables
-                if self.config.environment:
-                    environment.update(self.config.environment)
+    def allocate_ports(self):
+        """
+        Safely allocate all required ports for a VM container.
 
-                # Set up volumes
-                volumes = {
-                    os.path.abspath(self.vm_path): {"bind": "/System.qcow2", "mode": "ro"},
-                    host_data_dir: {"bind": "/vm_data", "mode": "rw"},
-                    host_screenshot_dir: {"bind": "/screenshots", "mode": "rw"},
-                    os.path.abspath(custom_server_dir): {"bind": "/home/user/server", "mode": "rw"},
-                }
+        Returns:
+            dict: Dictionary with allocated ports
 
-                # Add custom volumes if specified
-                if self.config.volumes:
-                    volumes.update(self.config.volumes)
+        Raises:
+            PortAllocationError: If port allocation fails
+        """
+        with acquire_port_lock(self.lock_file):
+            try:
+                ports = {}
+                for name, start_port in self.start_port_ranges.items():
+                    # Try to allocate the port, with retries
+                    try:
+                        allocated_port = self.find_available_port(start_port)
+                        ports[name] = allocated_port
+                        # Update starting port for next allocation
+                        self.start_port_ranges[name] = allocated_port + 1
+                    except PortAllocationError as e:
+                        # If we can't find a port starting from the default,
+                        # try with a higher range
+                        self.logger.warning(f"Port allocation failed for {name}: {e}")
+                        new_start = start_port + 1000  # Try a much higher range
+                        self.logger.info(f"Retrying with higher port range starting at {new_start}")
+                        allocated_port = self.find_available_port(new_start)
+                        ports[name] = allocated_port
+                        self.start_port_ranges[name] = allocated_port + 1
 
-                # Create the VM container
-                container = self.docker_client.containers.run(
-                    image=self.config.image_name,
-                    name=self.container_name,
-                    environment=environment,
-                    cap_add=self.config.capabilities,
-                    devices=self.config.devices,
-                    volumes=volumes,
-                    ports={
-                        8006: self.vnc_port,
-                        5000: self.server_port,
-                        9222: self.chromium_port,
-                        8080: self.vlc_port
-                    },
-                    detach=True,
-                )
+                self.logger.info(f"Allocated ports: {ports}")
+                return ports
+            except Exception as e:
+                self.logger.error(f"Port allocation failed: {e}")
+                raise PortAllocationError(f"Failed to allocate ports: {e}") from e
 
-            self.logger.info(
-                f"Started VM container with ports - VNC: {self.vnc_port}, "
-                f"Server: {self.server_port}, Chrome: {self.chromium_port}, VLC: {self.vlc_port}"
+    def check_websocket_server(self, server_port, container, retry_count, max_retries):
+        """
+        Check if WebSocket server is available on the specified port.
+
+        Args:
+            server_port: Port number to check
+            container: Docker container instance
+            retry_count: Current retry count
+            max_retries: Maximum number of retries
+
+        Returns:
+            tuple: (updated_retry_count, success_status)
+
+        Raises:
+            NetworkError: If container health check fails
+        """
+        status_http = create_http_client(retries=1, connect_timeout=5.0, read_timeout=5.0)
+
+        try:
+            # Try to perform a WebSocket handshake by sending an HTTP request with upgrade headers
+            headers = {
+                "Connection": "Upgrade",
+                "Upgrade": "websocket",
+                "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",  # Dummy key
+                "Sec-WebSocket-Version": "13",
+            }
+
+            response = status_http.request(
+                "GET",
+                f"http://localhost:{server_port}",
+                headers=headers,
+                timeout=urllib3.Timeout(connect=5.0, read=5.0),
             )
 
-            # Copy any additional server files
-            self._copy_server_files_to_container(container)
+            # WebSocket handshake should return 101 Switching Protocols
+            # But we'll also accept any 2xx or 3xx response
+            if response.status < 400:
+                self.logger.debug(f"WebSocket server responded with status: {response.status}")
+                return 0, True  # Reset retry count on success
 
-            # Wait for VM to be ready
-            self._wait_for_vm_ready()
-
-            return container
-
+            self.logger.debug(f"WebSocket server check returned status: {response.status}")
+            return retry_count, False
         except Exception as e:
-            self.logger.error(f"Error creating VM container: {e}")
-            raise
+            self.logger.debug(f"WebSocket server check failed: {e}")
+            retry_count += 1
 
-    def _copy_server_files_to_container(self, container):
-        """Copy additional server files to the container if needed."""
-        try:
-            # Example: copy a startup script and make it executable
-            startup_script_path = os.path.join(self.project_root, "scripts", "vm_startup.sh")
-            if os.path.exists(startup_script_path):
-                # Create a tar archive of the file
-                import io
-                import tarfile
+            # If we've had too many consecutive failures, check if container is still running
+            if retry_count > max_retries:
+                try:
+                    container.reload()
+                    if container.status != "running":
+                        raise NetworkError(
+                            f"Container stopped running during VM initialization. Status: {container.status}"
+                        )
+                except Exception as container_error:
+                    self.logger.error(f"Container health check failed: {container_error}")
+                    raise NetworkError(f"Container health check failed: {container_error}") from container_error
 
-                file_data = io.BytesIO()
-                with tarfile.open(fileobj=file_data, mode="w") as tar:
-                    tar.add(startup_script_path, arcname="vm_startup.sh")
-                file_data.seek(0)
+            return retry_count, False
+        finally:
+            status_http.clear()
 
-                # Copy the file to the container
-                container.put_archive("/home/user/", file_data)
+    def wait_for_vm_ready(self, server_port, container, timeout=None):
+        """
+        Wait for VM to be ready by checking WebSocket server availability.
 
-                # Make the script executable
-                container.exec_run("chmod +x /home/user/vm_startup.sh")
+        Args:
+            server_port: Port number to check
+            container: Docker container instance
+            timeout: Maximum time to wait in seconds
 
-                # Restart the server service if needed
-                container.exec_run("pkill -f 'python3 /home/user/server/main.py'")
-                container.exec_run("cd /home/user/server && nohup python3 main.py > /dev/null 2>&1 &")
+        Returns:
+            bool: True if VM is ready
 
-                self.logger.info("Custom server startup script deployed and executed")
-        except Exception as e:
-            self.logger.error(f"Error copying server files to container: {e}")
-
-    def _wait_for_vm_ready(self, timeout: int = None):
-        """Wait for VM to be ready by checking screenshot endpoint using urllib3."""
-        if timeout is None:
-            timeout = self.vm_ready_timeout
+        Raises:
+            TimeoutError: If VM is not ready within the timeout period
+            NetworkError: If container health check fails
+        """
+        timeout = timeout or self.config.vm_ready_timeout
 
         start_time = time.time()
-        last_log_time = 0
+        last_log_time = start_time
         retry_count = 0
         max_retries = 3  # Number of consecutive failures to tolerate
 
-        # Create a local http client with shorter timeouts for status checks
-        status_http = urllib3.PoolManager(
-            retries=urllib3.Retry(2, redirect=1),
-            timeout=urllib3.Timeout(connect=5.0, read=5.0)
-        )
-
-        def check_screenshot():
-            nonlocal retry_count
-            try:
-                response = status_http.request(
-                    "GET",
-                    f"http://localhost:{self.server_port}/screenshot",
-                    timeout=urllib3.Timeout(connect=5.0, read=5.0),
-                )
-                if response.status == 200:
-                    retry_count = 0  # Reset retry count on success
-                    return True
-                return False
-            except Exception:
-                retry_count += 1
-                # If we've had too many consecutive failures, check if container is still running
-                if retry_count > max_retries:
-                    try:
-                        self.container.reload()
-                        if self.container.status != "running":
-                            raise Exception("Container stopped running during VM initialization")
-                    except Exception as e:
-                        self.logger.error(f"Container health check failed: {e}")
-                        raise
-                return False
-
         try:
-            while (current_time := time.time()) - start_time < timeout:
-                if check_screenshot():
-                    self.logger.info(f"VM is ready! Total wait time: {current_time - start_time:.2f}s")
+            while time.time() - start_time < timeout:
+                current_time = time.time()
+                retry_count, success = self.check_websocket_server(server_port, container, retry_count, max_retries)
+
+                if success:
+                    self.logger.info(f"VM WebSocket server is ready! Total wait time: {current_time - start_time:.2f}s")
                     return True
 
-                # Only log every 10 seconds to avoid spam
                 if current_time - last_log_time >= 10:
-                    self.logger.info(f"Checking if virtual machine is ready... ({current_time - start_time:.2f}s elapsed)")
+                    self.logger.info(
+                        f"Checking if WebSocket server is ready... ({current_time - start_time:.2f}s elapsed)"
+                    )
                     last_log_time = current_time
 
                 time.sleep(1)
 
-            raise TimeoutError(f"VM failed to become ready within {timeout}s timeout period")
-        finally:
-            # Clean up local http client
-            status_http.clear()
+            raise TimeoutError(f"WebSocket server failed to become ready within {timeout}s timeout period")
+        except Exception as e:
+            self.logger.error(f"Error waiting for WebSocket server to be ready: {e}")
+            if isinstance(e, TimeoutError):
+                raise
+            raise NetworkError(f"Error waiting for WebSocket server: {e}") from e
 
-    async def connect(self):
-        """Connect to the sandbox server in the container."""
-        # Wait briefly for container to initialize
-        await asyncio.sleep(2)
 
-        if not self.config.is_vm:
-            await self.client.connect()
-        else:
-            self.logger.info("VM container connected and ready to use")
+class DockerManager:
+    """Manages Docker image and container operations."""
 
-    async def disconnect(self):
-        """Disconnect from the sandbox server."""
-        if not self.config.is_vm:
-            await self.client.disconnect()
-        else:
-            self.logger.info("VM container disconnected")
+    def __init__(self, docker_client: docker.client, logger: logging.Logger, config: VMConfig):
+        """
+        Initialize the Docker manager.
 
-    def stop_container(self, remove=False):
-        """Stop the Docker container."""
+        Args:
+            docker_client: Docker client instance
+            logger: Logger instance
+            config: VMConfig instance
+        """
+        self.docker_client = docker_client
+        self.logger = logger
+        self.config = config
+
+    def ensure_image_exists(self, image_name):
+        """
+        Check if a Docker image exists locally, pull if not.
+
+        Args:
+            image_name: Name of the image to check
+
+        Raises:
+            ContainerError: If image pull fails
+        """
         try:
-            self.container.stop(timeout=self.container_stop_timeout)
-            self.logger.info(f"Stopped container: {self.container_name}")
+            self.docker_client.images.get(image_name)
+            self.logger.info(f"Image {image_name} found locally")
+        except docker.errors.ImageNotFound:
+            self.logger.info(f"Image {image_name} not found locally, pulling...")
+            try:
+                self.docker_client.images.pull(image_name)
+                self.logger.info(f"Successfully pulled image: {image_name}")
+            except Exception as e:
+                self.logger.error(f"Error pulling image {image_name}: {e}")
+                raise ContainerError(f"Failed to pull Docker image: {e}") from e
+
+    def create_container(self, name, image_name, environment, volumes, ports, caps=None, devices=None, shm_size="512m"):
+        """
+        Create a new Docker container.
+
+        Args:
+            name: Name for the container
+            image_name: Docker image name
+            environment: Environment variables
+            volumes: Volume mappings
+            ports: Port mappings
+            caps: Linux capabilities to add
+            devices: Devices to expose
+            shm_size: Shared memory size
+
+        Returns:
+            docker.models.containers.Container: Created container
+
+        Raises:
+            ContainerError: If container creation fails
+        """
+        try:
+            self.logger.info(f"Creating container '{name}' from image '{image_name}'")
+
+            # Ensure image exists
+            self.ensure_image_exists(image_name)
+
+            # Create the container without starting it
+            container = self.docker_client.containers.create(
+                image=image_name,
+                name=name,
+                environment=environment,
+                cap_add=caps or ["NET_ADMIN"],
+                devices=devices or ["/dev/kvm", "/dev/net/tun"] if VMConfig.is_kvm_available() else None,
+                volumes=volumes,
+                ports=ports,
+                shm_size=shm_size,
+                detach=True,
+            )
+
+            self.logger.info(f"Successfully created container: {name}")
+            return container
+
+        except Exception as e:
+            self.logger.error(f"Error creating container: {e}")
+            raise ContainerError(f"Failed to create container: {e}") from e
+
+    def get_existing_container(self, name):
+        """
+        Get an existing container by name.
+
+        Args:
+            name: Container name
+
+        Returns:
+            docker.models.containers.Container or None: Container if found
+        """
+        try:
+            return self.docker_client.containers.get(name)
+        except docker.errors.NotFound:
+            return None
+
+    def start_container(self, container):
+        """
+        Start a container and verify it's running.
+
+        Args:
+            container: Docker container instance
+
+        Raises:
+            ContainerError: If container cannot be started
+        """
+        try:
+            container.start()
+            # Verify container started successfully
+            container.reload()
+            if container.status != "running":
+                raise ContainerError(f"Container could not be started, status: {container.status}")
+            self.logger.info(f"Container started: {container.name}")
+        except Exception as e:
+            self.logger.error(f"Error starting container: {e}")
+            raise ContainerError(f"Failed to start container: {e}") from e
+
+    def stop_container(self, container, timeout=None, remove=False):
+        """
+        Stop a container.
+
+        Args:
+            container: Docker container instance
+            timeout: Timeout for stopping in seconds
+            remove: Whether to remove the container after stopping
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            ContainerError: If container cannot be stopped
+        """
+        if not container:
+            return True  # Nothing to stop
+
+        timeout = timeout or self.config.container_stop_timeout
+
+        try:
+            container.stop(timeout=timeout)
+            self.logger.info(f"Stopped container: {container.name}")
 
             # Add a small delay to ensure container has fully stopped
             time.sleep(0.5)
 
             if remove:
-                self.container.remove()
-                self.logger.info(f"Removed container: {self.container_name}")
+                container.remove()
+                self.logger.info(f"Removed container: {container.name}")
 
-            # Reset VM-specific ports
-            if self.config.is_vm:
-                self.vnc_port = None
-                self.server_port = None
-                self.chromium_port = None
-                self.vlc_port = None
-
+            return True
         except Exception as e:
             self.logger.error(f"Error stopping container: {e}")
+            raise ContainerError(f"Failed to stop container: {e}") from e
 
-    def cleanup(self):
-        """Complete cleanup of resources."""
+    def remove_container(self, container, force=True):
+        """
+        Remove a container.
+
+        Args:
+            container: Docker container instance
+            force: Whether to force removal
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            ContainerError: If container cannot be removed
+        """
+        if not container:
+            return True  # Nothing to remove
+
         try:
-            # Disconnect any active connection first
-            if hasattr(self, 'client') and self.client:
-                try:
-                    # Handle various async event loop situations
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            fut = asyncio.ensure_future(self.disconnect())
-                            # Wait with a timeout
-                            asyncio.wait_for(fut, timeout=5)
-                        else:
-                            asyncio.run(self.disconnect())
-                    except (RuntimeError, asyncio.TimeoutError):
-                        self.logger.warning("Could not disconnect cleanly, continuing cleanup")
-                except Exception as e:
-                    self.logger.error(f"Error disconnecting client: {e}")
-                self.client = None  # Clear client reference
-
-            # Stop the container
-            if hasattr(self, 'container') and self.container:
-                try:
-                    # Force removal if needed
-                    try:
-                        self.container.stop(timeout=self.container_stop_timeout)
-                    except Exception as e:
-                        self.logger.warning(f"Error stopping container, trying force removal: {e}")
-
-                    # Wait a moment
-                    time.sleep(0.5)
-
-                    try:
-                        # Force=True means it will stop it first if needed
-                        self.container.remove(force=True, v=True)  # v=True to remove volumes
-                        self.logger.info(f"Removed container: {self.container_name}")
-                    except Exception as e:
-                        self.logger.error(f"Error removing container: {e}")
-                except Exception as e:
-                    self.logger.error(f"Error during container cleanup: {e}")
-
-                self.container = None  # Clear container reference
-
-            # Reset VM-specific ports
-            self.vnc_port = None
-            self.server_port = None
-            self.chromium_port = None
-            self.vlc_port = None
-
-            # Additional cleanup
-            self.logger.info(f"Sandbox for {self.agent.name} cleaned up")
+            container.remove(force=force, v=True)  # v=True to remove volumes
+            self.logger.info(f"Removed container: {container.name}")
+            return True
+        except docker.errors.NotFound:
+            self.logger.info(f"Container already removed: {container.name}")
+            return True
         except Exception as e:
-            self.logger.error(f"Error during cleanup: {e}")
+            self.logger.error(f"Error removing container: {e}")
+            raise ContainerError(f"Failed to remove container: {e}") from e
 
-    def get_vm_connection_info(self):
-        """Get connection information for VM containers."""
-        if not self.config.is_vm:
-            return None
 
-        if not all([self.server_port, self.chromium_port, self.vnc_port, self.vlc_port]):
-            raise RuntimeError("VM not started - ports not allocated")
+class FileManager:
+    """Manages file operations including optimized copying and downloads."""
 
-        return {
-            "server_port": self.server_port,
-            "chromium_port": self.chromium_port,
-            "vnc_port": self.vnc_port,
-            "vlc_port": self.vlc_port,
-            "host": "localhost",
-            "connection_string": f"localhost:{self.server_port}:{self.chromium_port}:{self.vnc_port}:{self.vlc_port}",
-        }
+    def __init__(self, logger: logging.Logger, config: VMConfig):
+        """
+        Initialize the file manager.
 
-    async def __aenter__(self):
-        """Support for async context manager."""
+        Args:
+            logger: Logger instance
+            config: VMConfig instance
+        """
+        self.logger = logger
+        self.config = config
+
+    def optimized_copy(self, src_dir, dst_dir, hardlink_threshold=None):
+        """
+        Perform an optimized copy of files using hardlinks when possible.
+
+        Args:
+            src_dir: Source directory
+            dst_dir: Destination directory
+            hardlink_threshold: Size threshold for using hardlinks (bytes)
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            VMImageError: If copy fails
+        """
+        if not os.path.exists(src_dir):
+            raise VMImageError(f"Source directory not found: {src_dir}")
+
+        hardlink_threshold = hardlink_threshold or self.config.default_hardlink_threshold
+        self.logger.info(f"Starting optimized copy from {src_dir} to {dst_dir}")
+
         try:
-            await self.connect()
-            return self
+            # Get list of files to copy
+            items = os.listdir(src_dir)
+            total_items = len(items)
+
+            with tqdm(total=total_items, desc="Copying VM files", unit="files") as pbar:
+                for item in items:
+                    src_path = os.path.join(src_dir, item)
+                    dst_path = os.path.join(dst_dir, item)
+
+                    # Skip if file/directory already exists
+                    if os.path.exists(dst_path):
+                        pbar.update(1)
+                        continue
+
+                    if os.path.isfile(src_path):
+                        # Try to create hardlink first (much faster than copy)
+                        try:
+                            file_size = os.path.getsize(src_path)
+                            if file_size > hardlink_threshold:
+                                self.logger.debug(
+                                    f"Creating hardlink for large file: {item} ({file_size / (1024 * 1024):.2f} MB)"
+                                )
+                                # For large files, use hardlinks if possible
+                                os.link(src_path, dst_path)
+                            else:
+                                # For smaller files, do a regular copy
+                                shutil.copy2(src_path, dst_path)
+                        except OSError:
+                            # Fallback to regular copy if hardlink fails
+                            self.logger.debug(f"Hardlink failed for {item}, using regular copy")
+                            shutil.copy2(src_path, dst_path)
+                    elif os.path.isdir(src_path):
+                        # For directories, we need to do a recursive copy
+                        os.makedirs(dst_path, exist_ok=True)
+                        # Recursive copy, but handle each file individually
+                        for root, dirs, files in os.walk(src_path):
+                            # Create all subdirectories
+                            for d in dirs:
+                                src_subdir = os.path.join(root, d)
+                                rel_path = os.path.relpath(src_subdir, src_path)
+                                dst_subdir = os.path.join(dst_path, rel_path)
+                                os.makedirs(dst_subdir, exist_ok=True)
+
+                            # Copy all files, using hardlinks for large files
+                            for f in files:
+                                src_file = os.path.join(root, f)
+                                rel_path = os.path.relpath(src_file, src_path)
+                                dst_file = os.path.join(dst_path, rel_path)
+
+                                # Create parent directories if they don't exist
+                                os.makedirs(os.path.dirname(dst_file), exist_ok=True)
+
+                                try:
+                                    # Check file size
+                                    file_size = os.path.getsize(src_file)
+                                    if file_size > hardlink_threshold:
+                                        # Use hardlink for large files
+                                        os.link(src_file, dst_file)
+                                    else:
+                                        # Regular copy for smaller files
+                                        shutil.copy2(src_file, dst_file)
+                                except OSError:
+                                    # Fallback to regular copy
+                                    shutil.copy2(src_file, dst_file)
+
+                    pbar.update(1)
+
+            self.logger.info(f"Optimized copy completed: {total_items} items processed")
+            return True
+
         except Exception as e:
-            self.logger.error(f"Error in async context entry: {e}")
-            await self.__aexit__(None, e, None)
+            self.logger.error(f"Error during optimized copy: {e}")
+            raise VMImageError(f"Failed to copy files: {e}") from e
+
+    def download_file(self, url, destination_dir, retries=3):
+        """
+        Download a file with resume capability.
+
+        Args:
+            url: URL to download from
+            destination_dir: Directory to save the file
+            retries: Number of retry attempts
+
+        Returns:
+            str: Path to the downloaded file
+
+        Raises:
+            VMImageError: If download fails
+        """
+        if not is_url(url):
+            raise VMImageError(f"Invalid URL: {url}")
+
+        try:
+            # Prepare for download
+            downloaded_file_name = url.split("/")[-1]
+            downloaded_file_path = os.path.join(destination_dir, downloaded_file_name)
+            os.makedirs(destination_dir, exist_ok=True)
+
+            downloaded_size = 0
+            retry_count = 0
+
+            while retry_count <= retries:
+                headers = {}
+                if os.path.exists(downloaded_file_path):
+                    downloaded_size = os.path.getsize(downloaded_file_path)
+                    headers["Range"] = f"bytes={downloaded_size}-"
+
+                response = None
+                try:
+                    # Try to download the file
+                    response = http.request(
+                        "GET",
+                        url,
+                        headers=headers,
+                        preload_content=False,  # Don't read data into memory yet
+                    )
+
+                    # Handle Range Not Satisfiable (416) case
+                    if response.status == 416:
+                        self.logger.info("File already fully downloaded.")
+                        break
+
+                    # Check for errors
+                    if response.status >= 400:
+                        raise VMImageError(f"HTTP Error: {response.status} for URL: {url}")
+
+                    # Get content length for progress tracking
+                    total_size = int(response.headers.get("content-length", 0))
+
+                    with open(downloaded_file_path, "ab") as file:
+                        with tqdm(
+                            desc=f"Downloading {downloaded_file_name}",
+                            total=total_size,
+                            unit="iB",
+                            unit_scale=True,
+                            unit_divisor=1024,
+                            initial=downloaded_size,
+                            ascii=True,
+                        ) as progress_bar:
+                            try:
+                                for chunk in response.stream(8192):
+                                    size = file.write(chunk)
+                                    progress_bar.update(size)
+                                self.logger.info("Download completed successfully.")
+                                # Break out of the retry loop on success
+                                break
+                            except Exception as e:
+                                self.logger.error(f"Download error: {e}")
+                                retry_count += 1
+                                if retry_count <= retries:
+                                    time.sleep(5)
+                                    self.logger.info(f"Retrying download (attempt {retry_count}/{retries})...")
+                                else:
+                                    raise VMImageError(f"Download failed after {retries} attempts: {e}") from e
+                except Exception as e:
+                    self.logger.error(f"Error during download: {e}")
+                    retry_count += 1
+                    if retry_count <= retries:
+                        time.sleep(5)
+                        self.logger.info(f"Retrying download (attempt {retry_count}/{retries})...")
+                    else:
+                        raise VMImageError(f"Failed to download file after {retries} attempts: {e}") from e
+                finally:
+                    # Make sure to release resources even if an exception occurs
+                    if response is not None:
+                        response.release_conn()
+
+            return downloaded_file_path
+
+        except Exception as e:
+            self.logger.error(f"Error downloading file: {e}")
+            raise VMImageError(f"Failed to download file: {e}") from e
+
+    def extract_archive(self, archive_path, extract_dir=None):
+        """
+        Extract a zip or tar archive.
+
+        Args:
+            archive_path: Path to the archive file
+            extract_dir: Directory to extract to (defaults to archive's directory)
+
+        Returns:
+            str: Path to the extracted contents
+
+        Raises:
+            VMImageError: If extraction fails
+        """
+        extract_dir = extract_dir or os.path.dirname(archive_path)
+
+        try:
+            if archive_path.endswith(".zip"):
+                self.logger.info(f"Extracting ZIP archive: {archive_path}")
+                with zipfile.ZipFile(archive_path, "r") as zip_ref:
+                    zip_ref.extractall(extract_dir)
+            elif any(archive_path.endswith(ext) for ext in [".tar", ".tar.gz", ".tgz"]):
+                self.logger.info(f"Extracting TAR archive: {archive_path}")
+                with tarfile.open(archive_path, "r:*") as tar_ref:
+                    tar_ref.extractall(extract_dir)
+            else:
+                raise VMImageError(f"Unsupported archive format: {archive_path}")
+
+            self.logger.info(f"Archive extracted to: {extract_dir}")
+            return extract_dir
+
+        except Exception as e:
+            self.logger.error(f"Error extracting archive: {e}")
+            raise VMImageError(f"Failed to extract archive: {e}") from e
+
+
+class Environment:
+    """Manages VM environments, providing creation, starting, and stopping of VMs."""
+
+    def __init__(
+        self, config: Optional[VMConfig] = None, docker_client: docker.client = None, logger: logging.Logger = None
+    ):
+        """
+        Initialize the environment for creating VM instances.
+
+        Args:
+            config: VMConfig instance for configuration
+            docker_client: Docker client instance
+            logger: Logger instance
+        """
+        # Use provided config or create default
+        self.config = config or VMConfig()
+        self.docker_client = docker_client or docker.from_env()
+        self.logger = logger or logging.getLogger(__name__)
+
+        # Set initial properties from config
+        self.vm_os = self.config.vm_os
+        self.project_root = self.config.project_root
+        self.initial_VM_volume = os.path.join(self.config.volumes_directory, self.vm_os)
+        self.instance_counter = 0  # tracks how many VMs were started
+
+        # Initialize managers with the config
+        self.docker_manager = DockerManager(self.docker_client, self.logger, self.config)
+        self.network_manager = NetworkManager(self.docker_client, self.logger, self.config)
+        self.file_manager = FileManager(self.logger, self.config)
+
+        # Create environments directory if it doesn't exist
+        os.makedirs(self.config.vm_environments, exist_ok=True)
+
+        # Validate initial VM volume directory
+        if not os.path.exists(self.initial_VM_volume):
+            self.logger.warning(f"Initial VM volume directory not found: {self.initial_VM_volume}")
+
+    def _get_instance_dir(self):
+        """
+        Create and return a directory for a new VM instance.
+
+        Returns:
+            str: Path to the instance directory
+        """
+        instance_dir = os.path.join(self.config.vm_environments, f"{self.vm_os}{self.instance_counter}")
+        os.makedirs(instance_dir, exist_ok=True)
+        return instance_dir
+
+    def prepare_vm_image(self, boot_source=None):
+        """
+        Prepare VM image from URL or local source.
+
+        Args:
+            boot_source: URL or path to boot image (None uses default)
+
+        Returns:
+            str: Path to prepared VM image directory
+        """
+        # If no boot source specified, use initial VM volume
+        if not boot_source:
+            if not os.path.exists(self.initial_VM_volume) or not os.listdir(self.initial_VM_volume):
+                raise VMImageError(f"Initial VM volume directory is empty or not found: {self.initial_VM_volume}")
+            return self.initial_VM_volume
+
+        # If URL, download the image
+        if is_url(boot_source):
+            self.logger.info(f"Downloading VM image from: {boot_source}")
+            download_dir = os.path.join(self.config.volumes_directory, "downloads")
+            os.makedirs(download_dir, exist_ok=True)
+
+            # Download the file
+            downloaded_file = self.file_manager.download_file(boot_source, download_dir)
+
+            # Extract if it's an archive
+            if any(downloaded_file.endswith(ext) for ext in [".zip", ".tar", ".tar.gz", ".tgz"]):
+                extract_dir = os.path.join(download_dir, "extracted")
+                os.makedirs(extract_dir, exist_ok=True)
+                self.file_manager.extract_archive(downloaded_file, extract_dir)
+                return extract_dir
+            else:
+                return os.path.dirname(downloaded_file)
+
+        # If path, validate it exists
+        elif os.path.exists(boot_source):
+            return boot_source
+
+        # If relative path, check in volume directory
+        else:
+            full_path = os.path.join(self.config.volumes_directory, boot_source)
+            if os.path.exists(full_path):
+                return full_path
+            else:
+                raise VMImageError(f"VM image path not found: {boot_source}")
+
+    def start_vm(self, boot_source=None, name_prefix=None):
+        """
+        Start a new VM instance with proper port allocation.
+
+        Args:
+            boot_source: URL or path to boot image (None uses default)
+            name_prefix: Prefix for container name (default: qemu_{vm_os}_)
+
+        Returns:
+            tuple: (container, connection_info)
+
+        Raises:
+            ContainerError: If container creation fails
+            PortAllocationError: If port allocation fails
+        """
+        try:
+            self.instance_counter += 1
+            instance_dir = self._get_instance_dir()
+
+            # Prepare VM image
+            if boot_source:
+                source_dir = self.prepare_vm_image(boot_source)
+                # Copy from source to instance directory
+                self.file_manager.optimized_copy(source_dir, instance_dir)
+            else:
+                # Use default VM image
+                self.file_manager.optimized_copy(self.initial_VM_volume, instance_dir)
+
+            # Allocate available ports using NetworkManager
+            ports_dict = self.network_manager.allocate_ports()
+
+            # Define environment variables
+            environment = {
+                "BOOT": "ubuntu",  # using copied files instead of a downloaded image
+                "DEBUG": self.config.vm_debug,
+                "RAM_SIZE": self.config.vm_ram_size,
+                "CPU_CORES": self.config.vm_cpu_cores,
+                "DISK_SIZE": self.config.vm_disk_size,
+            }
+
+            # Map the new instance_dir as volume to /storage in container
+            volumes = {instance_dir: {"bind": "/storage", "mode": "rw"}}
+
+            # Create unique container name
+            name_prefix = name_prefix or f"environment_{self.vm_os}_"
+            container_name = f"{name_prefix}{self.instance_counter}"
+
+            # Map ports
+            host_vnc = ports_dict.get("vnc")
+            ports = {8006: host_vnc}  # VNC port
+
+            # Add server port mapping if available
+            if "server" in ports_dict:
+                server_port = ports_dict.get("server")
+                ports[8765] = server_port  # WebSocket server port
+
+            # Create container
+            container = self.docker_manager.create_container(
+                name=container_name,
+                image_name=self.config.default_vm_image,
+                environment=environment,
+                volumes=volumes,
+                ports=ports,
+                caps=["NET_ADMIN"],
+                devices=["/dev/kvm", "/dev/net/tun"] if VMConfig.is_kvm_available() else None,
+            )
+
+            # Start the container
+            self.docker_manager.start_container(container)
+
+            # Wait for VM to be ready if server port is allocated
+            if "server" in ports_dict:
+                server_port = ports_dict.get("server")
+                self.network_manager.wait_for_vm_ready(server_port, container)
+
+            # Return container and connection info
+            connection_info = {"container_name": container_name, "host_vnc": host_vnc, "instance_dir": instance_dir}
+
+            if "server" in ports_dict:
+                connection_info["server_port"] = ports_dict.get("server")
+
+            self.logger.info(f"VM started successfully: {connection_info}")
+            return container, connection_info
+
+        except Exception as e:
+            self.logger.error(f"Failed to start VM: {e}")
+            # Clean up resources if startup fails
+            if "container" in locals() and container:
+                try:
+                    self.docker_manager.stop_container(container, remove=True)
+                except Exception as cleanup_error:
+                    self.logger.error(f"Error during cleanup: {cleanup_error}")
+
+            if "instance_dir" in locals() and os.path.exists(instance_dir):
+                try:
+                    # Consider keeping instance directory for debugging
+                    pass
+                except Exception as cleanup_error:
+                    self.logger.error(f"Error cleaning up instance directory: {cleanup_error}")
+
+            # Re-raise the original exception
             raise
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Cleanup when exiting async context."""
-        try:
-            await self.disconnect()
-        except Exception as e:
-            self.logger.error(f"Error in async disconnect: {e}")
-        finally:
-            self.cleanup()
+    def stop_vm(self, container, remove_instance=True):
+        """
+        Stop a VM and optionally remove its instance directory.
 
-    def __enter__(self):
-        """Support for synchronous context manager."""
-        try:
-            # Run connect in the appropriate event loop
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    future = asyncio.ensure_future(self.connect())
-                    loop.run_until_complete(future)
-                else:
-                    asyncio.run(self.connect())
-            except RuntimeError:
-                # No event loop exists yet
-                asyncio.run(self.connect())
-            return self
-        except Exception as e:
-            self.logger.error(f"Error in context entry: {e}")
-            self.__exit__(None, e, None)
-            raise
+        Args:
+            container: Docker container instance
+            remove_instance: Whether to remove the instance directory
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Cleanup when exiting context."""
+        Returns:
+            bool: True if successful
+        """
+        if not container:
+            return True
+
         try:
-            # Run disconnect in the appropriate event loop
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    future = asyncio.ensure_future(self.disconnect())
-                    loop.run_until_complete(future)
-                else:
-                    asyncio.run(self.disconnect())
-            except Exception:
-                # Best effort, continue with cleanup
-                pass
-        finally:
-            # Always do cleanup
-            self.cleanup()
+            # Get container info before stopping
+            container_name = container.name
+            container.reload()
+
+            # Extract instance number from container name
+            instance_num = None
+            if container_name.startswith(f"qemu_{self.vm_os}_"):
+                try:
+                    instance_num = int(container_name.split("_")[-1])
+                except ValueError:
+                    pass
+
+            # Stop and remove the container
+            self.docker_manager.stop_container(container, timeout=30, remove=True)
+
+            # Remove instance directory if requested
+            if remove_instance and instance_num is not None:
+                instance_dir = os.path.join(self.config.vm_environments, f"{self.vm_os}{instance_num}")
+                if os.path.exists(instance_dir) and os.path.isdir(instance_dir):
+                    self.logger.info(f"Removing instance directory: {instance_dir}")
+                    shutil.rmtree(instance_dir)
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error stopping VM: {e}")
+            raise ContainerError(f"Failed to stop VM: {e}") from e
+
+    def list_running_vms(self):
+        """
+        List all running VM instances started by this environment.
+
+        Returns:
+            list: List of container information dictionaries
+        """
+        try:
+            containers = self.docker_client.containers.list(
+                filters={"name": f"qemu_{self.vm_os}_", "status": "running"}
+            )
+
+            result = []
+            for container in containers:
+                # Extract instance number from container name
+                instance_num = None
+                if container.name.startswith(f"qemu_{self.vm_os}_"):
+                    try:
+                        instance_num = int(container.name.split("_")[-1])
+                    except ValueError:
+                        pass
+
+                # Get port mappings
+                ports = container.attrs.get("NetworkSettings", {}).get("Ports", {})
+                vnc_port = None
+                server_port = None
+
+                # Extract port mappings
+                if "8006/tcp" in ports and ports["8006/tcp"]:
+                    vnc_port = int(ports["8006/tcp"][0]["HostPort"])
+                if "8765/tcp" in ports and ports["8765/tcp"]:
+                    server_port = int(ports["8765/tcp"][0]["HostPort"])
+
+                # Build result
+                vm_info = {
+                    "container_id": container.id,
+                    "container_name": container.name,
+                    "instance_num": instance_num,
+                    "host_vnc": vnc_port,
+                    "server_port": server_port,
+                    "status": container.status,
+                }
+
+                if instance_num is not None:
+                    vm_info["instance_dir"] = os.path.join(self.config.vm_environments, f"{self.vm_os}{instance_num}")
+
+                result.append(vm_info)
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"Error listing VMs: {e}")
+            raise ContainerError(f"Failed to list VMs: {e}") from e
+
+    def clone_vm(self, source_container, boot_source=None):
+        """
+        Clone an existing VM.
+
+        Args:
+            source_container: Source container to clone
+            boot_source: Optional alternative boot source
+
+        Returns:
+            tuple: (container, connection_info) of the new VM
+        """
+        try:
+            # Get source container info
+            source_container.reload()
+            source_name = source_container.name
+
+            # Extract instance number
+            instance_num = None
+            if source_name.startswith(f"qemu_{self.vm_os}_"):
+                try:
+                    instance_num = int(source_name.split("_")[-1])
+                except ValueError:
+                    pass
+
+            # Get source instance directory
+            source_dir = None
+            if instance_num is not None:
+                source_dir = os.path.join(self.config.vm_environments, f"{self.vm_os}{instance_num}")
+
+            if not source_dir or not os.path.exists(source_dir):
+                # If we can't find the source directory, start fresh
+                return self.start_vm(boot_source)
+
+            # Start a new VM, using the source directory as the boot source
+            return self.start_vm(source_dir if not boot_source else boot_source)
+
+        except Exception as e:
+            self.logger.error(f"Error cloning VM: {e}")
+            raise ContainerError(f"Failed to clone VM: {e}") from e

@@ -1,3 +1,9 @@
+"""
+A WebSocket server for executing Python code in a sandboxed environment, this server will function as a AI-agent tool that can be used to execute code in a sandboxed environment. It can also take screenshots and record actions.
+The server is designed to be run in a containerized environment, with the ability to install packages and execute code securely. It uses PyAutoGUI for GUI interactions and Xcursor for cursor overlay in screenshots.
+The server is built using asyncio and websockets, allowing for asynchronous handling of multiple clients. It also includes error handling and logging for better debugging and monitoring.
+"""
+
 import argparse
 import asyncio
 import contextlib

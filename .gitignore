@@ -2,8 +2,8 @@
 data
 
 # Docker
-docker/volumes/
-docker/vms
+src/docker
+src/docker/vms
 
 # Python
 __pycache__/
