@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib>=3.10.1",
     "seaborn>=0.13.2",
     "filelock>=3.18.0",
+    "paramiko>=3.5.1",
 ]
 
 

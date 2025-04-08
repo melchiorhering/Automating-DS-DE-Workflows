@@ -19,8 +19,8 @@ import pyautogui
 import websockets
 from PIL import Image, ImageDraw, ImageFont
 
-from server.pyxcursor import Xcursor
-from server.recorder import ActionRecorder
+from src.server.src.pyxcursor import Xcursor
+from src.server.src.recorder import ActionRecorder
 
 
 class SandboxServer:

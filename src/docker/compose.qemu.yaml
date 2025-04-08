@@ -10,15 +10,16 @@ services:
       DEBUG: "Y"
       RAM_SIZE: "4G"
       CPU_CORES: "4"
-      DISK_SIZE: "12G"
+      DISK_SIZE: "16G"
     devices:
       - /dev/kvm
       - /dev/net/tun
     cap_add:
       - NET_ADMIN
     ports:
-      - 8006:8006
+      - 8006:8006 # NoVNC
+      - 2222:22 # SSH
     volumes:
-      - ${ROOT_DIR}/src/docker/vms/ubuntu:/storage # FOR READ ONLY APPEND `:ro`
+      - ${ROOT_DIR}/src/docker/vms/ubuntu:/storage
     restart: always
     stop_grace_period: 2m

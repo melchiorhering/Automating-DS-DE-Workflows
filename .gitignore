@@ -3,6 +3,7 @@ data
 
 # Docker
 src/docker/vms
+src/docker/environments
 
 # Python
 __pycache__/
