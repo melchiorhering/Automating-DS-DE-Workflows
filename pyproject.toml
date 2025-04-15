@@ -6,18 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pillow>=11.1.0",
-    "pyautogui>=0.9.54",
     "tqdm>=4.67.1",
     "websockets>=14.2",
     "smolagents>=1.9.2",
-    "uvicorn>=0.34.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "docker>=7.1.0",
-    "matplotlib>=3.10.1",
-    "seaborn>=0.13.2",
     "filelock>=3.18.0",
     "paramiko>=3.5.1",
+    "pynput>=1.8.1",
 ]
 
 
@@ -25,7 +22,7 @@ dependencies = [
 dev-dependencies = ["pytest>=8.3.4", "ruff>=0.9.7"]
 
 [tool.uv.workspace]
-members = ["environment"]
+members = ["environment", "src/server"]
 
 [tool.ruff]
 # In addition to the standard set of inclusions, include `.pyw` files.

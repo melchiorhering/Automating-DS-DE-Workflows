@@ -1,3 +1,11 @@
+# src/sandbox_client.py
+"""
+SandboxClient
+=================
+A client to interact with a sandbox server using WebSocket.
+This client allows you to execute Python code, take screenshots, and record user actions. It is designed for using it as a client inside a HuggingFace AI Agent TOOL
+"""
+
 import json
 import logging
 import textwrap

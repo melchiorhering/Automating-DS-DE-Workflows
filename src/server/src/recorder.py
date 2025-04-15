@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import pyautogui
+from PIL import ImageGrab
 from pynput import keyboard, mouse
 
 
@@ -56,7 +56,18 @@ class ActionRecorder:
         self._bounding_box_size = max(50, min(bounding_box_size, 500))  # Constrain box size
         self._last_click_time = 0
         self._drag_start: Optional[Tuple[int, int]] = None
-        self._screen_width, self._screen_height = pyautogui.size()
+
+        # Get screen size using pynput instead of pyautogui
+        self._mouse_controller = mouse.Controller()
+        # Use a fallback method for screen size
+        try:
+            # Try using PIL to get screen size
+            screen = ImageGrab.grab()
+            self._screen_width, self._screen_height = screen.size
+        except Exception:
+            # Fallback values if screen size can't be determined
+            self.logger.warning("Unable to get screen size, using default values")
+            self._screen_width, self._screen_height = 1920, 1080
 
         # Initialize listeners but don't start them yet
         self._setup_listeners()
@@ -161,24 +172,25 @@ class ActionRecorder:
         return self.recorded_actions
 
     def _capture_bounding_box(self, x: int, y: int) -> Dict[str, Any]:
-        """Capture a screenshot of the area around the given coordinates."""
+        """Capture a screenshot of the area around the given coordinates using PIL instead of pyautogui."""
         half_size = self._bounding_box_size // 2
         box_left = max(0, x - half_size)
         box_top = max(0, y - half_size)
+        box_right = min(self._screen_width, box_left + self._bounding_box_size)
+        box_bottom = min(self._screen_height, box_top + self._bounding_box_size)
 
         try:
-            screenshot = pyautogui.screenshot(
-                region=(box_left, box_top, self._bounding_box_size, self._bounding_box_size)
-            )
+            # Use PIL's ImageGrab instead of pyautogui
+            screenshot = ImageGrab.grab(bbox=(box_left, box_top, box_right, box_bottom))
             return {
                 "box_left": box_left,
                 "box_top": box_top,
-                "box_width": self._bounding_box_size,
-                "box_height": self._bounding_box_size,
+                "box_width": box_right - box_left,
+                "box_height": box_bottom - box_top,
                 "screenshot": screenshot,
             }
         except Exception as e:
-            print(f"Failed to capture bounding box: {e}")
+            self.logger.error(f"Failed to capture bounding box: {e}")
             return {}
 
     def _on_click(self, x: int, y: int, button: mouse.Button, pressed: bool) -> None:
@@ -220,7 +232,7 @@ class ActionRecorder:
 
             self._last_click_time = current_time
         except Exception as e:
-            print(f"Error handling click event: {e}")
+            self.logger.error(f"Error handling click event: {e}")
 
     def _on_scroll(self, x: int, y: int, dx: int, dy: int) -> None:
         """Handle mouse scroll events."""
@@ -233,7 +245,7 @@ class ActionRecorder:
             )
             self._add_action(action)
         except Exception as e:
-            print(f"Error handling scroll event: {e}")
+            self.logger.error(f"Error handling scroll event: {e}")
 
     def _on_key_press(self, key) -> None:
         """Handle key press events."""
@@ -241,13 +253,13 @@ class ActionRecorder:
             return
 
         try:
-            key_char = key.char if hasattr(key, "char") else key.name
+            key_char = key.char if hasattr(key, "char") else str(key).replace("Key.", "")
             action = KeyAction(action_type="KEY_PRESS", description=f"Key pressed: {key_char}", key=key_char)
             self._add_action(action)
         except AttributeError:
             pass
         except Exception as e:
-            print(f"Error handling key press event: {e}")
+            self.logger.error(f"Error handling key press event: {e}")
 
     def _on_key_release(self, key) -> None:
         """Handle key release events."""
@@ -255,13 +267,13 @@ class ActionRecorder:
             return
 
         try:
-            key_char = key.char if hasattr(key, "char") else key.name
+            key_char = key.char if hasattr(key, "char") else str(key).replace("Key.", "")
             action = KeyAction(action_type="KEY_RELEASE", description=f"Key released: {key_char}", key=key_char)
             self._add_action(action)
         except AttributeError:
             pass
         except Exception as e:
-            print(f"Error handling key release event: {e}")
+            self.logger.error(f"Error handling key release event: {e}")
 
     def _add_action(self, action: BaseAction, include_box: bool = False) -> None:
         """Add an action to the recorded actions list with validation."""
@@ -290,7 +302,7 @@ class ActionRecorder:
             self.logger.error(f"Error adding action to log: {e}")
             raise
 
-    def generate_pyautogui_script(
+    def generate_pynput_script(
         self,
         output_file: Optional[Path] = None,
         screenshot_dir: Optional[Path] = None,
@@ -298,39 +310,45 @@ class ActionRecorder:
         screenshot_delay: float = 1.0,
     ) -> str:
         """
-        Convert recorded actions to executable PyAutoGUI commands with screenshots after each action.
+        Convert recorded actions to executable pynput commands with screenshots after each action.
 
         Args:
             output_file: Optional path to save the generated script
             screenshot_dir: Directory to save screenshots (defaults to /tmp/sandbox_screenshots)
+            action_delay: Delay between actions
+            screenshot_delay: Delay before taking screenshots
 
         Returns:
             String containing the generated Python script
         """
         script_lines = [
-            "import pyautogui",
+            "from pynput import mouse, keyboard",
+            "from PIL import ImageGrab",
             "import time",
             "from datetime import datetime",
             "from pathlib import Path",
             "",
+            "# Initialize controllers",
+            "mouse_controller = mouse.Controller()",
+            "keyboard_controller = keyboard.Controller()",
+            "",
             "# Safety settings",
-            "pyautogui.FAILSAFE = True",
-            "pyautogui.PAUSE = 0.5  # 0.5 second pause after each command",
+            f"ACTION_DELAY = {action_delay}  # Delay between actions",
+            f"SCREENSHOT_DELAY = {screenshot_delay}  # Delay before screenshots",
             "",
             "# Setup screenshot directory",
             "SCREENSHOT_DIR = Path('/tmp/sandbox_screenshots')",
             "SCREENSHOT_DIR.mkdir(exist_ok=True)",
-            f"ACTION_DELAY = {action_delay}  # Delay between actions",
-            f"SCREENSHOT_DELAY = {screenshot_delay}  # Delay before screenshots",
             "",
             "def take_action_screenshot(action_type: str) -> str:",
             "    '''Take a screenshot after an action and return the filepath'''",
             "    timestamp = datetime.now().strftime('%Y%m%dT%H%M%S')",
-            "    filename = f'pyautogui_{action_type}_{timestamp}.png'",
+            "    filename = f'pynput_{action_type}_{timestamp}.png'",
             "    filepath = SCREENSHOT_DIR / filename",
             "    # Wait for any UI changes to settle",
             "    time.sleep(SCREENSHOT_DELAY)",
-            "    pyautogui.screenshot().save(filepath)",
+            "    screenshot = ImageGrab.grab()",
+            "    screenshot.save(filepath)",
             "    return str(filepath)",
             "",
         ]
@@ -345,7 +363,10 @@ class ActionRecorder:
             if action_type == "CLICK":
                 script_lines.extend(
                     [
-                        f"pyautogui.click(x={data['x']}, y={data['y']}, button='{data['button']}')",
+                        "# Move to position and click",
+                        f"mouse_controller.position = ({data['x']}, {data['y']})",
+                        "time.sleep(0.1)  # Short pause before click",
+                        f"mouse_controller.click(mouse.Button.{data['button']})",
                         "screenshot_path = take_action_screenshot('click')",
                         "print(f'Click screenshot saved: {screenshot_path}')",
                     ]
@@ -354,8 +375,20 @@ class ActionRecorder:
             elif action_type == "DRAG":
                 script_lines.extend(
                     [
-                        f"pyautogui.moveTo({data['start_x']}, {data['start_y']})",
-                        f"pyautogui.dragTo({data['end_x']}, {data['end_y']}, duration=0.5)",
+                        "# Drag operation from start to end",
+                        f"mouse_controller.position = ({data['start_x']}, {data['start_y']})",
+                        "time.sleep(0.1)",
+                        "mouse_controller.press(mouse.Button.left)",
+                        "time.sleep(0.1)",
+                        "# Gradually move to target position",
+                        "steps = 10",
+                        "for i in range(1, steps + 1):",
+                        "    progress = i / steps",
+                        f"    current_x = int({data['start_x']} + ({data['end_x']} - {data['start_x']}) * progress)",
+                        f"    current_y = int({data['start_y']} + ({data['end_y']} - {data['start_y']}) * progress)",
+                        "    mouse_controller.position = (current_x, current_y)",
+                        "    time.sleep(0.02)",
+                        "mouse_controller.release(mouse.Button.left)",
                         "screenshot_path = take_action_screenshot('drag')",
                         "print(f'Drag screenshot saved: {screenshot_path}')",
                     ]
@@ -364,7 +397,10 @@ class ActionRecorder:
             elif action_type == "SCROLL":
                 script_lines.extend(
                     [
-                        f"pyautogui.scroll({data['delta_y'] * 100})",
+                        "# Move to position and scroll",
+                        f"mouse_controller.position = ({data['x']}, {data['y']})",
+                        "time.sleep(0.1)",
+                        f"mouse_controller.scroll(0, {data['delta_y']})",
                         "screenshot_path = take_action_screenshot('scroll')",
                         "print(f'Scroll screenshot saved: {screenshot_path}')",
                     ]
@@ -375,7 +411,9 @@ class ActionRecorder:
                 if len(key) == 1:  # Single character
                     script_lines.extend(
                         [
-                            f"pyautogui.write('{key}')",
+                            f"# Type character: '{key}'",
+                            f"keyboard_controller.press('{key}')",
+                            f"keyboard_controller.release('{key}')",
                             "screenshot_path = take_action_screenshot('key_press')",
                             "print(f'Keypress screenshot saved: {screenshot_path}')",
                         ]
@@ -383,14 +421,22 @@ class ActionRecorder:
                 else:  # Special key
                     script_lines.extend(
                         [
-                            f"pyautogui.press('{key}')",
+                            f"# Press special key: {key}",
+                            "try:",
+                            "    # Try to use it as a special key constant",
+                            f"    keyboard_controller.press(keyboard.Key.{key})",
+                            f"    keyboard_controller.release(keyboard.Key.{key})",
+                            "except AttributeError:",
+                            "    # If not a special key, press it as a string",
+                            f"    keyboard_controller.press('{key}')",
+                            f"    keyboard_controller.release('{key}')",
                             "screenshot_path = take_action_screenshot('special_key')",
                             "print(f'Special key screenshot saved: {screenshot_path}')",
                         ]
                     )
 
-            # Add a small delay between actions
-            script_lines.append("time.sleep(0.5)")
+            # Add a delay between actions
+            script_lines.append("time.sleep(ACTION_DELAY)")
 
         script = "\n".join(script_lines)
 
@@ -424,7 +470,7 @@ class ActionRecorder:
                     indent=2,
                 )
         except Exception as e:
-            print(f"Error saving recording: {e}")
+            self.logger.error(f"Error saving recording: {e}")
 
     def load_recording(self, filepath: Path) -> None:
         """
@@ -438,7 +484,7 @@ class ActionRecorder:
                 data = json.load(f)
                 self.recorded_actions = data["actions"]
         except Exception as e:
-            print(f"Error loading recording: {e}")
+            self.logger.error(f"Error loading recording: {e}")
 
     def __enter__(self):
         self.start_recording()

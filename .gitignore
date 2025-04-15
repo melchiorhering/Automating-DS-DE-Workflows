@@ -2,6 +2,7 @@
 data
 
 # Docker
+!src/docker/vms/README.md
 src/docker/vms
 src/docker/environments
 
