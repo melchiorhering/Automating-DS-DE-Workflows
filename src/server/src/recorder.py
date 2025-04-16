@@ -1,3 +1,11 @@
+"""
+# Action Recorder Module
+=========================
+Currently the sandbox environment does not support Xserver stuff so pynput is not working (yet).
+I leave this on TODO for now.
+
+"""
+
 import json
 import logging
 import time

@@ -2,8 +2,8 @@
 """
 SandboxServer
 =================
-A WebSocket server for executing Python code in a sandboxed environment, this server will function as an AI-agent tool that can be used to execute code in a sandboxed environment. It can also take screenshots and record actions.
-The server is designed to be run in a containerized environment, with the ability to install packages and execute code securely. It uses pynput for GUI interactions and Xcursor for cursor overlay in screenshots.
+A WebSocket server for executing Python code in a sandboxed environment. This server functions as an AI-agent tool for executing code in a sandboxed environment, as well as taking screenshots and recording actions.
+The server is designed to be run in a containerized environment, with the ability to install packages and execute code securely. It uses pyautogui for GUI interactions and Xcursor for cursor overlay in screenshots.
 It is designed to be used as a backend for a client application that communicates with it over WebSocket.
 """
 
@@ -18,12 +18,11 @@ from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+import pyautogui
 import websockets
 from PIL import Image, ImageDraw, ImageFont, ImageGrab
-from pynput import keyboard, mouse
 
 from src.pyxcursor import Xcursor
-from src.recorder import ActionRecorder
 
 
 class SandboxServer:
@@ -35,19 +34,13 @@ class SandboxServer:
         self.host = host
         self.port = port
         self.screenshots_path = screenshots_path
-        self.recorder = ActionRecorder()
 
         self.logger = self._setup_logging()
         self.logger.info(f"Using screenshots path: {self.screenshots_path}")
 
-        self.mouse_controller = mouse.Controller()
-        self.keyboard_controller = keyboard.Controller()
-
         self.handlers: Dict[str, Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]] = {
             "EXECUTE_CODE": self._handle_execute_code,
             "EXECUTE_GUI_CODE": self._handle_execute_gui_code,
-            "START_RECORDING": self._handle_start_recording,
-            "STOP_RECORDING": self._handle_stop_recording,
             "SCREENSHOT": self._handle_screenshot,
         }
 
@@ -87,8 +80,8 @@ class SandboxServer:
         packages = data.get("packages", [])
         client_id = data.get("client_id", "default")
 
-        if "from pynput import" not in code:
-            code = "from pynput import mouse, keyboard\n" + code
+        if "import pyautogui" not in code:
+            code = "import pyautogui\n" + code
 
         result = await self.run_code(code, packages)
         if not result["stderr"]:
@@ -99,17 +92,18 @@ class SandboxServer:
     async def _handle_screenshot(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             client_id = data.get("client_id", "default")
-            client_dir = os.path.join(self.SANDBOX_SCREENSHOTS, client_id)
+            client_dir = os.path.join(self.screenshots_path, client_id)
             os.makedirs(client_dir, exist_ok=True)
 
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
-            filename = f"pynput-{timestamp}.png"
+            filename = f"pyautogui-{timestamp}.png"
             screenshot_path = os.path.join(client_id, filename)
             container_screenshot_path = os.path.join(client_dir, filename)
 
             screenshot = ImageGrab.grab()
             screenshot_array = np.array(screenshot)
-            mouse_x, mouse_y = self.mouse_controller.position
+            # Directly use pyautogui to get the current mouse position.
+            mouse_x, mouse_y = pyautogui.position()
 
             screenshot_img = Image.fromarray(screenshot_array)
             draw = ImageDraw.Draw(screenshot_img)
@@ -189,7 +183,8 @@ class SandboxServer:
         error_buffer = io.StringIO()
 
         def execute():
-            exec_globals = {"mouse_controller": self.mouse_controller, "keyboard_controller": self.keyboard_controller}
+            # Execute code without providing additional controller objects.
+            exec_globals = {}
             with contextlib.redirect_stdout(output_buffer), contextlib.redirect_stderr(error_buffer):
                 exec(code, exec_globals)
 
@@ -199,7 +194,7 @@ class SandboxServer:
         except Exception as e:
             return {"stdout": "", "stderr": f"Execution error: {str(e)}"}
 
-    async def handle_client(self, websocket: websockets.ServerConnection) -> None:
+    async def handle_client(self, websocket: websockets.ServerProtocol) -> None:
         self.logger.info(f"Client connected: {websocket.remote_address}")
         try:
             async for message in websocket:
@@ -231,21 +226,8 @@ class SandboxServer:
             self.logger.error(f"_process_message error: {e}")
             return {"error": str(e)}
 
-    async def _handle_start_recording(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        if not self.recorder.is_recording:
-            self.recorder.start_recording()
-            self.logger.info("Recording started.")
-        return {"status": "recording started"}
-
-    async def _handle_stop_recording(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        if self.recorder.is_recording:
-            self.recorder.stop_recording()
-            self.logger.info("Recording stopped.")
-            self.recorder = ActionRecorder()
-        return {"status": "recording stopped"}
-
     def get_mouse_position(self) -> Tuple[int, int]:
-        return self.mouse_controller.position
+        return pyautogui.position()
 
     async def start(self) -> None:
         self.logger.info(f"Starting WebSocket server on ws://{self.host}:{self.port}")
@@ -262,22 +244,17 @@ class SandboxServer:
                 await asyncio.Future()
             except asyncio.CancelledError:
                 self.logger.info("Server shutdown initiated.")
-                if self.recorder.is_recording:
-                    self.recorder.stop_recording()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sandbox WebSocket Server")
     parser.add_argument("--host", type=str, default=os.getenv("HOST", "localhost"))
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8765")))
-    parser.add_argument(
-        "--screenshots-path",
-        type=str,
-        default=os.getenv("SANDBOX_SCREENSHOTS_PATH", "/shared/screenshots"),
-        help="Path for storing screenshots. Can also be set using SANDBOX_SCREENSHOTS_PATH env var. "
-        "Defaults to '/shared/screenshots' if not provided.",
-    )
+    parser.add_argument("--screenshots-path", type=str)
     args = parser.parse_args()
+
+    # Log the screenshots path to verify it matches the expected shared path inside the container
+    logging.info(f"Starting SandboxServer with screenshots path: {args.screenshots_path}")
 
     server = SandboxServer(args.host, args.port, args.screenshots_path)
     asyncio.run(server.start())
