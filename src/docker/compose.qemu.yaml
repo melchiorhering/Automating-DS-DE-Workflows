@@ -28,5 +28,6 @@ services:
       # SHARED (SCREENSHOT) VOLUME
       # Shared volume - note the leading slash for absolute path
       # - ${ROOT_DIR}/src/docker/shared:/shared
+      - ./shared:/shared
     restart: always
     stop_grace_period: 2m
