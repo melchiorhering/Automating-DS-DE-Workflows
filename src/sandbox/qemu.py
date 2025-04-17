@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import os
-import re
 import shutil
 import time
 from contextlib import contextmanager
@@ -404,7 +403,7 @@ class QemuVMManager:
     def _get_instance_dir(self) -> str:
         unique_name = f"{self.config.container_name}_{int(time.time())}"
         instance_dir = (Path(self.config.env_dir) / unique_name).resolve()
-        instance_dir.mkdir(exist_ok=True, parents=True)
+        set_writable_dir(instance_dir)
         try:
             shutil.copytree(str(self.config.base_vm_path), instance_dir, dirs_exist_ok=True)
         except Exception as e:
@@ -436,39 +435,46 @@ class QemuVMManager:
         self._set_state(VMState.CREATED)
         try:
             cfg = self.config
+
+            # 1) Prepare per-instance storage
             self.instance_dir = self._get_instance_dir()
+            unique_tag = Path(self.instance_dir).name  # e.g. "qemu_1678831234"
             self.logger.info(f"Creating container {cfg.container_name} with storage at {self.instance_dir}")
 
-            # Set main storage (where VM disk files live)
+            # 2) Mounts: main disk + optional shared folder
             mounts: List[Mount] = [Mount(target="/storage", source=self.instance_dir, type="bind")]
 
-            # Set shared storage if configured
             if cfg.shared_path:
-                cfg.mount_tag = re.sub(r"[^a-zA-Z0-9_]", "_", cfg.container_name)
-                self.logger.info(f"Setting up shared path at {cfg.shared_path} with unique tag '{cfg.mount_tag}'")
-                set_writable_dir(cfg.shared_path)
-                source = Path(cfg.shared_path) / cfg.mount_tag
-                mounts.append(Mount(target="/shared", source=source, type="bind"))
-            else:
-                self.logger.warning("No shared path defined in the configuration.")
+                # create a per-VM subfolder named by the unique_tag
+                host_shared = Path(cfg.shared_path) / unique_tag
+                set_writable_dir(host_shared)
 
+                self.logger.info(f"Binding host {host_shared} → container /shared {host_shared}")
+                # Needs to be absolute path
+                mounts.append(Mount(target="/shared", source=str(host_shared.resolve()), type="bind"))
+
+            else:
+                self.logger.warning("No shared_path configured; skipping shared mount.")
+
+            # 3) Ensure QEMU image is present
             if not self.ensure_image_exists(cfg.image):
                 raise VMCreationError(f"Image {cfg.image} does not exist")
 
-            environment: Dict[str, Any] = {
+            # 4) Environment & ports
+            environment = {
                 "BOOT": cfg.qemu_boot,
                 "DEBUG": cfg.qemu_debug,
                 "RAM_SIZE": cfg.qemu_ram_size,
                 "CPU_CORES": cfg.qemu_cpu_cores,
                 "DISK_SIZE": cfg.qemu_disk_size,
                 "DISPLAY": ":0",
+                **cfg.qemu_extra_env,
             }
-            environment.update(cfg.qemu_extra_env)
-
             ports = {"8006/tcp": cfg.novnc_port, "22/tcp": cfg.ssh_port}
-            devices = [d for d in ["/dev/kvm", "/dev/net/tun"] if os.path.exists(d)]
+            devices = [d for d in ("/dev/kvm", "/dev/net/tun") if os.path.exists(d)]
             cap_add = ["NET_ADMIN"] + cfg.extra_caps
 
+            # 5) Create container
             container = self.client.containers.create(
                 image=cfg.image,
                 name=cfg.container_name,
@@ -489,15 +495,23 @@ class QemuVMManager:
                 self.logger.info(f"Container {cfg.container_name} started")
                 self._set_state(VMState.RUNNING)
 
-                # Create the shared storage directory in HOST
-                os.makedirs(source, exist_ok=True)
+                # 6) Inside the guest VM, sudo‑mount the Virtio‑9p share
+                mount_point = f"/mnt/{host_shared}"
+                sudo_pass = self.ssh_config.password.replace("'", r"'\''")
+                cmd = (  # make the mount point
+                    f"echo '{sudo_pass}' | sudo -S mkdir -p {mount_point} && "
+                    # mount via 9p
+                    f"echo '{sudo_pass}' | sudo -S mount -t 9p -o trans=virtio shared {mount_point}"
+                )
+                rc = self.exec_command(cmd)
+                if rc["status"] != 0:
+                    self.logger.error(f"Failed to sudo‑mount 9p: {rc['stderr'].strip()}")
 
-                # Mount VM shared storage inside the VM using SSH commands
-                self.exec_command(f"mount -t 9p -o trans=virtio shared /mnt{source}")
-                self.exec_command(f"chmod 777 /mnt{source}")
             else:
                 self._set_state(VMState.STOPPED)
+
             return container
+
         except Exception as e:
             self.logger.error(f"Error creating container: {e}")
             self._set_state(VMState.ERROR)
