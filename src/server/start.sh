@@ -1,47 +1,47 @@
 #!/usr/bin/env bash
 set -x
-# SandboxServer Startup Script
 
-echo "WebSocket Sandbox Server started in $(pwd)"
-
-# Source the runtime environment file, if it exists.
-if [ -f /home/user/.vm_env ]; then
-    source /home/user/.vm_env
-    echo "Sourced runtime environment from /home/user/.vm_env"
-else
-    echo "WARNING: /home/user/.vm_env not found."
-fi
-
-# Install uv if needed.
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-export PATH="$HOME/.local/bin:$PATH"
+export HOST="${HOST:-0.0.0.0}"
+export PORT="${PORT:-8765}"
+export DISPLAY="${DISPLAY:-:0}"
 
-# These environment variables are set as defaults; they may be overwritten by the runtime env file.
-export HOST=${HOST:-"0.0.0.0"}
-export PORT=${PORT:-"8765"}
-export DISPLAY=${DISPLAY:-":0"}
+# 1) Prepare Xauthority
+XAUTH="$HOME/.Xauthority"
+AUTH="$(ls /run/user/1000/.mutter-Xwaylandauth.* 2>/dev/null | head -n1)"
 
-# Check if the VM_SHARED_DIR variable is set; alse fail the script.
-if [ -z "$VM_SHARED_DIR" ]; then
-    echo "ERROR: VM_SHARED_DIR is not set. Please set it to a valid path."
+if [ -n "$AUTH" ]; then
+    echo "Linking Mutter Xauthority → $XAUTH"
+    ln -sf "$AUTH" "$XAUTH"
+else
+    echo "No Mutter Xauthority; generating new one at $XAUTH"
+    # Ensure we have xauth
+    if ! command -v xauth >/dev/null; then
+        echo "ERROR: xauth not found; install it in the VM" >&2
+        exit 1
+    fi
+    touch "$XAUTH"
+    chmod 600 "$XAUTH"
+    xauth generate "$DISPLAY" . trusted
+fi
+
+export XAUTHORITY="$XAUTH"
+
+# 2) Allow local processes
+xhost +local:
+
+# 3) Debug
+echo "DISPLAY=$DISPLAY"
+echo "XAUTHORITY=$XAUTHORITY"
+xdpyinfo -display "$DISPLAY" || echo "WARNING: xdpyinfo failed"
+
+# 4) Check screenshots path
+if [ -z "$SCREENSHOTS_PATH" ]; then
+    echo "ERROR: SCREENSHOTS_PATH not set" >&2
     exit 1
 fi
 
-echo "PWD is $(pwd)"
-echo "$(ls -la)"
-
-# Dynamically detect the Xauthority file and create a symlink.
-AUTH_FILE=$(ls /run/user/1000/.mutter-Xwaylandauth.* 2>/dev/null | head -n 1)
-if [ -n "$AUTH_FILE" ]; then
-    ln -sf "$AUTH_FILE" /home/user/.Xauthority
-    export XAUTHORITY=/home/user/.Xauthority
-    echo "Using dynamic Xauthority file: $AUTH_FILE"
-else
-    echo "WARNING: No Xauthority file found in /run/user/1000/."
-fi
-
-xhost +SI:localuser:$(whoami)
-
-# Start the server.
-uv run main.py --host="$HOST" --port="$PORT" --screenshots-path="$VM_SHARED_DIR"
+# 5) Launch
+uv run main.py --host="$HOST" --port="$PORT" --screenshots-path="$SCREENSHOTS_PATH"
