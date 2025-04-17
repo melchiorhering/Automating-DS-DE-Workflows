@@ -496,7 +496,7 @@ class QemuVMManager:
                 self._set_state(VMState.RUNNING)
 
                 # 6) Inside the guest VM, sudo‑mount the Virtio‑9p share
-                mount_point = f"/mnt/{host_shared}"
+                mount_point = f"/mnt/{unique_tag}"
                 sudo_pass = self.ssh_config.password.replace("'", r"'\''")
                 cmd = (  # make the mount point
                     f"echo '{sudo_pass}' | sudo -S mkdir -p {mount_point} && "
