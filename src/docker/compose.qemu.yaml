@@ -2,32 +2,36 @@
 # Configuration can be found here: https://github.com/qemus/qemu
 # THIS DOCKER COMPOSE FILE IS USED FOR SETTING UP THE BASE VM ENVIRONMENT
 services:
-  qemu:
+  ubuntu-base:
     image: qemux/qemu
-    container_name: qemu
-    environment:
-      BOOT: "ubuntu" # Default boot image
-      # BOOT: "https://releases.ubuntu.com/jammy/ubuntu-22.04.5-desktop-amd64.iso" # Downloads the Spider2-V image
-      DEBUG: "Y"
-      RAM_SIZE: "4G"
-      CPU_CORES: "4"
-      DISK_SIZE: "16G"
+    container_name: ubuntu-base
+
+    # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
+    volumes:
+      # - ${ROOT_DIR}/src/docker/vms/ubuntu-noble/boot.qcow2:/boot.qcow2
+      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage
+      # - ${ROOT_DIR}/src/docker/shared:/shared
+      # - ./shared:/shared
+
+    # Grant KVM + networking devices
     devices:
       - /dev/kvm
       - /dev/net/tun
     cap_add:
       - NET_ADMIN
+
+    # Runtime tweaks
+    environment:
+      # BOOT: "https://releases.ubuntu.com/jammy/ubuntu-22.04.5-desktop-amd64.iso" # Downloads the Spider2-V
+      BOOT: "ubuntu"
+      RAM_SIZE: "4G" # ↑ RAM (default 2G)
+      CPU_CORES: "4" # ↑ vCPUs (default 2)
+      DISK_SIZE: "16G"
+      DEBUG: "Y"
+
     ports:
-      - 8006:8006 # NoVNC
-      - 2222:22 # SSH
-    volumes:
-      # UBUNTU NOBLE: Set BOOT to "ubuntu"
-      - ${ROOT_DIR}/src/docker/vms/ubuntu-noble:/storage
-      # UBUNTU JAMMY: Set BOOT to the URL
-      # - ${ROOT_DIR}/src/docker/vms/ubuntu-jammy:/storage
-      # SHARED (SCREENSHOT) VOLUME
-      # Shared volume - note the leading slash for absolute path
-      # - ${ROOT_DIR}/src/docker/shared:/shared
-      # - ./shared:/shared
-    restart: always
+      - 8006:8006 # Web console (noVNC)
+      - 2222:22 # Optional SSH from host → guest
+
+    restart: unless-stopped
     stop_grace_period: 2m

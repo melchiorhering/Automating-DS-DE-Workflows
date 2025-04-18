@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 import docker
-from environment import Environment, VMConfig
 from sandbox.qemu import QemuVMManager, SSHManager
 
 # Configure logging

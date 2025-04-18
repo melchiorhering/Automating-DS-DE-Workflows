@@ -675,9 +675,12 @@ dependencies = [
     { name = "filelock" },
     { name = "ipykernel" },
     { name = "ipywidgets" },
+    { name = "nest-asyncio" },
     { name = "paramiko" },
     { name = "pillow" },
+    { name = "prompt-toolkit" },
     { name = "pynput" },
+    { name = "rich" },
     { name = "smolagents" },
     { name = "tqdm" },
     { name = "websockets" },
@@ -695,9 +698,12 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.18.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipywidgets", specifier = ">=8.1.5" },
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "paramiko", specifier = ">=3.5.1" },
     { name = "pillow", specifier = ">=11.1.0" },
+    { name = "prompt-toolkit", specifier = ">=3.0.51" },
     { name = "pynput", specifier = ">=1.8.1" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "smolagents", specifier = ">=1.9.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "websockets", specifier = ">=14.2" },
@@ -1449,7 +1455,6 @@ name = "server"
 version = "0.1.0"
 source = { virtual = "src/server" }
 dependencies = [
-    { name = "evdev" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "pyautogui" },
@@ -1458,7 +1463,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "evdev", specifier = ">=1.9.1" },
     { name = "numpy", specifier = ">=2.2.4" },
     { name = "pillow", specifier = ">=11.1.0" },
     { name = "pyautogui", specifier = ">=0.9.54" },
