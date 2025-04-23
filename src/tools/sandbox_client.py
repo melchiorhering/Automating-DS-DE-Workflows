@@ -14,20 +14,18 @@ from typing import Any, Dict, List, Optional
 
 import websockets
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
 
 class SandboxClient:
     """
     A client to interact with the sandbox server using WebSocket.
     """
 
-    def __init__(self, uri: str, client_id: Optional[str] = None):
+    def __init__(
+        self,
+        uri: str,
+        client_id: Optional[str] = None,
+        logger: logging.Logger = None,
+    ):
         """
         Initialize the client.
 
@@ -38,7 +36,7 @@ class SandboxClient:
         self.uri = uri
         self.websocket = None
         self.client_id = client_id if client_id is not None else str(uuid.uuid4())
-        self.logger = logging.getLogger(f"SandboxClient-{self.client_id[:8]}")
+        self.log = logger or logging.Logger
 
     async def __aenter__(self):
         """Support for async context manager."""
@@ -55,15 +53,15 @@ class SandboxClient:
         """
         try:
             self.websocket = await websockets.connect(self.uri)
-            self.logger.info(f"Connected to WebSocket server at {self.uri}")
+            self.log.info(f"Connected to WebSocket server at {self.uri}")
         except websockets.InvalidURI:
-            self.logger.error(f"Invalid WebSocket URI: {self.uri}")
+            self.log.error(f"Invalid WebSocket URI: {self.uri}")
             raise
         except websockets.InvalidHandshake as e:
-            self.logger.error(f"Failed WebSocket handshake with server: {e}")
+            self.log.error(f"Failed WebSocket handshake with server: {e}")
             raise
         except Exception as e:
-            self.logger.error(f"Failed to connect to WebSocket server: {e}")
+            self.log.error(f"Failed to connect to WebSocket server: {e}")
             raise
 
     async def disconnect(self) -> None:
@@ -72,7 +70,7 @@ class SandboxClient:
         """
         if self.websocket:
             await self.websocket.close()
-            self.logger.info("Disconnected from WebSocket server")
+            self.log.info("Disconnected from WebSocket server")
 
     async def send_command(self, action: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -97,12 +95,12 @@ class SandboxClient:
                 payload.update(data)
 
             await self.websocket.send(json.dumps(payload))
-            self.logger.info(f"Sent: {action}")
+            self.log.info(f"Sent: {action}")
 
             response = await self.websocket.recv()
             return json.loads(response)
         except Exception as e:
-            self.logger.error(f"Error sending command '{action}': {e}")
+            self.log.error(f"Error sending command '{action}': {e}")
             return {"status": "error", "message": str(e)}
 
     async def run_code(self, code: str, packages: Optional[List[str]] = None) -> Dict[str, str]:
@@ -154,7 +152,7 @@ class SandboxClient:
             response = await self.send_command("SCREENSHOT")
             return response
         except Exception as e:
-            self.logger.error(f"Error retrieving screenshot with metadata: {e}")
+            self.log.error(f"Error retrieving screenshot with metadata: {e}")
             return {"status": "error", "message": str(e)}
 
     async def start_recording(self) -> Dict[str, Any]:

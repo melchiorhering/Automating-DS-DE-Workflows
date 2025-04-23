@@ -18,6 +18,7 @@ dependencies = [
     "prompt-toolkit>=3.0.51",
     "rich>=14.0.0",
     "nest-asyncio>=1.6.0",
+    "tenacity>=9.1.2",
 ]
 
 

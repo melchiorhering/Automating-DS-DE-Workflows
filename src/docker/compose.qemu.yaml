@@ -8,10 +8,9 @@ services:
 
     # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
     volumes:
-      # - ${ROOT_DIR}/src/docker/vms/ubuntu-noble/boot.qcow2:/boot.qcow2
-      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage
+      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
+      # - ${ROOT_DIR}/src/docker/vms/snapshots/ubuntu-base-snap1.qcow2:/boot.qcow2 # For using snapshots
       # - ${ROOT_DIR}/src/docker/shared:/shared
-      # - ./shared:/shared
 
     # Grant KVM + networking devices
     devices:

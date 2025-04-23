@@ -5,8 +5,10 @@ description = "The environment server that makes it possible to interact with th
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.115.12",
     "numpy>=2.2.4",
     "pillow>=11.1.0",
     "pyautogui>=0.9.54",
-    "websockets>=15.0",
+    "uvicorn>=0.34.2",
+    # "websockets>=15.0",
 ]

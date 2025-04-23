@@ -192,79 +192,197 @@ ssh user@localhost -p 2222 \
   'sudo bash -lc "cd /home/user/server && chmod +x start.sh && ./start.sh"'
 ```
 
-## 6 · Snapshot / thin‑clone
+## 6 · Snapshot / thin‑clone
 
 You have two options for spinning up branches of your golden image:
 
-### 6.1 · CLI: create thin‑clones with `qemu-img`
+### 6.1 · CLI: create thin‑clones with `qemu-img`
 
-Point `BASE` at your original QCOW2, then run:
+Point `BASE` at your original ISO (or QCOW2 image), then run from inside the `vms/` directory:
 
 ```bash
-BASE=./vms/ubuntu-base/ubuntu-base.iso
+# Note: backing-file paths (-b) are interpreted relative to the new image’s directory.
+# To avoid errors, either use an absolute path or a relative path from snapshots/.
 
-# create two independent snapshots
-qemu-img create -f qcow2 -b "$BASE" ./vms/ubuntu-base-snap1.qcow2
-qemu-img create -f qcow2 -b "$BASE" ./vms/ubuntu-base-snap2.qcow2
+# Option A: use absolute path for backing file
+BASE="$(pwd)/ubuntu-base/boot.iso"
+qemu-img create -f qcow2 -F raw -b "$BASE" snapshots/ubuntu-base-snap1.qcow2
+qemu-img create -f qcow2 -F raw -b "$BASE" snapshots/ubuntu-base-snap2.qcow2
+
+# Option B: use relative path (backing path relative to snapshots/ directory)
+qemu-img create -f qcow2 -F raw -b ../ubuntu-base/boot.iso snapshots/ubuntu-base-snap1.qcow2
+qemu-img create -f qcow2 -F raw -b ../ubuntu-base/boot.iso snapshots/ubuntu-base-snap2.qcow2
 ```
 
 Each new `.qcow2` file stores only the differences from `BASE`; the base stays pristine.
 
 ---
 
-### 6.2 · Python SDK: one‑shot snapshot + container launch
+#### Booting a thin‑clone
 
-Automate both steps—snapshot creation and `qemux/qemu` container startup—in a single script:
+From the same `vms/` directory, run:
+
+```bash
+qemu-system-x86_64 \
+  -m 2048 \
+  -drive file=snapshots/ubuntu-base-snap1.qcow2,if=virtio \
+  -boot d
+```
+
+This boots your thin‑clone, capturing all writes in `snapshots/ubuntu-base-snap1.qcow2`.
+
+### 6.2 · Python SDK: one‑shot snapshot + container launch
+
+Automate both snapshot creation and container startup in one script using Docker’s Python SDK:
+
+> **Note:** In the `ports` mapping, the **key** is the container (guest) port (e.g. `"8106/tcp"`), and the **value** is the host port to bind (e.g. `8106`).
 
 ```python
-#!/usr/bin/env python3
-import os, subprocess, sys
+import shutil
+import sys
+from pathlib import Path
+
 from docker import from_env
+from docker.types import Mount
 
-def create_snapshot(base, snap):
-    print(f"[*] Creating {snap}")
-    subprocess.run(["qemu-img","create","-f","qcow2","-b",base,snap], check=True)
 
-def launch(name, qcow, vnc, ssh):
+def copy_disk_images(base_boot: Path, base_data: Path, target_dir: Path):
+    print(f"[*] Preparing VM in: {target_dir}")
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    boot_target = target_dir / "boot.iso"
+    data_target = target_dir / "data.img"
+
+    shutil.copy(base_boot, boot_target)
+    shutil.copy(base_data, data_target)
+
+    return boot_target, data_target
+
+
+def validate_image(path: Path):
+    if not path.exists():
+        sys.exit(f"❌ Image not found: {path}")
+
+
+def launch_container(name: str, boot_img: Path, data_img: Path, vnc: int, ssh: int, work_dir: Path):
+    print(f"[*] Launching container: {name}")
     client = from_env()
-    print(f"[*] Launching {name}")
-    c = client.containers.run(
+
+    mounts = [
+        Mount(target="/boot.iso", source=str(boot_img.resolve()), type="bind", read_only=False),
+        Mount(target="/data.img", source=str(data_img.resolve()), type="bind", read_only=False),
+        Mount(target="/storage", source=str(work_dir.resolve()), type="bind", read_only=False),
+    ]
+
+    container = client.containers.run(
         "qemux/qemu",
         name=name,
-        devices=["/dev/kvm","/dev/net/tun"],
-        volumes={ qcow: {"bind": "/storage/ubuntu-base.qcow2","mode":"ro"}},
+        devices=["/dev/kvm", "/dev/net/tun"],
+        cap_add=["NET_ADMIN"],
+        mounts=mounts,
         environment={
-          "RAM_SIZE": "4G",
-          "CPU_CORES": "4",
-          "DISK_SIZE":"16G",
-          "DEBUG":"Y",
+            "BOOT": "ubuntu",
+            "RAM_SIZE": "4G",
+            "CPU_CORES": "4",
+            "DISK_SIZE": "16G",
+            "DEBUG": "Y",
         },
-        ports={f"{vnc}/tcp": vnc, f"{ssh}/tcp": ssh},
-        detach=True
+        ports={
+            "8006/tcp": vnc,
+            "22/tcp": ssh,
+        },
+        detach=True,
     )
-    print(f"[+] {name} started (id={c.short_id}), VNC:{vnc}, SSH:{ssh}")
 
-if __name__=="__main__":
-    BASE = os.path.abspath("./vms/ubuntu-base/ubuntu-base.iso")
-    if not os.path.exists(BASE):
-        print("Base image missing", file=sys.stderr); sys.exit(1)
+    print(f"[+] {name} started (id={container.short_id})")
+    print(f"    ▸ VNC: localhost:{vnc}")
+    print(f"    ▸ SSH: ssh user@localhost -p {ssh}")
 
-    snaps = ["snap1","snap2"]
-    for i, nm in enumerate(snaps,1):
-        path = f"./vms/ubuntu-base-{nm}.qcow2"
-        create_snapshot(BASE, path)
-        vnc_port = 8000 + i*100 + 6   # 8106, 8206
-        ssh_port = 2222 + i           # 2223, 2224
-        launch(f"ubuntu-{nm}", path, vnc_port, ssh_port)
+
+def main():
+    script_dir = Path(__file__).resolve().parent.parent
+    base_dir = script_dir / "vms/ubuntu-base"
+    base_boot = base_dir / "boot.iso"
+    base_data = base_dir / "data.img"
+
+    validate_image(base_boot)
+    validate_image(base_data)
+
+    snaps = ["snap1", "snap2"]
+    for idx, snap_name in enumerate(snaps, start=1):
+        snap_dir = script_dir / f"vms/snapshots/{snap_name}"
+        boot_img, data_img = copy_disk_images(base_boot, base_data, snap_dir)
+
+        vnc_port = 8000 + idx * 100 + 6
+        ssh_port = 2222 + idx
+        launch_container(f"ubuntu-{snap_name}", boot_img, data_img, vnc_port, ssh_port, snap_dir)
+
+
+if __name__ == "__main__":
+    main()
+
 ```
 
 Running this script will:
 
-- generate `ubuntu-base-snap1.qcow2` and `ubuntu-base-snap2.qcow2`
-- launch `ubuntu-snap1` on **8106** (noVNC) & **2223** (SSH)
-- launch `ubuntu-snap2` on **8206** (noVNC) & **2224** (SSH)
+- Create `ubuntu-base-snap1.qcow2` and `ubuntu-base-snap2.qcow2` in `vms/snapshots/`.
+- Validate each snapshot file for existence and supported format before launch.
+- Launch two containers named `ubuntu-snap1` and `ubuntu-snap2`.
+- Expose noVNC on ports **8106** and **8206**, and SSH on **2223** and **2224** respectively.
 
 ---
+
+#### 6.3 · Docker Compose variant
+
+You can also define a `docker-compose.yml` for your snapshots:
+
+```yaml
+version: "3.8"
+services:
+  ubuntu-base-snap1:
+    image: qemux/qemu
+    container_name: ubuntu-base-snap1
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./vms/snapshots/ubuntu-base-snap1.qcow2:/boot.qcow2:ro
+    environment:
+      BOOT: "ubuntu"
+      RAM_SIZE: "4G"
+      CPU_CORES: "4"
+      DISK_SIZE: "16G"
+      DEBUG: "Y"
+    ports:
+      - "8106:8006" # Web console (noVNC)
+      - "2223:22" # SSH
+    restart: unless-stopped
+    stop_grace_period: 2m
+
+  ubuntu-base-snap2:
+    image: qemux/qemu
+    container_name: ubuntu-base-snap2
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./vms/snapshots/ubuntu-base-snap2.qcow2:/boot.qcow2:ro
+    environment:
+      BOOT: "ubuntu"
+      RAM_SIZE: "4G"
+      CPU_CORES: "4"
+      DISK_SIZE: "16G"
+      DEBUG: "Y"
+    ports:
+      - "8206:8006"
+      - "2224:22"
+    restart: unless-stopped
+    stop_grace_period: 2m
+```
 
 ## 7 · Ephemeral (RAM‑only) VMs
 
