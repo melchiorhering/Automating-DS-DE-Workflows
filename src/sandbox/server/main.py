@@ -1,14 +1,15 @@
 import asyncio
 import contextlib
 import io
+import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import numpy as np
 import pyautogui
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageDraw, ImageFont, ImageGrab
 from pydantic import BaseModel
@@ -37,11 +38,6 @@ logger.info("🔧 FastAPI Server logging to: %s", log_path)
 class CodeRequest(BaseModel):
     code: str
     packages: Optional[List[str]] = None
-    client_id: Optional[str] = "default"
-
-
-class ScreenshotRequest(BaseModel):
-    client_id: Optional[str] = "default"
 
 
 # ───────────────────── Server Setup ─────────────────────
@@ -59,8 +55,11 @@ shared_dir = os.getenv("SHARED_DIR", "/tmp/sandbox-server")
 os.makedirs(shared_dir, exist_ok=True)
 
 try:
-    cursor = Xcursor()
-    logger.info("✅ Xcursor initialized successfully")
+    cursor = Xcursor(shared_dir=shared_dir)
+    imgarray = cursor.getCursorImageArrayFast()
+    cursor.saveImage(imgarray, "cursor_image.png")
+    logger.info("✅ Cursor image saved successfully")
+
 except Exception as e:
     logger.warning(f"⚠️ Failed to initialize Xcursor: {e}")
     cursor = None
@@ -119,23 +118,38 @@ async def execute_code(code: str, packages: Optional[List[str]] = None) -> Dict[
     }
 
 
-def take_screenshot(client_id: str = "default") -> Dict[str, str]:
+def take_screenshot(method: Literal["pyautogui", "pillow"] = "pyautogui") -> Dict[str, str]:
     try:
-        client_dir = os.path.join(shared_dir, client_id)
+        client_dir = os.path.join(shared_dir)
         os.makedirs(client_dir, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
-        filename = f"pyautogui-{timestamp}.png"
+        filename = f"{method}-{timestamp}.png"
         filepath = os.path.join(client_dir, filename)
 
-        img = ImageGrab.grab()
+        # ─── Take Screenshot ────────────────────────────────────────────────
+        if method == "pyautogui":
+            pyautogui.screenshot(imageFilename=filepath)
+            img = Image.open(filepath)
+        elif method == "pillow":
+            # Currently now working on Wayland, should do some more configuration
+            img = ImageGrab.grab()
+        else:
+            raise ValueError(f"Unknown screenshot method: {method}")
+
         arr = np.array(img)
         screenshot_img = Image.fromarray(arr)
         draw = ImageDraw.Draw(screenshot_img)
 
+        # ─── Annotate Screenshot ───────────────────────────────────────────
         mouse_x, mouse_y = pyautogui.position()
-        draw.rectangle([mouse_x - 25, mouse_y - 25, mouse_x + 25, mouse_y + 25], outline="red", width=2)
-        draw.text((mouse_x - 25, mouse_y - 45), "mouse", fill="red", font=ImageFont.load_default())
+        draw.rectangle([mouse_x - 20, mouse_y - 20, mouse_x + 20, mouse_y + 20], outline="red", width=2)
+        draw.text(
+            (mouse_x - 25, mouse_y - 40),
+            f"mouse: mouse_x_{mouse_x}, mouse_y_{mouse_y}",
+            fill="red",
+            font=ImageFont.load_default(),
+        )
 
         if cursor:
             try:
@@ -151,21 +165,61 @@ def take_screenshot(client_id: str = "default") -> Dict[str, str]:
         screenshot_img.save(filepath)
 
         return {
-            "screenshot_path": os.path.join(client_id, filename),
+            "screenshot_path": filename,
             "mouse_position": [mouse_x, mouse_y],
             "screen_size": [screen_width, screen_height],
         }
+
     except Exception as e:
         logger.error(f"❌ Screenshot error: {e}")
         return {"status": "error", "message": str(e)}
 
 
+async def list_installed_packages() -> List[Dict[str, str]]:
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "uv",
+            "pip",
+            "list",
+            "--format",
+            "json",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            logger.error(f"❌ Failed to list packages: {stderr.decode().strip()}")
+            return []
+
+        packages = stdout.decode("utf-8").strip()
+        return json.loads(packages)
+
+    except Exception as e:
+        logger.error(f"❌ Error while listing packages: {e}")
+        return []
+
+
 # ───────────────────── API Endpoints ─────────────────────
+
+
+# GET endpoints
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
+@app.get("/packages")
+async def get_installed_packages():
+    return await list_installed_packages()
+
+
+@app.get("/screenshot")
+async def screenshot_endpoint(method: str = Query(default="pyautogui", enum=["pyautogui", "pillow"])):
+    return take_screenshot(method=method)
+
+
+# POST endpoints
 @app.post("/execute")
 async def run_code(request: CodeRequest):
     return await execute_code(request.code, request.packages)
@@ -178,10 +232,5 @@ async def run_gui_code(request: CodeRequest):
         code = "import pyautogui\n" + code
     result = await execute_code(code, request.packages)
     if not result["stderr"]:
-        result["screenshot"] = take_screenshot(request.client_id)
+        result["screenshot"] = take_screenshot()
     return result
-
-
-@app.post("/screenshot")
-async def screenshot_endpoint(request: ScreenshotRequest):
-    return take_screenshot(request.client_id)

@@ -1,3 +1,15 @@
-from .errors import RemoteCommandError, SSHError, VMCreationError, VMManagerError, VMOperationError  # noqa: F401
-from .ssh import SSHClient, SSHConfig  # noqa: F401
-from .virtualmachine import AgentVMManager, VMConfig, VMManager  # noqa: F401
+# sandbox/__init__.py
+
+from . import errors, server
+from .vm.ssh import SSHClient, SSHConfig
+from .vm.virtualmachine import AgentVMConfig, AgentVMManager, VMConfig, VMManager
+
+__all__ = [
+    "errors",
+    "server",
+    "SSHClient",
+    "SSHConfig",
+    "AgentVMManager",
+    "VMConfig",
+    "VMManager",
+]

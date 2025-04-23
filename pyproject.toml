@@ -26,7 +26,7 @@ dependencies = [
 dev-dependencies = ["pytest>=8.3.4", "ruff>=0.9.7"]
 
 [tool.uv.workspace]
-members = ["environment", "src/server"]
+members = ["src/server"]
 
 [tool.ruff]
 # In addition to the standard set of inclusions, include `.pyw` files.

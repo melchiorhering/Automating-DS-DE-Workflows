@@ -51,8 +51,9 @@ class Display(ctypes.Structure):
 
 class Xcursor:
     display = None
+    shared_dir = None
 
-    def __init__(self, display=None):
+    def __init__(self, display=None, shared_dir=None):
         if not display:
             try:
                 display = os.environ["DISPLAY"].encode("utf-8")
@@ -143,7 +144,8 @@ class Xcursor:
 
     def saveImage(self, imgarray, text):
         img = Image.fromarray(imgarray)
-        img.save(text)
+        filepath = os.path.join(self.shared_dir, text)
+        img.save(filepath)
 
 
 if __name__ == "__main__":

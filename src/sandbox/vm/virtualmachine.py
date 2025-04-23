@@ -12,11 +12,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, Union
 
+from ssh import SSHClient, SSHConfig
+
 import docker
 from docker.client import DockerClient
 from docker.types import Mount
 from sandbox.errors import RemoteCommandError, VMCreationError, VMOperationError
-from sandbox.ssh import SSHClient, SSHConfig
 
 
 # ────────────────────────────── State Enum ──────────────────────────────
@@ -195,7 +196,7 @@ class VMManager:
         for key, val in self.cfg.extra_ports.items():
             if key in ports:
                 self.log.warning(
-                    "⚠️ Port %s already defined (default: %s), skipping extra override (%s).", key, ports[key], val
+                    "⚠️ - Port %s already defined (default: %s), skipping extra override (%s).", key, ports[key], val
                 )
             else:
                 ports[key] = val
@@ -260,15 +261,15 @@ class AgentVMManager(VMManager):
             self._should_cleanup = False  # startup succeeded, let __exit__ decide
             return self
         except Exception as e:
-            self.log.error("❌ Exception during VM startup: %s", e, exc_info=True)
+            self.log.error("❌ - Exception during VM startup: %s", e, exc_info=True)
             self.cleanup(delete_storage=True)
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._should_cleanup or exc_type is not None:
-            self.log.warning("⚠️ Exiting VM context with error, cleaning up...")
+            self.log.warning("⚠️ - Exiting VM context with error, cleaning up...")
         else:
-            self.log.info("🧹 Normal exit, cleaning up VM container...")
+            self.log.info("🧹 - Normal exit, cleaning up VM container...")
         self.cleanup(delete_storage=True)
         return False  # do not suppress exceptions
 
@@ -284,7 +285,7 @@ class AgentVMManager(VMManager):
         except RemoteCommandError as e:
             # Check if already mounted
             if "already mounted" in e.stderr:
-                self.log.warning("⚠️ Shared directory already mounted, continuing...")
+                self.log.warning("⚠️ - Shared directory already mounted, continuing...")
             else:
                 raise
 
@@ -302,10 +303,23 @@ class AgentVMManager(VMManager):
 
         if self.cfg.host_server_dir:
             self.ssh.transfer_directory(self.cfg.host_server_dir, str(self.cfg.sandbox_server_dir))
-            self.ssh.exec_command(f"chmod +x {self.cfg.sandbox_server_dir}/start.sh")
-            self.ssh.stream_command("./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env)
+            self.ssh.exec_command(cmd=f"chmod +x {self.cfg.sandbox_server_dir}/start.sh")
 
-        self._wait_for_fastapi_server()
+            # Non blocking command to start the server
+            self.ssh.exec_command(
+                cmd="./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env, block=False
+            )
+
+        try:
+            self._wait_for_fastapi_server()
+        except VMOperationError as e:
+            self.log.error("❌ FastAPI server failed health check: %s", e)
+            try:
+                logs = self.tail_server_logs()
+                self.log.error("🪵 Last sandbox-server logs:\n%s", logs)
+            except VMOperationError as log_err:
+                self.log.error("⚠️ Could not read log file: %s", log_err)
+            raise
 
     def _wait_for_fastapi_server(self, timeout: float = 30.0, interval: float = 1.0):
         """
@@ -315,7 +329,7 @@ class AgentVMManager(VMManager):
         port = self.cfg.host_sandbox_server_port
         url = f"http://{host}:{port}/health"
 
-        self.log.info("🔍 Waiting for FastAPI server health check at %s...", url)
+        self.log.info("🔍 - Waiting for FastAPI server health check at %s...", url)
         deadline = time.time() + timeout
 
         while time.time() < deadline:
@@ -326,13 +340,13 @@ class AgentVMManager(VMManager):
                         self.log.info("✅ FastAPI server is healthy at %s", url)
                         return
             except urllib.error.URLError as e:
-                self.log.debug("⏳ Server not ready: %s", e)
+                self.log.debug("⏳ - Server not ready: %s", e)
             except Exception as e:
-                self.log.debug("⏳ Unexpected error: %s", e)
+                self.log.debug("⏳ - Unexpected error: %s", e)
 
             time.sleep(interval)
 
-        raise VMOperationError(f"❌ FastAPI server did not become reachable at {url} within {timeout:.1f} seconds.")
+        raise VMOperationError(f"❌ - FastAPI server did not become reachable at {url} within {timeout:.1f} seconds.")
 
     def tail_server_logs(self, lines: int = 100) -> str:
         """
@@ -340,10 +354,10 @@ class AgentVMManager(VMManager):
         """
         path = self.cfg.container_shared_dir / "sandbox-server.log"
         if not path.exists():
-            raise VMOperationError(f"❌ Log file not found at {path}")
+            raise VMOperationError(f"❌ - Log file not found at {path}")
 
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return "".join(f.readlines()[-lines:])
         except Exception as e:
-            raise VMOperationError(f"❌ Failed to read log file: {e}") from e
+            raise VMOperationError(f"❌ - Failed to read log file: {e}") from e

@@ -74,4 +74,13 @@ fi
 
 echo "Launching FastAPI server with uv..."
 
-uv run -- uvicorn main:app --host="$HOST" --port="$PORT" --reload
+# Run the server with uv and log output to the log file
+nohup uv run -- uvicorn main:app --host="$HOST" --port="$PORT" --reload >"$LOG_PATH" 2>&1 &
+
+if [[ $? -ne 0 ]]; then
+    echo "❌ Failed to launch uvicorn. Check logs in $LOG_PATH"
+    exit 1
+fi
+
+# Run the server in the background and log to both file and terminal
+# (uv run -- uvicorn main:app --host="$HOST" --port="$PORT" --reload 2>&1 | tee "$LOG_PATH") &

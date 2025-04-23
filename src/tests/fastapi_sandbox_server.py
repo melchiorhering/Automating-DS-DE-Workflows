@@ -2,12 +2,16 @@
 
 import json
 import logging
+import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-from sandbox.virtualmachine import AgentVMConfig, AgentVMManager
+# Add the parent of `sandbox/` (i.e., ./src/) to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from sandbox import AgentVMConfig, AgentVMManager
 
 # ───────────────────────────── Logger Setup ─────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -18,12 +22,12 @@ logger = logging.getLogger("FastAPITest")
 TEST_CASES = [
     {
         "name": "Basic code execution",
-        "endpoint": "/execute_code",
+        "endpoint": "/execute",  # <- FIXED
         "payload": {"code": "print('Hello from FastAPI')"},
     },
     {
         "name": "Code with package install",
-        "endpoint": "/execute_code",
+        "endpoint": "/execute",  # <- FIXED
         "payload": {
             "code": "import requests\nprint('Requests version:', requests.__version__)",
             "packages": ["requests"],
@@ -31,17 +35,15 @@ TEST_CASES = [
     },
     {
         "name": "GUI interaction with screenshot",
-        "endpoint": "/execute_gui_code",
+        "endpoint": "/execute_gui",  # <- FIXED
         "payload": {
             "code": "import pyautogui\npyautogui.moveTo(100, 100)\nprint('GUI interaction done')",
             "packages": ["pyautogui"],
-            "client_id": "test-client",
         },
     },
     {
         "name": "Screenshot only",
         "endpoint": "/screenshot",
-        "payload": {"client_id": "test-client"},
     },
 ]
 
@@ -97,6 +99,7 @@ if __name__ == "__main__":
             logger.info("✅ VM and FastAPI server are running — launching tests!")
             run_tests(base_url)
             logger.info("🧹 Finished tests. VM will shut down after this.")
-            time.sleep(2)
+            time.sleep(60)
+
     except Exception as e:
         logger.error(f"❌ Failed to set up and run VM tests: {e}")
