@@ -32,13 +32,7 @@ TEST_CASES = [
         "name": "GUI interaction with screenshot",
         "method": "execute_gui_code",
         "args": {
-            "code": """import pyautogui
-            import time
-            pyautogui.move(35, 60)
-            time.sleep(5)
-            pyautogui.click(clicks=2, interval=0.25)
-            time.sleep(5)
-            print('GUI interaction done')""",
+            "code": "import pyautogui\nimport time\npyautogui.click(30, 59, clicks=2, interval=0.25)\ntime.sleep(5)\nprint('GUI interaction done')",
             "packages": ["pyautogui"],
         },
     },

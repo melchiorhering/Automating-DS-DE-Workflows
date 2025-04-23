@@ -123,51 +123,29 @@ sudo apt install -y qemu-guest-agent openssh-server curl wget git vim htop net-t
 ### 5.1 · Disable Wayland and enable X11 (required for full pyautogui support)
 
 Wayland blocks pyautogui mouse/keyboard control. You must switch to **X11**:
-
-1. Edit the GDM configuration file:
-
-   ```bash
-   sudo nano /etc/gdm3/custom.conf
-   ```
-
-2. Uncomment or add:
-
-   ```ini
-   [daemon]
-   WaylandEnable=false
-   ```
-
-3. Reboot the VM:
-
-   ```bash
-   sudo reboot
-   ```
-
-Ref: [askubuntu.com guide](https://askubuntu.com/questions/1343805/failed-to-enable-link-training-when-resuming-from-suspend/1470563#1470563)
+Use [this post to disable Wayland and enable X11](https://askubuntu.com/questions/1343805/failed-to-enable-link-training-when-resuming-from-suspend/1470563#1470563)
 
 ### 5.2 · Configure X11 startup in your app container (e.g., FastAPI)
 
-In your container entrypoint (`start.sh`), add:
+For pyautogui and pynput to work, you need to set up X11 and Xauthority in your app container.
+This means that DISPLAY and XAUTHORITY must be set up correctly. Also setup `xhost` to allow access.
 
 ```bash
-export DISPLAY=:0
-export XAUTHORITY=$HOME/.Xauthority
 xhost +SI:localuser:$(whoami)  # allow X access
 ```
 
-Ensure the VM user has `.Xauthority` set up and that you’re not running under Wayland.
+> NOTE: Ensure the VM user has `.Xauthority` set up and that you’re not running under Wayland.
 
 ---
 
 ## 6 · Installed Packages Recap
 
-| Category         | Packages                                                             |
-| ---------------- | -------------------------------------------------------------------- |
-| GUI Tools        | `gnome-screenshot`, `x11-utils`, `fonts-dejavu`, `xdotool`           |
-| Dev Essentials   | `build-essential`, `curl`, `wget`, `git`, `python3-dev`, `uv`        |
-| Automation       | `pyautogui`, `pynput`, `opencv-python`, `Pillow`, `numpy`, `fastapi` |
-| Input Recording  | `pynput`, `xlib`, `Xauthority`, `xhost`                              |
-| Screenshot/Tests | `Pillow`, `ImageGrab`, `pyautogui`, `Xcursor` (custom, optional)     |
+| Category         | Packages                                                         |
+| ---------------- | ---------------------------------------------------------------- |
+| GUI Tools        | `gnome-screenshot`                                               |
+| Dev Essentials   | `build-essential`, `curl`, `wget`, `git`, `python3-dev`, `uv`    |
+| Automation       | `pyautogui`, `pynput`, `Pillow`, `numpy`, `fastapi`              |
+| Screenshot/Tests | `Pillow`, `ImageGrab`, `pyautogui`, `Xcursor` (custom, optional) |
 
 ---
 

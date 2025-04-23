@@ -383,7 +383,10 @@ class AgentVMManager(VMManager):
 
         if self.cfg.host_server_dir:
             # Copy server files to the VM but exclude the .venv directory
-            self.ssh.transfer_directory(self.cfg.host_server_dir, str(self.cfg.sandbox_server_dir), exclude=[".venv"])
+            self.ssh.transfer_directory(
+                self.cfg.host_server_dir,
+                str(self.cfg.sandbox_server_dir),
+            )
             self.ssh.exec_command(
                 cmd=f"chmod +x {self.cfg.sandbox_server_dir}/start.sh",
             )

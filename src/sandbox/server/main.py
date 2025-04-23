@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from src.pyxcursor import Xcursor
 from src.recording import recorded_actions, start_recording, stop_recording
+from src.utils import normalize_code
 
 # ───────────────────── Logger Setup ─────────────────────
 log_path = os.path.join(os.getenv("SHARED_DIR", "/tmp/sandbox-server"), os.getenv("SERVER_LOG", "sandbox-server.log"))
@@ -221,12 +222,16 @@ async def run_code(request: CodeRequest):
 
 @app.post("/execute_gui")
 async def run_gui_code(request: CodeRequest):
-    code = request.code
-    if "import pyautogui" not in code:
-        code = "import pyautogui\n" + code
-    result = await execute_code(code, request.packages)
+    cleaned_code = normalize_code(request.code)
+
+    if "import pyautogui" not in cleaned_code:
+        cleaned_code = "import pyautogui\n" + cleaned_code
+
+    result = await execute_code(cleaned_code, request.packages)
+
     if not result["stderr"]:
         result["screenshot"] = take_screenshot()
+
     return result
 
 

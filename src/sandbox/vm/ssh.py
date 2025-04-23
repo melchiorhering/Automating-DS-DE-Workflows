@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Union
 
 import paramiko
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -47,21 +47,27 @@ class SFTPHelper:
             self.log.debug("Creating remote dir: %s", d)
             self.sftp.mkdir(d)
 
-    def transfer_directory(self, local: Path, remote: str, exclude: Optional[Set[Path]] = None) -> None:
+    def transfer_directory(
+        self, local: Union[Path, str], remote: Union[Path, str], exclude: Optional[List[Union[str, Path]]] = None
+    ) -> None:
+        local = Path(local).resolve()
+        remote = Path(remote)
+
         if not local.is_dir():
             raise VMOperationError(f"Local directory not found: {local}")
 
-        exclude = exclude or set()
+        exclude_paths = {(local / Path(p)).resolve() for p in (exclude or [])}
         self.sftp.chdir("/")
 
         for file in local.rglob("*"):
-            if any(file.is_relative_to(ex) for ex in exclude):
+            file = file.resolve()
+            if any(file.is_relative_to(ex) for ex in exclude_paths):
                 self.log.debug("Skipping excluded file: %s", file)
                 continue
 
             if file.is_file():
                 relative = file.relative_to(local)
-                target = Path(remote) / relative
+                target = remote / relative
                 self.mkdir_p(str(target.parent))
                 self.log.debug("SFTP: %s → %s", file, target)
                 self.sftp.put(str(file), str(target))
@@ -143,7 +149,12 @@ class SSHClient:
             self._last_used = time.time()
         return self._sftp
 
-    def transfer_directory(self, local: Path, remote: str, exclude: Optional[Set[Path]] = None) -> None:
+    def transfer_directory(
+        self, local: Union[Path, str], remote: Union[Path, str], exclude: Optional[List[Union[str, Path]]] = None
+    ) -> None:
+        local = Path(local).resolve()
+        remote = Path(remote)
+
         sftp = self.get_sftp()
         self.exec_command(f"mkdir -p {remote}")
         helper = SFTPHelper(sftp, self.log)

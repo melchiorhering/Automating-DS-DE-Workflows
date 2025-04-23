@@ -1,4 +1,5 @@
 # server/src/utils.py
+import textwrap
 from datetime import datetime, timezone
 
 
@@ -17,3 +18,9 @@ def flush_typing_sequence(recorded_actions, buffer):
         }
     )
     buffer.clear()
+
+
+def normalize_code(code: str) -> str:
+    """Clean and dedent code string, preserving indentation inside functions etc."""
+    code = code.strip()
+    return textwrap.dedent(code)
