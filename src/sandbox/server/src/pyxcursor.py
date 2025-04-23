@@ -1,3 +1,4 @@
+# server/src/pyxcursor.py
 import array
 import ctypes
 import ctypes.util
@@ -53,7 +54,7 @@ class Xcursor:
     display = None
     shared_dir = None
 
-    def __init__(self, display=None, shared_dir=None):
+    def __init__(self, display=None):
         if not display:
             try:
                 display = os.environ["DISPLAY"].encode("utf-8")
@@ -144,8 +145,7 @@ class Xcursor:
 
     def saveImage(self, imgarray, text):
         img = Image.fromarray(imgarray)
-        filepath = os.path.join(self.shared_dir, text)
-        img.save(filepath)
+        img.save(text)
 
 
 if __name__ == "__main__":

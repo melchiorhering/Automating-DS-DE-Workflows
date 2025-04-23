@@ -1,5 +1,7 @@
+# server/main.py
 import asyncio
 import contextlib
+import datetime
 import io
 import json
 import logging
@@ -15,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageGrab
 from pydantic import BaseModel
 
 from src.pyxcursor import Xcursor
+from src.recording import recorded_actions, start_recording, stop_recording
 
 # ───────────────────── Logger Setup ─────────────────────
 log_path = os.path.join(os.getenv("SHARED_DIR", "/tmp/sandbox-server"), os.getenv("SERVER_LOG", "sandbox-server.log"))
@@ -24,11 +27,9 @@ logger = logging.getLogger("SandboxServer")
 logger.setLevel(logging.DEBUG if os.getenv("DEBUG") == "1" else logging.INFO)
 
 file_handler = logging.FileHandler(log_path)
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.addHandler(file_handler)
 
 stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.addHandler(stream_handler)
 
 logger.info("🔧 FastAPI Server logging to: %s", log_path)
@@ -40,8 +41,11 @@ class CodeRequest(BaseModel):
     packages: Optional[List[str]] = None
 
 
-# ───────────────────── Server Setup ─────────────────────
-app = FastAPI(title="Sandbox REST Server")
+# ───────────────────── FastAPI Setup ─────────────────────
+app = FastAPI(
+    title="Sandbox REST Server",
+    description="API for executing code, taking screenshots, and recording user GUI actions in a sandboxed VM environment.",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,12 +58,10 @@ app.add_middleware(
 shared_dir = os.getenv("SHARED_DIR", "/tmp/sandbox-server")
 os.makedirs(shared_dir, exist_ok=True)
 
+# ───────────────────── Cursor & Screen ─────────────────────
 try:
-    cursor = Xcursor(shared_dir=shared_dir)
-    imgarray = cursor.getCursorImageArrayFast()
-    cursor.saveImage(imgarray, "cursor_image.png")
+    cursor = Xcursor()
     logger.info("✅ Cursor image saved successfully")
-
 except Exception as e:
     logger.warning(f"⚠️ Failed to initialize Xcursor: {e}")
     cursor = None
@@ -72,7 +74,7 @@ except Exception as e:
     screen_width, screen_height = 1920, 1080
 
 
-# ───────────────────── Helpers ─────────────────────
+# ───────────────────── Utilities ─────────────────────
 async def install_packages(packages: List[str]) -> Optional[str]:
     try:
         result = await asyncio.create_subprocess_exec(
@@ -120,19 +122,17 @@ async def execute_code(code: str, packages: Optional[List[str]] = None) -> Dict[
 
 def take_screenshot(method: Literal["pyautogui", "pillow"] = "pyautogui") -> Dict[str, str]:
     try:
-        client_dir = os.path.join(shared_dir)
-        os.makedirs(client_dir, exist_ok=True)
+        screenshot_dir = os.path.join(shared_dir, "screenshots")
+        os.makedirs(screenshot_dir, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
         filename = f"{method}-{timestamp}.png"
-        filepath = os.path.join(client_dir, filename)
+        filepath = os.path.join(screenshot_dir, filename)
 
-        # ─── Take Screenshot ────────────────────────────────────────────────
         if method == "pyautogui":
             pyautogui.screenshot(imageFilename=filepath)
             img = Image.open(filepath)
         elif method == "pillow":
-            # Currently now working on Wayland, should do some more configuration
             img = ImageGrab.grab()
         else:
             raise ValueError(f"Unknown screenshot method: {method}")
@@ -141,11 +141,10 @@ def take_screenshot(method: Literal["pyautogui", "pillow"] = "pyautogui") -> Dic
         screenshot_img = Image.fromarray(arr)
         draw = ImageDraw.Draw(screenshot_img)
 
-        # ─── Annotate Screenshot ───────────────────────────────────────────
         mouse_x, mouse_y = pyautogui.position()
-        draw.rectangle([mouse_x - 20, mouse_y - 20, mouse_x + 20, mouse_y + 20], outline="red", width=2)
+        draw.rectangle([mouse_x - 25, mouse_y - 25, mouse_x + 25, mouse_y + 25], outline="red", width=2)
         draw.text(
-            (mouse_x - 25, mouse_y - 40),
+            (mouse_x - 25, mouse_y - 35),
             f"mouse: mouse_x_{mouse_x}, mouse_y_{mouse_y}",
             fill="red",
             font=ImageFont.load_default(),
@@ -194,16 +193,12 @@ async def list_installed_packages() -> List[Dict[str, str]]:
 
         packages = stdout.decode("utf-8").strip()
         return json.loads(packages)
-
     except Exception as e:
         logger.error(f"❌ Error while listing packages: {e}")
         return []
 
 
 # ───────────────────── API Endpoints ─────────────────────
-
-
-# GET endpoints
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
@@ -219,7 +214,6 @@ async def screenshot_endpoint(method: str = Query(default="pyautogui", enum=["py
     return take_screenshot(method=method)
 
 
-# POST endpoints
 @app.post("/execute")
 async def run_code(request: CodeRequest):
     return await execute_code(request.code, request.packages)
@@ -234,3 +228,38 @@ async def run_gui_code(request: CodeRequest):
     if not result["stderr"]:
         result["screenshot"] = take_screenshot()
     return result
+
+
+@app.get("/record")
+async def record(mode: Literal["start", "stop"]):
+    recordings_dir = os.path.join(shared_dir, "recordings")
+    os.makedirs(recordings_dir, exist_ok=True)
+
+    if mode == "start":
+        if recorded_actions:
+            return {"status": "already_recording"}
+        start_recording()
+        return {"status": "recording_started"}
+
+    elif mode == "stop":
+        if not recorded_actions:
+            return {"status": "not_recording"}
+
+        actions = stop_recording()
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
+        filename = f"recording-{timestamp}.json"
+        filepath = os.path.join(recordings_dir, filename)
+
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(actions, f, indent=2)
+        except Exception as e:
+            logger.error(f"❌ Failed to save recording: {e}")
+            return {"status": "error", "message": str(e)}
+
+        return {
+            "status": "recording_stopped",
+            "recording_file": filename,
+            "num_actions": len(actions),
+        }

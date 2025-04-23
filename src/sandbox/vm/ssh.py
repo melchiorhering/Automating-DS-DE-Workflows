@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 import paramiko
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -47,11 +47,18 @@ class SFTPHelper:
             self.log.debug("Creating remote dir: %s", d)
             self.sftp.mkdir(d)
 
-    def transfer_directory(self, local: Path, remote: str) -> None:
+    def transfer_directory(self, local: Path, remote: str, exclude: Optional[Set[Path]] = None) -> None:
         if not local.is_dir():
             raise VMOperationError(f"Local directory not found: {local}")
+
+        exclude = exclude or set()
         self.sftp.chdir("/")
+
         for file in local.rglob("*"):
+            if any(file.is_relative_to(ex) for ex in exclude):
+                self.log.debug("Skipping excluded file: %s", file)
+                continue
+
             if file.is_file():
                 relative = file.relative_to(local)
                 target = Path(remote) / relative
@@ -110,15 +117,18 @@ class SSHClient:
         cwd: str = "",
         env: Dict[str, str] | None = None,
         block: bool = True,
+        as_root: bool = False,
     ) -> Dict[str, Any] | None:
         full = f"cd {cwd} && {cmd}" if cwd else cmd
+        if as_root and not full.startswith("sudo"):
+            full = f"sudo {full}"
         client = self.connect()
         self.log.debug("ssh $ %s", full)
         stdin, stdout, stderr = client.exec_command(full, timeout=self.cfg.command_timeout, environment=env)
 
         if not block:
             self.log.debug("Non-blocking exec_command issued.")
-            return None  # Do not wait for output
+            return None
 
         status = stdout.channel.recv_exit_status()
         out = stdout.read().decode()
@@ -133,11 +143,11 @@ class SSHClient:
             self._last_used = time.time()
         return self._sftp
 
-    def transfer_directory(self, local: Path, remote: str) -> None:
+    def transfer_directory(self, local: Path, remote: str, exclude: Optional[Set[Path]] = None) -> None:
         sftp = self.get_sftp()
         self.exec_command(f"mkdir -p {remote}")
         helper = SFTPHelper(sftp, self.log)
-        helper.transfer_directory(local, remote)
+        helper.transfer_directory(local, remote, exclude=exclude)
 
     def open_shell(self) -> paramiko.Channel:
         client = self.connect()

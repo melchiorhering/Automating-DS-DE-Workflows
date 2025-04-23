@@ -9,6 +9,7 @@ dependencies = [
     "numpy>=2.2.4",
     "pillow>=11.1.0",
     "pyautogui>=0.9.54",
+    "pynput>=1.8.1",
     "uvicorn>=0.34.2",
     # "websockets>=15.0",
 ]
