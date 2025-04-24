@@ -2,13 +2,13 @@
   "latex-workshop.latex.tools": [
     {
       "name": "latexmk",
-      "command": "latexmk",
+      "command": "latexmk", // uncommented command for proper execution
       "args": [
         "-pdf",
         "-interaction=nonstopmode",
         "-synctex=1",
-        "-outdir=../build",
-        "-auxdir=../auxdir",
+        "-outdir=../build", // relative from overleaf/ to build/
+        "-auxdir=../auxdir", // relative from overleaf/ to auxdir/
         "%DOCFILE%"
       ],
       "env": {
@@ -19,5 +19,5 @@
       }
     }
   ],
-  "latex-workshop.latex.outDir": "../build"
+  "latex-workshop.latex.outDir": "../build" // ensure relative path is correct
 }
