@@ -52,7 +52,6 @@ class Display(ctypes.Structure):
 
 class Xcursor:
     display = None
-    shared_dir = None
 
     def __init__(self, display=None):
         if not display:

@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 import numpy as np
@@ -21,19 +22,25 @@ from src.recording import recorded_actions, start_recording, stop_recording
 from src.utils import normalize_code
 
 # ───────────────────── Logger Setup ─────────────────────
+# Logger setup
 log_path = os.path.join(os.getenv("SHARED_DIR", "/tmp/sandbox-server"), os.getenv("SERVER_LOG", "sandbox-server.log"))
 os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
 logger = logging.getLogger("SandboxServer")
 logger.setLevel(logging.DEBUG if os.getenv("DEBUG") == "1" else logging.INFO)
 
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
 file_handler = logging.FileHandler(log_path)
+file_handler.setFormatter(formatter)
+
+# stream_handler = logging.StreamHandler()
+# stream_handler.setFormatter(formatter)
+
 logger.addHandler(file_handler)
+# logger.addHandler(stream_handler)
 
-stream_handler = logging.StreamHandler()
-logger.addHandler(stream_handler)
-
-logger.info("🔧 FastAPI Server logging to: %s", log_path)
+logger.info(f"🔧 FastAPI Server logging to: {log_path}")
 
 
 # ───────────────────── Models ─────────────────────
@@ -56,8 +63,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-shared_dir = os.getenv("SHARED_DIR", "/tmp/sandbox-server")
-os.makedirs(shared_dir, exist_ok=True)
+shared_dir = Path(os.getenv("SHARED_DIR", "/tmp/sandbox-server"))
+shared_dir.mkdir(parents=True, exist_ok=True)
 
 # ───────────────────── Cursor & Screen ─────────────────────
 try:
@@ -109,7 +116,10 @@ async def execute_code(code: str, packages: Optional[List[str]] = None) -> Dict[
     def run():
         try:
             with contextlib.redirect_stdout(output_buffer), contextlib.redirect_stderr(error_buffer):
-                exec(code, {})
+                # Always import pyautogui
+                code_with_imports = "import pyautogui\n" + normalize_code(code)
+                exec(code_with_imports, {"__builtins__": __builtins__}, {})
+
         except Exception as e:
             error_buffer.write(str(e))
 
@@ -123,15 +133,15 @@ async def execute_code(code: str, packages: Optional[List[str]] = None) -> Dict[
 
 def take_screenshot(method: Literal["pyautogui", "pillow"] = "pyautogui") -> Dict[str, str]:
     try:
-        screenshot_dir = os.path.join(shared_dir, "screenshots")
-        os.makedirs(screenshot_dir, exist_ok=True)
+        screenshot_dir = shared_dir / "screenshots"
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
         filename = f"{method}-{timestamp}.png"
-        filepath = os.path.join(screenshot_dir, filename)
+        filepath = screenshot_dir / filename
 
         if method == "pyautogui":
-            pyautogui.screenshot(imageFilename=filepath)
+            pyautogui.screenshot(imageFilename=str(filepath))
             img = Image.open(filepath)
         elif method == "pillow":
             img = ImageGrab.grab()
@@ -143,13 +153,42 @@ def take_screenshot(method: Literal["pyautogui", "pillow"] = "pyautogui") -> Dic
         draw = ImageDraw.Draw(screenshot_img)
 
         mouse_x, mouse_y = pyautogui.position()
-        draw.rectangle([mouse_x - 25, mouse_y - 25, mouse_x + 25, mouse_y + 25], outline="red", width=2)
-        draw.text(
-            (mouse_x - 25, mouse_y - 35),
-            f"mouse: mouse_x_{mouse_x}, mouse_y_{mouse_y}",
-            fill="red",
-            font=ImageFont.load_default(),
+
+        # Box and text settings
+        box_half_size = 20
+        text_padding = 5
+        font = ImageFont.load_default()
+
+        # Apply a small cursor offset (adjust if needed)
+        cursor_offset_x = -2
+        cursor_offset_y = -3
+
+        adjusted_x = mouse_x + cursor_offset_x
+        adjusted_y = mouse_y + cursor_offset_y
+
+        # Draw red box around cursor
+        draw.rectangle(
+            [
+                adjusted_x - box_half_size,
+                adjusted_y - box_half_size,
+                adjusted_x + box_half_size,
+                adjusted_y + box_half_size,
+            ],
+            outline="red",
+            width=2,
         )
+
+        # Text content and size
+        text = f"mouse: x={mouse_x} y={mouse_y}"
+        bbox = font.getbbox(text)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
+        # Centered above the box
+        text_x = adjusted_x - text_width // 2
+        text_y = adjusted_y - box_half_size - text_height - text_padding
+
+        draw.text((text_x, text_y), text, fill="red", font=font)
 
         if cursor:
             try:
@@ -220,25 +259,10 @@ async def run_code(request: CodeRequest):
     return await execute_code(request.code, request.packages)
 
 
-@app.post("/execute_gui")
-async def run_gui_code(request: CodeRequest):
-    cleaned_code = normalize_code(request.code)
-
-    if "import pyautogui" not in cleaned_code:
-        cleaned_code = "import pyautogui\n" + cleaned_code
-
-    result = await execute_code(cleaned_code, request.packages)
-
-    if not result["stderr"]:
-        result["screenshot"] = take_screenshot()
-
-    return result
-
-
 @app.get("/record")
 async def record(mode: Literal["start", "stop"]):
-    recordings_dir = os.path.join(shared_dir, "recordings")
-    os.makedirs(recordings_dir, exist_ok=True)
+    recordings_dir = shared_dir / "recordings"
+    recordings_dir.mkdir(parents=True, exist_ok=True)
 
     if mode == "start":
         if recorded_actions:
@@ -254,11 +278,10 @@ async def record(mode: Literal["start", "stop"]):
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
         filename = f"recording-{timestamp}.json"
-        filepath = os.path.join(recordings_dir, filename)
+        filepath = recordings_dir / filename
 
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(actions, f, indent=2)
+            filepath.write_text(json.dumps(actions, indent=2), encoding="utf-8")
         except Exception as e:
             logger.error(f"❌ Failed to save recording: {e}")
             return {"status": "error", "message": str(e)}

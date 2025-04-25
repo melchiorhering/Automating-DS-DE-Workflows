@@ -4,9 +4,31 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
 
 ---
 
+## 📂 Docker Directory Layout
+
+```
+📦docker
+ ┣ 📂shared
+ ┣ 📂vms
+ ┃ ┣ 📂snapshots
+ ┃ ┣ 📂spider2-v
+ ┃ ┃ ┣ 📜Ubuntu.qcow2
+ ┃ ┃ ┗ 📜Ubuntu.qcow2.zip
+ ┃ ┗ 📂ubuntu-base
+ ┃ ┃ ┣ 📜boot.iso
+ ┃ ┃ ┣ 📜data.img
+ ┃ ┃ ┣ 📜qemu.mac
+ ┃ ┃ ┣ 📜uefi.rom
+ ┃ ┃ ┗ 📜uefi.vars
+ ┣ 📜README.md
+ ┗ 📜compose.qemu.yaml
+```
+
+---
+
 ## 1 · Overview
 
-We use **QEMU/KVM** via the [`qemux/qemu`](https://github.com/qemus/qemu) Docker container to install, configure, and run Ubuntu.
+We use **QEMU/KVM** via the [`qemux/qemu`](https://github.com/qemus/qemu) Docker container to install, configure, and run Ubuntu or any other OS.
 Just point `BOOT` at an Ubuntu release alias (e.g. `ubuntu`) and the container will download the ISO for you.
 
 ```
@@ -88,6 +110,8 @@ docker compose up -f <compose-file> -d
 docker compose up -f <compose-file> -d
 ```
 
+> **Important:** When setting up your VM, be sure to install the specific packages and tools required for your SANDBOX environment. The packages listed below are generic recommendations, but your specific use case may require additional or different tools. Consider your security, automation, and testing requirements when customizing your sandbox VM.
+
 ### 4.1 · Install guest tools & SSH
 
 Inside the guest:
@@ -100,7 +124,7 @@ sudo apt install -y qemu-guest-agent openssh-server curl wget git vscode htop ne
 
 ### 4.2 · Configure SSH & passwordless sudo
 
-1. **Edit** `/etc/ssh/sshd_config` as shown previously
+1. **Edit** `/etc/ssh/sshd_config` to allow password authentication if needed (`PasswordAuthentication yes`).
 2. **Restart SSH**:
 
    ```bash
@@ -150,11 +174,32 @@ xhost +SI:localuser:$(whoami)  # allow X access
 
 ---
 
-With this setup, you can:
+## 7 · UV Installation for Persistent PATH Access
 
-- Launch a headless Ubuntu VM
-- Use FastAPI to control GUI (e.g. click, move, screenshot)
-- Run `pyautogui` and `pynput` in X11 context
-- Serve via noVNC + RESTful interface
+Inside the guest VM:
 
-Enjoy your sandbox! 🤖
+```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add to PATH for interactive shells
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
+# Add to PATH for SSH login shells
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+
+# (Optional) Add system-wide for all users
+sudo bash -c 'echo "export PATH=\$HOME/.local/bin:\$PATH" >> /etc/profile'
+
+# Reload the current shell
+source ~/.bashrc
+source ~/.profile
+```
+
+> ✅ This ensures `uv` is available immediately after login, for **SSH**, **FastAPI server**, and **agent operations**.
+
+---
+
+# 🚀 Conclusion
+
+> This setup gives you a fully portable, Dockerized, reproducible VM system with GUI automation, REST APIs for code execution, screenshots, and recording, ready for agent benchmarking or any sandbox experiments!

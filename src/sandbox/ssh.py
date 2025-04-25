@@ -125,12 +125,24 @@ class SSHClient:
         block: bool = True,
         as_root: bool = False,
     ) -> Dict[str, Any] | None:
-        full = f"cd {cwd} && {cmd}" if cwd else cmd
-        if as_root and not full.startswith("sudo"):
-            full = f"sudo {full}"
+        # Build full command
+        full_cmd = f"cd {cwd} && {cmd}" if cwd else cmd
+        if as_root and not full_cmd.startswith("sudo"):
+            full_cmd = f"sudo {full_cmd}"
+
+        # Wrap command to use login shell (bash -l -c '...')
+        # wrapped_cmd = f"bash -l -c '{full_cmd}'"
+
         client = self.connect()
-        self.log.debug("ssh $ %s", full)
-        stdin, stdout, stderr = client.exec_command(full, timeout=self.cfg.command_timeout, environment=env)
+        self.log.debug("ssh $ %s", full_cmd)
+
+        # Open SSH command with get_pty=True for login shell
+        stdin, stdout, stderr = client.exec_command(
+            full_cmd,
+            timeout=self.cfg.command_timeout,
+            environment=env,
+            get_pty=True,  # ← this is CRITICAL
+        )
 
         if not block:
             self.log.debug("Non-blocking exec_command issued.")
@@ -139,8 +151,10 @@ class SSHClient:
         status = stdout.channel.recv_exit_status()
         out = stdout.read().decode()
         err = stderr.read().decode()
+
         if status != 0:
             raise RemoteCommandError(cmd, status, err)
+
         return {"status": status, "stdout": out, "stderr": err}
 
     def get_sftp(self) -> paramiko.SFTPClient:
@@ -160,8 +174,81 @@ class SSHClient:
         helper = SFTPHelper(sftp, self.log)
         helper.transfer_directory(local, remote, exclude=exclude)
 
+    def send_command(
+        self,
+        chan: paramiko.Channel,
+        cmd: str,
+        prompt: str = "$",
+        timeout: float = 5.0,
+        wait_interval: float = 0.1,
+    ) -> str:
+        """
+        Send a command over an interactive shell and wait for the prompt to return.
+
+        Args:
+            chan: The paramiko.Channel with an open shell.
+            cmd: The command to send.
+            prompt: The shell prompt to wait for (default '$').
+            timeout: Maximum time to wait for command to finish.
+            wait_interval: How often to check for new data.
+
+        Returns:
+            Full command output (excluding the command itself).
+        """
+        chan.send(cmd.strip() + "\n")
+
+        output = ""
+        start_time = time.time()
+
+        while True:
+            if chan.recv_ready():
+                output += chan.recv(4096).decode()
+
+                # Look for prompt (means command finished)
+                if output.rstrip().endswith(prompt):
+                    break
+
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Timeout waiting for command '{cmd}' to complete")
+
+            time.sleep(wait_interval)
+
+        # Clean output: remove the echoed command and prompt
+        lines = output.splitlines()
+
+        # Remove first line if it contains the command we just sent
+        if lines and cmd.strip() in lines[0]:
+            lines = lines[1:]
+
+        # Remove last line if it is the shell prompt
+        if lines and lines[-1].strip() == prompt.strip():
+            lines = lines[:-1]
+
+        return "\n".join(lines).strip()
+
     def open_shell(self) -> paramiko.Channel:
         client = self.connect()
-        chan = client.invoke_shell()
-        paramiko.util.interactive_shell(chan)
+
+        # Open an interactive shell (request xterm)
+        chan = client.invoke_shell(term="xterm")
+        self.log.info("SSH interactive shell opened (xterm)")
+
+        time.sleep(0.5)  # Give it a moment to initialize
+
+        # Try to detect if we are already in a login shell
+        chan.send("echo $0\n")
+        time.sleep(0.5)
+
+        output = ""
+        while chan.recv_ready():
+            output += chan.recv(4096).decode()
+
+        self.log.debug("Shell detection output: %s", output.strip())
+
+        if not any(shell_name in output for shell_name in ["-bash", "bash -l", "login"]):
+            # If not in a login shell already, switch to bash login shell
+            self.log.info("🔄 Switching to bash login shell...")
+            chan.send("bash -l\n")
+            time.sleep(0.5)
+
         return chan

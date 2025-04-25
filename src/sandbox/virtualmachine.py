@@ -1,21 +1,18 @@
 from __future__ import annotations
 
 import logging
-import os
 import shutil
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import docker
 from docker.client import DockerClient
 from docker.types import Mount
-from sandbox.errors import RemoteCommandError, VMCreationError, VMOperationError
+from sandbox.errors import VMCreationError, VMOperationError
 
 from .ssh import SSHClient, SSHConfig
 
@@ -48,40 +45,60 @@ def with_state(state: VMState):
 # ────────────────────────────── Configs ──────────────────────────────
 @dataclass
 class VMConfig:
-    root_dir: Path = Path("docker")
-    container_image: str = "qemux/qemu"
-    container_name: str = "qemu"
-    unique_container_name: bool = False
-    vm_ram: str = "4G"
-    vm_cpu_cores: int = 4
-    vm_disk_size: str = "16G"
-    vm_boot_image: str = "ubuntu"
-    enable_debug: bool = True
-    extra_env: Dict[str, str] = field(default_factory=dict)
-    host_vnc_port: int = 8006
-    host_ssh_port: int = 2222
-    extra_ports: Dict[Union[str, int], int] = field(default_factory=dict)
-    guest_shared_dir: Path = Path("/shared")
-    restart_policy: str = "always"
+    """Configuration for a QEMU virtual machine running in a Docker container.
+
+    This class defines all basic parameters for setting up and running a VM,
+    including container settings, VM hardware configuration, and filesystem paths.
+    """
+
+    # ──────────────── Container Settings ────────────────
+    container_image: str = "qemux/qemu"  # Docker image for the VM container
+    container_name: str = "qemu"  # Container name
+    unique_container_name: bool = False  # Whether to generate unique container name with timestamp
+    restart_policy: str = "always"  # Docker restart policy
+
+    # ──────────────── VM Hardware Configuration ────────────────
+    vm_ram: str = "4G"  # Amount of RAM for the VM
+    vm_cpu_cores: int = 4  # Number of CPU cores for the VM
+    vm_disk_size: str = "16G"  # Disk size for the VM
+    vm_boot_image: str = "ubuntu"  # Image to boot in the VM
+
+    # ──────────────── Network Configuration ────────────────
+    host_vnc_port: int = 8006  # Host port for VNC access
+    host_ssh_port: int = 2222  # Host port for SSH access
+    extra_ports: Dict[Union[str, int], int] = field(default_factory=dict)  # Additional port mappings
+
+    # ──────────────── Paths and Directories ────────────────
+    root_dir: Path = Path("docker")  # Root directory for all VM resources
+    guest_shared_dir: Path = Path("/shared")  # Shared directory path in guest
+
+    # ──────────────── Other Settings ────────────────
+    enable_debug: bool = True  # Enable debug mode
+    extra_env: Dict[str, str] = field(default_factory=dict)  # Additional environment variables
 
     def __post_init__(self):
+        # Generate unique container name if requested
         if self.unique_container_name:
             self.container_name = f"{self.container_name}_{int(time.time())}"
 
+        # Resolve paths to absolute paths
         self.root_dir = self.root_dir.resolve()
         self.shared_root = self.root_dir / "shared"
-        # VM paths
+
+        # Set up VM paths
         self.vms_dir = self.root_dir / "vms"
         self.vm_base_dir = self.vms_dir / "ubuntu-base"
         self.snapshots_dir = self.vms_dir / "snapshots"
         self.base_iso = self.vm_base_dir / "boot.iso"
         self.base_data = self.vm_base_dir / "data.img"
-        # Container paths
+
+        # Set up container paths
         self.container_dir = self.snapshots_dir / self.container_name
         self.container_iso = self.container_dir / "boot.iso"
         self.container_data = self.container_dir / "data.img"
         self.container_shared_dir = self.shared_root / self.container_name
 
+        # Create required directories
         for p in (
             self.vm_base_dir,
             self.snapshots_dir,
@@ -91,42 +108,9 @@ class VMConfig:
         ):
             p.mkdir(parents=True, exist_ok=True)
 
+        # Validate base VM files exist
         if not self.base_iso.exists() or not self.base_data.exists():
             raise VMCreationError("Missing base VM files")
-
-
-@dataclass
-class AgentVMConfig(VMConfig):
-    # Host server settings
-    host_sandbox_server_port: int = 8765
-    host_sandbox_server_host: str = "localhost"
-    host_server_dir: Optional[Path] = Path("server/")
-
-    # Sandbox server settings
-    sandbox_server_port: int = 8765
-    sandbox_server_host: str = "0.0.0.0"
-    sandbox_server_dir: Path = Path("/home/user/server")
-    sandbox_server_log: Path = Path("sandbox-server.log")  # ← Add this
-    sandbox_server_display: str = ":0"  # X11 display for headless server boot
-    sandbox_server_xauth: str = "/run/user/1000/gdm/Xauthority"  # X11 auth file for headless server boot
-    # Sandbox server environment variables
-    runtime_env: Dict[str, str] = field(default_factory=dict)
-
-    def __post_init__(self):
-        super().__post_init__()
-        self.extra_ports[self.sandbox_server_port] = self.host_sandbox_server_port
-
-        # ✅ Set X11 environment for headless server boot
-        self.runtime_env.setdefault("DISPLAY", self.sandbox_server_display)
-        self.runtime_env.setdefault("XAUTHORITY", self.sandbox_server_xauth)
-
-        if self.host_server_dir:
-            self.host_server_dir = self.host_server_dir.resolve()
-            if not self.host_server_dir.is_dir():
-                raise VMCreationError(f"server_host_dir not found: {self.host_server_dir}")
-            start_sh = self.host_server_dir / "start.sh"
-            if not (start_sh.is_file() and os.access(start_sh, os.X_OK)):
-                raise VMCreationError(f"start.sh missing or not executable: {start_sh}")
 
 
 # ────────────────────────────── VMManager ──────────────────────────────
@@ -276,136 +260,3 @@ class VMManager:
         if self.state != VMState.RUNNING:
             raise VMOperationError("VM is not running")
         self.ssh.open_shell()
-
-
-# ───────────────────────────── AgentVMManager ─────────────────────────────
-class AgentVMManager(VMManager):
-    def __init__(self, config: AgentVMConfig, **kwargs):
-        if not isinstance(config, AgentVMConfig):
-            raise TypeError("AgentVMManager requires AgentVMConfig")
-        super().__init__(config, **kwargs)
-        self._should_cleanup = True  # ensure cleanup if something fails early
-
-    def __enter__(self) -> AgentVMManager:
-        try:
-            self.start_agent_vm()
-            self._should_cleanup = False  # startup succeeded, let __exit__ decide
-            return self
-        except Exception as e:
-            self.log.error("❌ - Exception during VM startup: %s", e, exc_info=True)
-            self.cleanup(delete_storage=True)
-            raise
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._should_cleanup or exc_type is not None:
-            self.log.warning("⚠️ - Exiting VM context with error, cleaning up...")
-        else:
-            self.log.info("🧹 - Normal exit, cleaning up VM container...")
-        self.cleanup(delete_storage=True)
-        return False  # do not suppress exceptions
-
-    def _ensure_mounted(self, mount_point: str, tag: str):
-        self.log.info("Mounting %s -> %s", tag, mount_point)
-
-        # Ensure directory exists
-        self.ssh.exec_command(f"mkdir -p {mount_point}", as_root=True)
-
-        try:
-            # Mounting the shared directory
-            self.ssh.exec_command(f"mount -t 9p -o trans=virtio {tag} {mount_point}", as_root=True)
-
-        except RemoteCommandError as e:
-            # Check if already mounted
-            if "already mounted" in e.stderr:
-                self.log.warning("⚠️ - Shared directory already mounted, continuing...")
-            else:
-                raise
-
-    def _wait_for_fastapi_server(self, timeout: float = 60.0, interval: float = 5.0):
-        """
-        Wait until the FastAPI server's /health endpoint is reachable.
-        """
-        host = self.cfg.host_sandbox_server_host
-        port = self.cfg.host_sandbox_server_port
-        url = f"http://{host}:{port}/health"
-
-        self.log.info("🔍 - Waiting for FastAPI server health check at %s...", url)
-        deadline = time.time() + timeout
-
-        while time.time() < deadline:
-            try:
-                with urllib.request.urlopen(url, timeout=2) as response:
-                    if response.status == 200:
-                        self.log.info(response.read().decode("utf-8"))
-                        self.log.info("✅ FastAPI server is healthy at %s", url)
-                        return
-            except urllib.error.URLError as e:
-                self.log.debug("⏳ - Server not ready: %s", e)
-            except Exception as e:
-                self.log.debug("⏳ - Unexpected error: %s", e)
-
-            time.sleep(interval)
-
-        raise VMOperationError(f"❌ - FastAPI server did not become reachable at {url} within {timeout:.1f} seconds.")
-
-    def tail_server_logs(self, lines: int = 100) -> str:
-        """
-        Tail the local sandbox-server.log file mounted from the container.
-        """
-        path = self.cfg.container_shared_dir / self.cfg.sandbox_server_log
-        if not path.exists():
-            raise VMOperationError("❌ - Log file not found at %s", path)
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return "".join(f.readlines()[-lines:])
-        except Exception as e:
-            raise VMOperationError("❌ - Failed to read log file: %s", e) from e
-
-    def start_agent_vm(self):
-        if not self.container or self.container.status != "running":
-            self.create_container()
-            time.sleep(5)  # Short wait to allow the container to stabilize
-
-        self._wait_for_ssh_ready()  # Checks if SSH is ready
-
-        self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.log)
-        mount = f"/mnt/{self.cfg.container_name}"
-        self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
-
-        self.cfg.runtime_env["SHARED_DIR"] = mount
-        self.cfg.runtime_env["PORT"] = str(self.cfg.sandbox_server_port)
-        self.cfg.runtime_env["SERVER_LOG"] = str(self.cfg.sandbox_server_log)
-
-        # Create the sandbox server log file on the host if it doesn't exist
-        host_log_path = self.cfg.container_shared_dir / self.cfg.sandbox_server_log
-        host_log_path.touch(mode=0o666, exist_ok=True)
-
-        if self.cfg.host_server_dir:
-            # Copy server files to the VM but exclude the .venv directory
-            self.ssh.transfer_directory(
-                self.cfg.host_server_dir,
-                str(self.cfg.sandbox_server_dir),
-            )
-            self.ssh.exec_command(
-                cmd=f"chmod +x {self.cfg.sandbox_server_dir}/start.sh",
-            )
-
-            # Non blocking command to start the server
-            self.ssh.exec_command(
-                cmd="./start.sh",
-                cwd=str(self.cfg.sandbox_server_dir),
-                env=self.cfg.runtime_env,
-                block=False,
-            )
-
-        try:
-            self._wait_for_fastapi_server()
-        except VMOperationError as e:
-            self.log.error("❌ FastAPI server failed health check: %s", e)
-            try:
-                logs = self.tail_server_logs()
-                self.log.error("🪵 Last sandbox-server logs:\n%s", logs)
-            except VMOperationError as log_err:
-                self.log.error("⚠️ Could not read log file: %s", log_err)
-            raise
