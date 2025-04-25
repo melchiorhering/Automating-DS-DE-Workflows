@@ -17,12 +17,14 @@ docker compose up ──▶ downloader & installer ──▶ ubuntu-base.qcow2 �
 
 ## 2 · Host prerequisites
 
-| Host role             | Packages / tools                                                                                | Ubuntu example                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Builder + runtime** | **Docker 24 + Docker Compose v2**,<br>`qemu-kvm`, `qemu-utils`, `libguestfs-tools` (`virt-v2v`) | `sudo apt install docker.io docker-compose-plugin qemu-kvm qemu-utils libguestfs-tools` |
-|                       | Add user to `docker` _and_ `kvm` groups                                                         | `sudo usermod -aG docker,kvm $USER && newgrp docker`                                    |
+| Host role             | Packages / tools                        | Ubuntu example                                       |
+| --------------------- | --------------------------------------- | ---------------------------------------------------- |
+| **Builder + runtime** | **Docker + Docker Compose**             | `sudo apt install docker.io docker-compose-plugin`   |
+|                       | Add user to `docker` _and_ `kvm` groups | `sudo usermod -aG docker,kvm $USER && newgrp docker` |
 
 Verify KVM with `kvm-ok` or `lsmod | grep kvm`. If your host is itself a VM, enable **nested VT-x/AMD-V**.
+
+The qemux/qemu Docker image contains all necessary QEMU components, so you don't need to install additional packages like qemu-utils or libguestfs-tools on the host.
 
 ---
 
@@ -42,8 +44,7 @@ services:
     # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
     volumes:
       - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
-      # - ${ROOT_DIR}/src/docker/vms/snapshots/ubuntu-base-snap1.qcow2:/boot.qcow2 # For using snapshots
-      # - ${ROOT_DIR}/src/docker/shared:/shared
+      - ${ROOT_DIR}/src/docker/shared:/shared # For the shared directory
 
     # Grant KVM + networking devices
     devices:
@@ -93,7 +94,7 @@ Inside the guest:
 
 ```bash
 sudo apt update && sudo apt dist-upgrade -y
-sudo apt install -y qemu-guest-agent openssh-server curl wget git vim htop net-tools \
+sudo apt install -y qemu-guest-agent openssh-server curl wget git vscode htop net-tools \
                     build-essential ca-certificates software-properties-common gnome-screenshot
 ```
 
@@ -140,12 +141,12 @@ xhost +SI:localuser:$(whoami)  # allow X access
 
 ## 6 · Installed Packages Recap
 
-| Category         | Packages                                                         |
-| ---------------- | ---------------------------------------------------------------- |
-| GUI Tools        | `gnome-screenshot`                                               |
-| Dev Essentials   | `build-essential`, `curl`, `wget`, `git`, `python3-dev`, `uv`    |
-| Automation       | `pyautogui`, `pynput`, `Pillow`, `numpy`, `fastapi`              |
-| Screenshot/Tests | `Pillow`, `ImageGrab`, `pyautogui`, `Xcursor` (custom, optional) |
+| Category         | Packages                                                       |
+| ---------------- | -------------------------------------------------------------- |
+| GUI Tools        | `gnome-screenshot`                                             |
+| Dev Essentials   | `build-essential`, `curl`, `wget`, `git`, `python3-dev`, `uv`  |
+| Automation       | `pyautogui`, `pynput`, `Pillow`, `numpy`, `fastapi`, `uvicorn` |
+| Screenshot/Tests | `Pillow`, `pyautogui`, `Xcursor` (custom, optional)            |
 
 ---
 
