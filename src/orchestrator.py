@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import List, Optional
 
 from PIL import Image
-from smolagents import CodeAgent, InferenceClientModel, tool
+from smolagents import CodeAgent, tool
 
-from agent.fastapi_client import FastAPISandboxClient
-from sandbox import AgentVMConfig, AgentVMManager
+from sandbox import AgentVMConfig, AgentVMManager, VMServerClient
 
 cfg = AgentVMConfig(
     container_name="test-agent-vm",
@@ -23,11 +22,11 @@ cfg = AgentVMConfig(
 #
 
 # Global singleton client instance
-client = FastAPISandboxClient(f"http://{cfg.host_sandbox_server_host}:{cfg.host_sandbox_server_port}")
+client = VMServerClient(f"http://{cfg.host_sandbox_server_host}:{cfg.host_sandbox_server_port}")
 
 # Initialize the model
-model_id = "meta-llama/Llama-3.3-70B-Instruct"  # You can change this to your preferred model
-model = InferenceClientModel(model_id=model_id)
+# model_id = "meta-llama/Llama-3.3-70B-Instruct"  # You can change this to your preferred model
+# model = InferenceClientModel(model_id=model_id)
 
 
 @tool

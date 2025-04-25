@@ -19,5 +19,15 @@
       }
     }
   ],
-  "latex-workshop.latex.outDir": "../build" // ensure relative path is correct
+  "latex-workshop.latex.outDir": "../build", // ensure relative path is correct
+  "latex-workshop.latexindent.args": [
+    "-c",
+    "%DIR%/",
+    "%TMPFILE%",
+    "-y=defaultIndent:'  '",
+    "-y=modifyLineBreaks:removeTrailingWhitespace:beforeLineBreak:1"
+  ],
+  "[latex]": {
+    "editor.formatOnSave": true
+  }
 }
