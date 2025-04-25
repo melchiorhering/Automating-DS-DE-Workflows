@@ -1,6 +1,5 @@
 {
   "recommendations": [
-    "ms-playwright.playwright",
     "ms-python.vscode-pylance",
     "charliermarsh.ruff",
     "ms-python.python",
@@ -9,7 +8,12 @@
     "streetsidesoftware.code-spell-checker",
     "tamasfe.even-better-toml",
     "KevinRose.vsc-python-indent",
-    "ms-vscode-remote.remote-containers"
-    // "denoland.vscode-deno"
+    "ms-vscode-remote.remote-containers",
+    "ms-azuretools.vscode-docker",
+    "mathematic.vscode-latex",
+    "tecosaur.latex-utilities",
+    "James-Yu.latex-workshop",
+    "DavidAnson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one"
   ]
 }
