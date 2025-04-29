@@ -1,4 +1,5 @@
 # server/src/utils.py
+import ast
 import textwrap
 from datetime import datetime, timezone
 
@@ -21,6 +22,31 @@ def flush_typing_sequence(recorded_actions, buffer):
 
 
 def normalize_code(code: str) -> str:
-    """Clean and dedent code string, preserving indentation inside functions etc."""
+    """Clean, dedent, and validate a Python code string.
+
+    Args:
+        code: The Python code string to normalize.
+
+    Returns:
+        A cleaned and validated Python code string.
+
+    Raises:
+        SyntaxError: If the code contains invalid Python syntax.
+    """
+    # Step 1: Strip and dedent the code
     code = code.strip()
-    return textwrap.dedent(code)
+    code = textwrap.dedent(code)
+
+    # Step 2: Validate syntax using the `ast` module
+    try:
+        ast.parse(code)
+    except SyntaxError as e:
+        raise SyntaxError(f"Invalid Python syntax: {e.msg} at line {e.lineno}") from e
+
+    # # Step 3: Ensure imports for common libraries (optional)
+    # required_imports = ["import pyautogui"]
+    # for imp in required_imports:
+    #     if imp not in code:
+    #         code = f"{imp}\n{code}"
+
+    return code

@@ -1,69 +1,70 @@
 from __future__ import annotations
 
+import contextlib
 import importlib
+import json
 import logging
-import os
 import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
 
 import requests
 
-from sandbox.errors import RemoteCommandError, VMCreationError, VMOperationError
-
+from .configs import SandboxVMConfig
+from .errors import RemoteCommandError, VMOperationError
 from .ssh import SSHClient, SSHConfig
-from .virtualmachine import VMConfig, VMManager
+from .virtualmachine import VMManager
 
 # ────────────────────────────── Logging Setup ──────────────────────────────
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# ────────────────────────────── Config ──────────────────────────────
-@dataclass
-class AgentVMConfig(VMConfig):
-    host_sandbox_server_host: str = "localhost"
-    host_sandbox_server_port: int = 8765
-    host_server_dir: Optional[Path] = Path("server/")
+# ────────────────────────────── SandboxClient ──────────────────────────────
+class SandboxClient:
+    def __init__(self, manager: SandboxVMManager):
+        self.manager = manager
 
-    sandbox_server_host: str = "0.0.0.0"
-    sandbox_server_port: int = 8765
-    sandbox_server_dir: Optional[Path] = Path("/home/user/server")
+    def health(self) -> dict:
+        response = self.manager.api_health_check.sync_detailed(client=self.manager.client)
+        return response.parsed or json.loads(response.content)
 
-    sandbox_server_display: str = ":0"
-    sandbox_server_xauth: str = "/run/user/1000/gdm/Xauthority"
-    sandbox_server_log: str = "sandbox-server.log"
+    def take_screenshot(self, method: str = "pyautogui") -> dict:
+        method_enum = self.manager.models.ScreenshotEndpointScreenshotGetMethod(method)
+        response = self.manager.api_screenshot.sync_detailed(client=self.manager.client, method=method_enum)
+        result = response.parsed or json.loads(response.content)
+        result["screenshot_path"] = self.manager.cfg.container_shared_dir / result["screenshot_path"]
+        return result
 
-    runtime_env: Dict[str, str] = field(default_factory=dict)
-    force_regenerate_client: bool = False
+    def start_recording(self) -> dict:
+        response = self.manager.api_record.sync_detailed(
+            client=self.manager.client,
+            mode=self.manager.models.RecordRecordGetMode.START,
+        )
+        return response.parsed or json.loads(response.content)
 
-    def __post_init__(self):
-        super().__post_init__()
-        self.extra_ports[self.sandbox_server_port] = self.host_sandbox_server_port
-        self.runtime_env.setdefault("DISPLAY", self.sandbox_server_display)
-        self.runtime_env.setdefault("XAUTHORITY", self.sandbox_server_xauth)
-
-        if self.host_server_dir:
-            self.host_server_dir = self.host_server_dir.resolve()
-            if not self.host_server_dir.is_dir():
-                raise VMCreationError(f"server_host_dir not found: {self.host_server_dir}")
-            start_sh = self.host_server_dir / "start.sh"
-            if not (start_sh.is_file() and os.access(start_sh, os.X_OK)):
-                raise VMCreationError(f"start.sh missing or not executable: {start_sh}")
-
-        self.client_output_dir = self.container_dir / "sandbox-client"
+    def stop_recording(self) -> dict:
+        response = self.manager.api_record.sync_detailed(
+            client=self.manager.client,
+            mode=self.manager.models.RecordRecordGetMode.STOP,
+        )
+        return response.parsed or json.loads(response.content)
 
 
 # ────────────────────────────── Manager ──────────────────────────────
-class AgentVMManager(VMManager):
-    def __init__(self, config: AgentVMConfig, preserve_on_exit: bool = False, **kwargs):
-        if not isinstance(config, AgentVMConfig):
-            raise TypeError("AgentVMManager requires AgentVMConfig")
-        super().__init__(config, **kwargs)
+class SandboxVMManager(VMManager):
+    def __init__(
+        self,
+        config: SandboxVMConfig,
+        preserve_on_exit: bool = False,
+        logger: logging.Logger = logger,
+        **kwargs,
+    ):
+        if not isinstance(config, SandboxVMConfig):
+            raise TypeError("SandboxVMManager requires SandboxVMConfig")
+        super().__init__(config=config, logger=logger, **kwargs)
 
         self._should_cleanup = not (self.container and self.container.status == "running")
         self._preserve_on_exit = preserve_on_exit
@@ -71,7 +72,16 @@ class AgentVMManager(VMManager):
         if self._preserve_on_exit:
             self.log.info("⚠️ Container files will be preserved on exit (preserve_on_exit=True)")
 
-    def __enter__(self) -> AgentVMManager:
+    @contextlib.contextmanager
+    def sandbox_vm_context(self):
+        """Context manager wrapper for SandboxVMManager, ensuring proper startup and cleanup."""
+        try:
+            self.__enter__()
+            yield self
+        finally:
+            self.__exit__(None, None, None)
+
+    def __enter__(self) -> SandboxVMManager:
         try:
             self.start_agent_vm()
             self._should_cleanup = False
@@ -106,7 +116,11 @@ class AgentVMManager(VMManager):
             else:
                 raise
 
-    def _wait_for_fastapi_server(self, timeout: float = 120.0, interval: float = 3.0):
+    def _wait_for_services(self, timeout: float = 120.0, interval: float = 3.0):
+        """
+        Wait for the Jupyter Gateway Kernel and FastAPI server to be reachable and healthy.
+        """
+
         url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}/health"
         self.log.info("🔍 - Waiting for FastAPI server health check at %s...", url)
         deadline = time.time() + timeout
@@ -138,7 +152,10 @@ class AgentVMManager(VMManager):
     def _prepare_shared_mount(self):
         mount = f"/mnt/{self.cfg.container_name}"
         self.ssh.exec_command(f"mkdir -p {mount}", as_root=True)
+        # Create the FastAPI server log file
         self.ssh.exec_command(f"touch {mount}/{self.cfg.sandbox_server_log}", as_root=True)
+        # Create the Jupyter kernel log file
+        self.ssh.exec_command(f"touch {mount}/{self.cfg.sandbox_jupyter_kernel_log}", as_root=True)
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
     def _transfer_server_code(self):
@@ -206,16 +223,12 @@ class AgentVMManager(VMManager):
             # Import models and API endpoints
             self.models = importlib.import_module(f"{client_module_name}.models")
             self.api_health_check = importlib.import_module(f"{client_module_name}.api.default.health_check_health_get")
-            self.api_run_code = importlib.import_module(f"{client_module_name}.api.default.run_code_execute_post")
-            self.api_get_packages = importlib.import_module(
-                f"{client_module_name}.api.default.get_installed_packages_packages_get"
-            )
             self.api_screenshot = importlib.import_module(
                 f"{client_module_name}.api.default.screenshot_endpoint_screenshot_get"
             )
             self.api_record = importlib.import_module(f"{client_module_name}.api.default.record_record_get")
 
-            self.sandbox_client = self.SandboxClient(manager=self)
+            self.sandbox_client = SandboxClient(manager=self)
 
             self.log.info("✅ FastAPI client loaded and ready: %s", self.client)
         except ImportError as e:
@@ -248,8 +261,15 @@ class AgentVMManager(VMManager):
         self._prepare_shared_mount()
 
         self.cfg.runtime_env["SHARED_DIR"] = f"/mnt/{self.cfg.container_name}"
+
+        # FastAPI server environment variables
         self.cfg.runtime_env["PORT"] = str(self.cfg.sandbox_server_port)
         self.cfg.runtime_env["SERVER_LOG"] = str(self.cfg.sandbox_server_log)
+
+        # Jupyter kernel environment variables
+        self.cfg.runtime_env["JUPYTER_KERNEL_NAME"] = self.cfg.sandbox_jupyter_kernel_name
+        self.cfg.runtime_env["JUPYTER_KERNEL_GATEWAY_APP_PORT"] = str(self.cfg.sandbox_jupyter_kernel_port)
+        self.cfg.runtime_env["JUPYTER_KERNEL_GATEWAY_APP_LOG"] = str(self.cfg.sandbox_jupyter_kernel_log)
 
         if self.cfg.host_server_dir:
             self._transfer_server_code()
@@ -257,39 +277,7 @@ class AgentVMManager(VMManager):
         self.ssh.exec_command("./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env, block=False)
 
         try:
-            self._wait_for_fastapi_server()
+            self._wait_for_services()
             self._generate_fastapi_client()
         except VMOperationError as e:
             self._handle_server_start_failure(e)
-
-    # ───────────────────────────── SandboxClient ─────────────────────────────
-    class SandboxClient:
-        def __init__(self, manager: AgentVMManager):
-            self.manager = manager
-
-        def health(self) -> dict:
-            return self.manager.api_health_check.sync_detailed(client=self.manager.client).parsed
-
-        def execute_code(self, code: str, packages: Optional[list[str]] = None) -> dict:
-            payload = self.manager.models.CodeRequest(code=code, packages=packages or [])
-            return self.manager.api_run_code.sync_detailed(client=self.manager.client, body=payload).parsed
-
-        def list_installed_packages(self) -> list[dict]:
-            result = self.manager.api_get_packages.sync_detailed(client=self.manager.client).parsed
-            return result if result is not None else []
-
-        def take_screenshot(self, method: str = "pyautogui") -> dict:
-            method_enum = self.manager.models.ScreenshotEndpointScreenshotGetMethod(method)
-            return self.manager.api_screenshot.sync_detailed(client=self.manager.client, method=method_enum).parsed
-
-        def start_recording(self) -> dict:
-            return self.manager.api_record.sync_detailed(
-                client=self.manager.client,
-                mode=self.manager.models.RecordRecordGetMode.START,
-            ).parsed
-
-        def stop_recording(self) -> dict:
-            return self.manager.api_record.sync_detailed(
-                client=self.manager.client,
-                mode=self.manager.models.RecordRecordGetMode.STOP,
-            ).parsed

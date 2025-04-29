@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 import paramiko
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from sandbox.errors import RemoteCommandError, SSHError, VMOperationError
+from .errors import RemoteCommandError, SSHError, VMOperationError
 
 
 @dataclass

@@ -4,16 +4,14 @@ import logging
 import shutil
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Dict, Union
 
 import docker
 from docker.client import DockerClient
 from docker.types import Mount
-from sandbox.errors import VMCreationError, VMOperationError
 
+from .configs import VMConfig
+from .errors import VMCreationError, VMOperationError
 from .ssh import SSHClient, SSHConfig
 
 # ────────────────────────────── Logging Setup ──────────────────────────────
@@ -40,77 +38,6 @@ def with_state(state: VMState):
         return wrapper
 
     return decorator
-
-
-# ────────────────────────────── Configs ──────────────────────────────
-@dataclass
-class VMConfig:
-    """Configuration for a QEMU virtual machine running in a Docker container.
-
-    This class defines all basic parameters for setting up and running a VM,
-    including container settings, VM hardware configuration, and filesystem paths.
-    """
-
-    # ──────────────── Container Settings ────────────────
-    container_image: str = "qemux/qemu"  # Docker image for the VM container
-    container_name: str = "qemu"  # Container name
-    unique_container_name: bool = False  # Whether to generate unique container name with timestamp
-    restart_policy: str = "always"  # Docker restart policy
-
-    # ──────────────── VM Hardware Configuration ────────────────
-    vm_ram: str = "4G"  # Amount of RAM for the VM
-    vm_cpu_cores: int = 4  # Number of CPU cores for the VM
-    vm_disk_size: str = "16G"  # Disk size for the VM
-    vm_boot_image: str = "ubuntu"  # Image to boot in the VM
-
-    # ──────────────── Network Configuration ────────────────
-    host_vnc_port: int = 8006  # Host port for VNC access
-    host_ssh_port: int = 2222  # Host port for SSH access
-    extra_ports: Dict[Union[str, int], int] = field(default_factory=dict)  # Additional port mappings
-
-    # ──────────────── Paths and Directories ────────────────
-    root_dir: Path = Path("docker")  # Root directory for all VM resources
-    guest_shared_dir: Path = Path("/shared")  # Shared directory path in guest
-
-    # ──────────────── Other Settings ────────────────
-    enable_debug: bool = True  # Enable debug mode
-    extra_env: Dict[str, str] = field(default_factory=dict)  # Additional environment variables
-
-    def __post_init__(self):
-        # Generate unique container name if requested
-        if self.unique_container_name:
-            self.container_name = f"{self.container_name}_{int(time.time())}"
-
-        # Resolve paths to absolute paths
-        self.root_dir = self.root_dir.resolve()
-        self.shared_root = self.root_dir / "shared"
-
-        # Set up VM paths
-        self.vms_dir = self.root_dir / "vms"
-        self.vm_base_dir = self.vms_dir / "ubuntu-base"
-        self.snapshots_dir = self.vms_dir / "snapshots"
-        self.base_iso = self.vm_base_dir / "boot.iso"
-        self.base_data = self.vm_base_dir / "data.img"
-
-        # Set up container paths
-        self.container_dir = self.snapshots_dir / self.container_name
-        self.container_iso = self.container_dir / "boot.iso"
-        self.container_data = self.container_dir / "data.img"
-        self.container_shared_dir = self.shared_root / self.container_name
-
-        # Create required directories
-        for p in (
-            self.vm_base_dir,
-            self.snapshots_dir,
-            self.shared_root,
-            self.container_dir,
-            self.container_shared_dir,
-        ):
-            p.mkdir(parents=True, exist_ok=True)
-
-        # Validate base VM files exist
-        if not self.base_iso.exists() or not self.base_data.exists():
-            raise VMCreationError("Missing base VM files")
 
 
 # ────────────────────────────── VMManager ──────────────────────────────

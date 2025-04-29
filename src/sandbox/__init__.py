@@ -1,20 +1,21 @@
 # sandbox/__init__.py
 
 from . import errors, server
-from .agent import AgentVMConfig, AgentVMManager
-from .python_executer import SandboxPythonExecutor
+from .configs import SandboxVMConfig, VMConfig
+from .executor import SandboxExecutor
+from .sandbox import SandboxClient, SandboxVMManager
 from .ssh import SSHClient, SSHConfig
-from .virtualmachine import VMConfig, VMManager
+from .virtualmachine import VMManager
 
 __all__ = [
     "errors",
     "server",
     "SSHClient",
     "SSHConfig",
-    "AgentVMConfig",
-    "AgentVMManager",
+    "SandboxVMConfig",
+    "SandboxVMManager",
+    "SandboxClient",
+    "SandboxExecutor",
     "VMConfig",
     "VMManager",
-    "VMServerClient",
-    "SandboxPythonExecutor",
 ]

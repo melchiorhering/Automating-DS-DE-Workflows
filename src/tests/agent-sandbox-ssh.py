@@ -7,7 +7,7 @@ from pathlib import Path
 # Add the parent of `sandbox/` (i.e., ./src/) to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sandbox.agent import AgentVMConfig, AgentVMManager
+from src.sandbox.sandbox import AgentVMConfig, AgentVMManager
 
 # ───────────────────────────── Logger Setup ─────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
