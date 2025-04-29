@@ -1,32 +1,11 @@
 import logging
 import os
-import sys
 import time
-from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, CodeAgent, InferenceClientModel, PythonExecutor
+from smolagents import ActionStep, InferenceClientModel
 
-# Add the parent of `sandbox/` (i.e., ./src/) to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sandbox import AgentVMConfig, AgentVMManager, SandboxPythonExecutor
-
-# ───────────────────────────── Logger Setup ─────────────────────────────
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("AgentSandboxExecutorTest")
-
-# ───────────────────────────── VM Configuration ─────────────────────────────
-# This configuration is used to set up the VM environment for the agent.
-cfg = AgentVMConfig(
-    container_name="test-agent-vm",
-    host_server_dir=Path("./sandbox/server/"),
-    host_sandbox_server_port=8765,
-    host_sandbox_server_host="localhost",
-    sandbox_server_port=8765,
-    sandbox_server_host="0.0.0.0",
-    sandbox_server_dir=Path("/home/user/server"),
-)
-
+from src.sandbox.smolagents.agents import CodeAgent
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
 # MODEL
@@ -36,33 +15,8 @@ model = InferenceClientModel(
 )  # You can choose to not pass any model_id to InferenceClientModel to use a default model
 
 
-class SandboxCodeAgent(CodeAgent):
-    """
-    A subclass of CodeAgent that adds support for the SandboxPythonExecutor.
-    """
-
-    def __init__(self, *args, agent_vm: AgentVMManager, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.agent_vm = agent_vm  # Store the agent_vm instance
-
-    def create_python_executor(self) -> PythonExecutor:
-        match self.executor_type:
-            case "sandbox":
-                # Retrieve agent_vm from executor_kwargs
-                agent_vm = self.executor_kwargs.get("agent_vm")
-                if not agent_vm:
-                    raise ValueError("`agent_vm` must be provided in `executor_kwargs` for the sandbox executor.")
-                return SandboxPythonExecutor(
-                    agent_vm=agent_vm,
-                    additional_imports=self.additional_authorized_imports,
-                    logger=self.logger,
-                )
-            case _:  # Delegate to the parent class for other executor types
-                return super().create_python_executor()
-
-
 # ───────────────────────────── Helpers & Utils ─────────────────────────
-def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
+def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent):
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
     time.sleep(3.0)
@@ -132,23 +86,10 @@ def create_python_executor(
             raise ValueError(f"Unsupported executor type: {executor_type}")
 
 
-# Initialize and start the AgentVMManager
-with AgentVMManager(cfg, logger=logger, preserve_on_exit=True) as agent_vm:
-    logger.info("✅ Agent VM is running and ready for use.")
+agent = CodeAgent()
 
-    # Create the agent with the sandbox executor type
-    agent = SandboxCodeAgent(
-        tools=[],
-        model=model,
-        executor_type="sandbox",
-        executor_kwargs={"agent_vm": agent_vm},  # Pass agent_vm in executor_kwargs
-        agent_vm=agent_vm,  # Pass the agent_vm instance to the agent
-        step_callbacks=[save_screenshot_callback],
-        max_steps=20,
-        verbosity_level=2,
-    )
 
-    # Run the agent with the desired task
-    agent.run(
-        "Give me some simple example of a python script that uses numpy and pandas to create a dataframe with random numbers and then plot it."
-    )
+# Run the agent with the desired task
+agent.run(
+    "Give me some simple example of a python script that uses numpy and pandas to create a dataframe with random numbers and then plot it."
+)

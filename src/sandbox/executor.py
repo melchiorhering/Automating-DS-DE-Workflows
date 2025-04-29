@@ -1,6 +1,5 @@
 import base64
 import json
-import logging
 import pickle
 import time
 from textwrap import dedent
@@ -18,20 +17,31 @@ from .sandbox import SandboxVMManager
 
 class SandboxExecutor(RemotePythonExecutor):
     """
-    Executes Python code inside a QEMU-based VM using Jupyter Kernel Gateway.
-    Starts and manages the VM container, kernel gateway, and websocket connection.
+    Executes Python code inside a QEMU-based virtual machine using a Jupyter Kernel Gateway.
+
+    This executor boots a VM container via QEMU, starts a Jupyter Kernel Gateway inside it,
+    connects to the kernel via WebSocket, and supports executing code, installing packages
+    using `uv`, and returning final results via pickle encoding.
+
+    Args:
+        config (SandboxVMConfig): Configuration object specifying VM and host/kernel details.
+        additional_imports (List[str]): List of Python packages to install via `uv`.
+        logger (logging.Logger): Logger instance to use for status and error logging.
+        preserve_on_exit (bool): If True, keeps the VM running after executor exits. Defaults to False.
+        **kwargs: Additional arguments passed to the base RemotePythonExecutor or SandboxVMManager.
     """
 
     def __init__(
         self,
         config: SandboxVMConfig,
         additional_imports: List[str],
-        logger: logging.Logger,
+        logger,
         preserve_on_exit: bool = False,
+        **kwargs,
     ):
         super().__init__(additional_imports, logger)
 
-        self.vm = SandboxVMManager(config=config, preserve_on_exit=preserve_on_exit)
+        self.vm = SandboxVMManager(config=config, preserve_on_exit=preserve_on_exit, **kwargs)
         self.vm.__enter__()  # start the VM
 
         self.host = config.host_sandbox_jupyter_kernel_host
@@ -47,8 +57,10 @@ class SandboxExecutor(RemotePythonExecutor):
         self.logger.log("AgentExecutor is running with Jupyter kernel.", level=LogLevel.INFO)
 
     def install_packages(self, additional_imports: list[str]):
-        # REWRITE OF INSTALL PACKAGES USING UV
-        additional_imports = additional_imports + ["smolagents"]
+        """
+        Rewrite of the original install_packages method to use the new uv package manager and also always include pyautogui and smolagents.
+        """
+        additional_imports = additional_imports + ["smolagents", "pyautogui"]
         _, execution_logs = self.run_code_raise_errors(f"!uv pip install {' '.join(additional_imports)}")
         self.logger.log(execution_logs)
         return additional_imports
