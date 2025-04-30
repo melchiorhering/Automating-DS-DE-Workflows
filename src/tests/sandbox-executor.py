@@ -3,9 +3,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 from sandbox.configs import SandboxVMConfig
-from sandbox.executor import SandboxExecutor
+from src.agent.executor import SandboxExecutor
 
 logger = logging.getLogger("TestSandboxExecutor")
 logger.setLevel(logging.INFO)

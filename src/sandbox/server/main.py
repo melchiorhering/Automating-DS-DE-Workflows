@@ -22,9 +22,9 @@ os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
 logger = logging.getLogger("SandboxServer")
 logger.setLevel(logging.DEBUG if os.getenv("DEBUG") == "1" else logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+# formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 file_handler = logging.FileHandler(log_path)
-file_handler.setFormatter(formatter)
+# file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.info(f"🔧 FastAPI Server logging to: {log_path}")
 

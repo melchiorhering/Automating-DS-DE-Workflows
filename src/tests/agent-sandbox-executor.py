@@ -1,11 +1,15 @@
-import logging
 import os
+import sys
 import time
+from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, InferenceClientModel
+from smolagents import ActionStep, InferenceClientModel, TransformersModel
 
-from src.sandbox.smolagents.agents import CodeAgent
+# Allow imports from the parent directory
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from agent.sandbox_agent import SandboxCodeAgent
+from sandbox.configs import SandboxVMConfig
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
 # MODEL
@@ -15,8 +19,11 @@ model = InferenceClientModel(
 )  # You can choose to not pass any model_id to InferenceClientModel to use a default model
 
 
+model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct", max_new_tokens=4096, device_map="auto")
+
+
 # ───────────────────────────── Helpers & Utils ─────────────────────────
-def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent):
+def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
     time.sleep(3.0)
@@ -29,7 +36,7 @@ def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent):
                 previous_memory_step.observations_images = None
 
     # Take the screenshot using the sandbox client
-    client = agent.agent_vm.sandbox_client
+    client = agent.python_executor.vm.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
         path = result["screenshot_path"]
@@ -58,36 +65,19 @@ def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent):
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
 
-# ───────────────────────────── Test Config ─────────────────────────────
+agent = SandboxCodeAgent(
+    tools=[],
+    model=model,
+    executor_type="sandbox",
+    executor_kwargs={
+        "config": SandboxVMConfig(host_server_dir=Path("sandbox/server/")),
+        "preserve_on_exit": False,
+    },
+    additional_authorized_imports=["pyautogui", "numpy"],
+    step_callbacks=[save_screenshot_callback],
+)
 
-
-def create_python_executor(
-    executor_type: str, agent_vm: AgentVMManager, logger: logging.Logger
-) -> SandboxPythonExecutor:
-    """
-    Create the appropriate Python executor based on the executor type.
-
-    Args:
-        executor_type: The type of executor to create (e.g., "sandbox").
-        agent_vm: The running AgentVMManager instance.
-        logger: Logger to use.
-
-    Returns:
-        An instance of the appropriate Python executor.
-    """
-    match executor_type:
-        case "sandbox":
-            return SandboxPythonExecutor(
-                agent_vm=agent_vm,
-                additional_imports=["numpy", "pandas"],
-                logger=logger,
-            )
-        case _:  # if applicable
-            raise ValueError(f"Unsupported executor type: {executor_type}")
-
-
-agent = CodeAgent()
-
+# agent.python_executor =
 
 # Run the agent with the desired task
 agent.run(

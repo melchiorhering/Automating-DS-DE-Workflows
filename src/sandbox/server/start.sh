@@ -108,7 +108,7 @@ if ! lsof -iTCP:"$JUPYTER_KERNEL_GATEWAY_APP_PORT" -sTCP:LISTEN >/dev/null; then
     echo "🚀 Starting Jupyter Kernel Gateway on: $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
 
     # include pip in your project's virtual environment by running uv venv --seed
-    # uv venv --seed
+    uv venv --seed
 
     nohup uv run -- jupyter kernelgateway \
         --api="kernel_gateway.jupyter_websocket" \

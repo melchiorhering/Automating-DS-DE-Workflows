@@ -1,7 +1,9 @@
 import base64
 import json
 import pickle
+import sys
 import time
+from pathlib import Path
 from textwrap import dedent
 from typing import Any, List
 
@@ -11,8 +13,10 @@ from smolagents.monitoring import LogLevel
 from smolagents.remote_executors import RemotePythonExecutor
 from websocket import create_connection
 
-from .configs import SandboxVMConfig
-from .sandbox import SandboxVMManager
+# Allow imports from the parent directory
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from sandbox.configs import SandboxVMConfig
+from sandbox.sandbox import SandboxVMManager
 
 
 class SandboxExecutor(RemotePythonExecutor):
@@ -33,9 +37,9 @@ class SandboxExecutor(RemotePythonExecutor):
 
     def __init__(
         self,
-        config: SandboxVMConfig,
         additional_imports: List[str],
         logger,
+        config: SandboxVMConfig,
         preserve_on_exit: bool = False,
         **kwargs,
     ):
@@ -51,7 +55,7 @@ class SandboxExecutor(RemotePythonExecutor):
         self.kernel_id = None
         self.ws = None
 
-        self._start_kernel()
+        self._create_kernel()
         self.installed_packages = self.install_packages(additional_imports)
 
         self.logger.log("AgentExecutor is running with Jupyter kernel.", level=LogLevel.INFO)
@@ -65,21 +69,79 @@ class SandboxExecutor(RemotePythonExecutor):
         self.logger.log(execution_logs)
         return additional_imports
 
-    def _start_kernel(self, retries: int = 5, delay: float = 2.0):
+    def _create_kernel(self, retries: int = 5, delay: float = 2.0):
+        """
+        Creates a new Jupyter kernel via the Kernel Gateway HTTP API and establishes a WebSocket connection.
+
+        This method:
+        - Sends a POST request to the /api/kernels endpoint to create a new kernel.
+        - Verifies that the response status code is 201 (Created).
+        - Logs detailed error diagnostics if the creation fails.
+        - Establishes a WebSocket connection to the kernel's /channels endpoint.
+        - Retries up to `retries` times on failure, with `delay` seconds between attempts.
+
+        Raises:
+            RuntimeError: If the kernel creation fails with a non-201 status code.
+            Exception: If connection or API failures persist after all retries.
+        """
         for attempt in range(retries):
             try:
                 resp = requests.post(f"{self.base_url}/api/kernels", timeout=5)
-                resp.raise_for_status()
+
+                if resp.status_code != 201:
+                    error_details = {
+                        "status_code": resp.status_code,
+                        "headers": dict(resp.headers),
+                        "url": resp.url,
+                        "body": resp.text,
+                        "request_method": resp.request.method,
+                        "request_headers": dict(resp.request.headers),
+                        "request_body": resp.request.body,
+                    }
+                    self.logger.log_error(f"Failed to create kernel. Details: {json.dumps(error_details, indent=2)}")
+                    raise RuntimeError(f"Failed to create kernel: Status {resp.status_code}\nResponse: {resp.text}")
+
                 self.kernel_id = resp.json()["id"]
                 self.ws = create_connection(f"{self.ws_url}/api/kernels/{self.kernel_id}/channels")
                 return
-            except (requests.RequestException, Exception) as e:
+
+            except Exception as e:
                 if attempt < retries - 1:
-                    self.logger.log(f"Kernel start attempt {attempt + 1} failed, retrying...", level=LogLevel.INFO)
+                    self.logger.log(f"Kernel creation attempt {attempt + 1} failed, retrying...", level=LogLevel.INFO)
                     time.sleep(delay)
                 else:
-                    self.logger.log(f"Kernel start failed after {retries} attempts: {e}", level=LogLevel.ERROR)
+                    self.logger.log(f"Kernel creation failed after {retries} attempts: {e}", level=LogLevel.ERROR)
                     raise
+
+    def _send_execute_request(self, code: str) -> str:
+        """Send code execution request to kernel."""
+        import uuid
+
+        # Generate a unique message ID
+        msg_id = str(uuid.uuid4())
+
+        # Create execute request
+        execute_request = {
+            "header": {
+                "msg_id": msg_id,
+                "username": "anonymous",
+                "session": str(uuid.uuid4()),
+                "msg_type": "execute_request",
+                "version": "5.0",
+            },
+            "parent_header": {},
+            "metadata": {},
+            "content": {
+                "code": code,
+                "silent": False,
+                "store_history": True,
+                "user_expressions": {},
+                "allow_stdin": False,
+            },
+        }
+
+        self.ws.send(json.dumps(execute_request))
+        return msg_id
 
     def run_code_raise_errors(self, code_action: str, return_final_answer: bool = False) -> tuple[Any, str]:
         """

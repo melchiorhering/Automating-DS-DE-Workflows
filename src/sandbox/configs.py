@@ -89,6 +89,8 @@ class VMConfig:
             self.container_shared_dir,
         ):
             p.mkdir(parents=True, exist_ok=True)
+            if os.access(p, os.W_OK | os.X_OK):
+                os.chmod(p, 0o777)
 
         # Validate base VM files exist
         if not self.base_iso.exists() or not self.base_data.exists():
