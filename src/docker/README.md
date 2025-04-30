@@ -11,15 +11,15 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
  ┣ 📂shared
  ┣ 📂vms
  ┃ ┣ 📂snapshots
- ┃ ┣ 📂spider2-v
+ ┃ ┣ 📂spider2-v # OPTIONAL: YOU COULD USE THE ORIGINAL SPIDER2-V IMAGE (Needs to be downloaded separately)
  ┃ ┃ ┣ 📜Ubuntu.qcow2
  ┃ ┃ ┗ 📜Ubuntu.qcow2.zip
- ┃ ┗ 📂ubuntu-base
- ┃ ┃ ┣ 📜boot.iso
- ┃ ┃ ┣ 📜data.img
- ┃ ┃ ┣ 📜qemu.mac
- ┃ ┃ ┣ 📜uefi.rom
- ┃ ┃ ┗ 📜uefi.vars
+ ┃ ┗ 📂ubuntu-base # OPTIONAL: NEW VARIANT OF UBUNTU BASE IMAGE; Already configured for SSH
+ ┃ ┃ ┣ 📜boot.iso # Needed
+ ┃ ┃ ┣ 📜data.img # Needed
+ ┃ ┃ ┣ 📜qemu.mac # Created on container startup
+ ┃ ┃ ┣ 📜uefi.rom # Created on container startup
+ ┃ ┃ ┗ 📜uefi.vars # Created on container startup
  ┣ 📜README.md
  ┗ 📜compose.qemu.yaml
 ```
