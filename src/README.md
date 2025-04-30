@@ -1,11 +1,7 @@
-Absolutely — here's an updated version of your description that incorporates your **current sandboxed FastAPI + Jupyter Kernel Gateway setup**, **agent-VMM orchestration**, and **Python-native infra** using `uv`, `smolagents`, and modular tools:
-
 ---
-
 ## 🧠 Extending Spider2‑V: A Fully Pythonic, Modular & Future‑Proof Benchmarking Framework
 
 We present an extension of the Spider2‑V benchmark redesigned for **full Python compatibility**, enabling fast iteration, rich agent–environment interaction, and seamless integration with modern ML infrastructure.
-
 ---
 
 ### 1. **Sandboxed VMs via Python‑Driven QEMU + Docker Orchestration**
@@ -99,5 +95,3 @@ AgentOrchestrator
 
 > This re-architecture makes **Spider2‑V agent benchmarking scalable, modular, and future‑proof.**
 > All in Python. All reproducible. All ready for real-world LLM agents.
-
-Would you like this saved as a markdown file or turned into a figure for your paper or README?
