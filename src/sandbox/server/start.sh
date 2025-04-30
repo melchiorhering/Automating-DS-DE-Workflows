@@ -79,9 +79,9 @@ uv venv --seed
 uv pip install jupyter_kernel_gateway ipykernel smolagents pyautogui
 
 # Register the Jupyter kernel if not already installed
-if ! uv run --with jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
+if ! uv run --with jupyter jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
     echo "📦 Registering Jupyter kernel: $JUPYTER_KERNEL_NAME"
-    uv run --with ipython kernel install --user --name="$JUPYTER_KERNEL_NAME" --display-name="Python (Sandbox)"
+    uv run --with ipython ipython kernel install --user --name="$JUPYTER_KERNEL_NAME" --display-name="Python (Sandbox)"
 else
     echo "✅ Jupyter kernel '$JUPYTER_KERNEL_NAME' already registered"
 fi
@@ -92,7 +92,7 @@ fi
 if ! lsof -iTCP:"$JUPYTER_KERNEL_GATEWAY_APP_PORT" -sTCP:LISTEN >/dev/null; then
     echo "🚀 Starting Jupyter Kernel Gateway on: $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
 
-    nohup uv run -- kernelgateway \
+    nohup uv run --with jupyter jupyter kernelgateway \
         --KernelGatewayApp.api=kernel_gateway.jupyter_websocket \
         --ip="$JUPYTER_KERNEL_GATEWAY_APP_HOST" \
         --port=$JUPYTER_KERNEL_GATEWAY_APP_PORT \
@@ -127,4 +127,4 @@ fi
 # 8) Start FastAPI server
 # ──────────────────────────────────────────────────────────────────────────────
 echo "🚀 Launching FastAPI server at http://$HOST:$PORT"
-exec uv run -- uvicorn main:app --host="$HOST" --port="$PORT" --reload --log-level debug
+exec uv run --with uvicorn uvicorn main:app --host="$HOST" --port="$PORT" --reload --log-level debug
