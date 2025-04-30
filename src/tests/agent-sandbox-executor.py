@@ -72,7 +72,7 @@ agent = SandboxCodeAgent(
     model=model,
     executor_type="sandbox",
     executor_kwargs={
-        "config": SandboxVMConfig(host_server_dir=Path("sandbox/server/")),
+        "config": SandboxVMConfig(host_server_dir=Path("sandbox/server/"), unique_container_name=True),
         "preserve_on_exit": False,
     },
     additional_authorized_imports=["pyautogui", "numpy", "pandas", "matplotlib"],
