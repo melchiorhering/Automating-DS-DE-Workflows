@@ -17,6 +17,8 @@ dependencies = [
     "pandas>=2.2.3",
     "openapi-python-client>=0.24.3",
     "websocket-client>=1.8.0",
+    "huggingface-hub[cli]>=0.30.2",
+    "vllm>=0.8.5",
 ]
 
 
