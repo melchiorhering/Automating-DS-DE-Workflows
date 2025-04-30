@@ -55,7 +55,7 @@ Each guest VM hosts two key services:
 - **Agent Realism** – Agents interact with real UIs and operating systems (not mocks).
 - **Deterministic CI** – `uv` guarantees reproducible Python environments with lockfile-based workflows.
 - **Modularity** – Replace or extend FastAPI interfaces, tools, or models independently.
-- **Scalability** – Each agent has a full VM; scale benchmarking across 5, 50, or 500 agents concurrently.
+- **Scalability** – Each agent has a full VM; scale benchmarking across 1, 5, or x agents concurrently (if you have the compute/resources 😉).
 
 ---
 
