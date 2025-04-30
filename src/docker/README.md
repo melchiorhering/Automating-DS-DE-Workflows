@@ -65,7 +65,7 @@ services:
 
     # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
     volumes:
-      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
+      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory, this will skip the BOOT download and use a local image (.iso, .qcow2, etc.). THIS SHOULD CONTAINER AN `boot.iso|.qcow2|other` FILE AND A `data.img` FILE
       - ${ROOT_DIR}/src/docker/shared:/shared # For the shared directory
 
     # Grant KVM + networking devices
