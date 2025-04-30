@@ -65,53 +65,35 @@ echo "────────────────────────�
 xhost +SI:localuser:"$(whoami)" 2>/dev/null || true
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5) Virtual Environment Setup
+# 5) Virtual Environment Setup for Jupyter Gateway
 # ──────────────────────────────────────────────────────────────────────────────
 if ! command -v uv >/dev/null 2>&1; then
     echo "❌ uv not found! Please install it manually."
     exit 1
 fi
 
-# Sync the virtual environment
-uv sync
+# Seed environment to ensure pip compatibility
+uv venv --seed
 
-# Update the virtual environment
-uv lock --upgrade
+# Ensure packages needed for Jupyter + your kernel are installed
+uv pip install jupyter_kernel_gateway ipykernel smolagents pyautogui
 
-#──────────────────────────────────────────────────────────────────────────────
-# 6) Register Jupyter kernel if not yet available
-#──────────────────────────────────────────────────────────────────────────────
-
-# With UV it is a little bit different, here is an example from the following: https://github.com/astral-sh/uv/issues/6329
-# # Start project which generates .venv
-# uv init
-# # Add a sample library
-# uv add requests
-# # Add ipykernel to work with notebooks
-# uv add ipykernel
-# # Install kernelspec for the current .venv
-# uv run ipython kernel install --user --name=uv_test
-# # Run Jupyter Lab and open a new notebook using the newly created kernel `uv_test`
-# uvx --from jupyter-core --with jupyter jupyter lab
-# if ! uv run --with jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
-#     echo "📦 Registering Jupyter kernel: $JUPYTER_KERNEL_NAME"
-#     uv run ipykernel install --user --name "$JUPYTER_KERNEL_NAME" --display-name "Python (Sandbox)"
-# else
-#     echo "✅ Jupyter kernel '$JUPYTER_KERNEL_NAME' already registered"
-# fi
+# Register the Jupyter kernel if not already installed
+if ! uv run --with jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
+    echo "📦 Registering Jupyter kernel: $JUPYTER_KERNEL_NAME"
+    uv run --with ipython kernel install --user --name="$JUPYTER_KERNEL_NAME" --display-name="Python (Sandbox)"
+else
+    echo "✅ Jupyter kernel '$JUPYTER_KERNEL_NAME' already registered"
+fi
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 7) Start Jupyter Kernel Gateway (background)
+# 6) Start Jupyter Kernel Gateway (background)
 # ──────────────────────────────────────────────────────────────────────────────
-
 if ! lsof -iTCP:"$JUPYTER_KERNEL_GATEWAY_APP_PORT" -sTCP:LISTEN >/dev/null; then
     echo "🚀 Starting Jupyter Kernel Gateway on: $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
 
-    # include pip in your project's virtual environment by running uv venv --seed
-    uv venv --seed
-
-    nohup uv run -- jupyter kernelgateway \
-        --api="kernel_gateway.jupyter_websocket" \
+    nohup uv run -- kernelgateway \
+        --KernelGatewayApp.api=kernel_gateway.jupyter_websocket \
         --ip="$JUPYTER_KERNEL_GATEWAY_APP_HOST" \
         --port=$JUPYTER_KERNEL_GATEWAY_APP_PORT \
         --KernelGatewayApp.allow_origin='*' \
@@ -122,9 +104,8 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 7.5) Wait for Jupyter Kernel Gateway to become available
+# 7) Wait for Jupyter Kernel Gateway to become available
 # ──────────────────────────────────────────────────────────────────────────────
-
 KERNEL_GATEWAY_URL="http://$JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT/api"
 echo "⏳ Waiting for Jupyter Kernel Gateway to become ready at $KERNEL_GATEWAY_URL"
 

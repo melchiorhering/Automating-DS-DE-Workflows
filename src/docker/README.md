@@ -8,7 +8,7 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
 
 ```
 📦docker
- ┣ 📂shared
+ ┣ 📂shared # Directory for shared files between host and container
  ┣ 📂vms
  ┃ ┣ 📂snapshots
  ┃ ┣ 📂spider2-v # OPTIONAL: YOU COULD USE THE ORIGINAL SPIDER2-V IMAGE (Needs to be downloaded separately)

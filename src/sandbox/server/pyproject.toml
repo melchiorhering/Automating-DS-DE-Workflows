@@ -8,7 +8,6 @@ dependencies = [
     "fastapi>=0.115.12",
     "jupyter>=1.1.1",
     "jupyter-client>=8.6.3",
-    "jupyter-kernel-gateway",
     "notebook>=7.4.1",
     "numpy>=2.2.4",
     "pillow>=2.32.3",

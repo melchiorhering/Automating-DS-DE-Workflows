@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, TransformersModel
+from smolagents import ActionStep, VLLMModel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,7 +18,10 @@ from sandbox.configs import SandboxVMConfig
 # )  # You can choose to not pass any model_id to InferenceClientModel to use a default model
 
 
-model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
+# model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
+
+# model = VLLMModel(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
+model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
@@ -72,11 +75,10 @@ agent = SandboxCodeAgent(
         "config": SandboxVMConfig(host_server_dir=Path("sandbox/server/")),
         "preserve_on_exit": False,
     },
-    additional_authorized_imports=["pyautogui", "numpy"],
+    additional_authorized_imports=["pyautogui", "numpy", "pandas", "matplotlib"],
     step_callbacks=[save_screenshot_callback],
 )
 
-# agent.python_executor =
 
 # Run the agent with the desired task
 agent.run(

@@ -64,8 +64,8 @@ class SandboxExecutor(RemotePythonExecutor):
         """
         Rewrite of the original install_packages method to use the new uv package manager and also always include pyautogui and smolagents.
         """
-        additional_imports = additional_imports + ["smolagents", "pyautogui"]
-        _, execution_logs = self.run_code_raise_errors(f"!uv pip install {' '.join(additional_imports)}")
+        additional_imports = set(additional_imports + ["smolagents", "pyautogui"])
+        _, execution_logs = self.run_code_raise_errors(f"!pip install {' '.join(additional_imports)}")
         self.logger.log(execution_logs)
         return additional_imports
 
