@@ -1,10 +1,9 @@
-import os
 import sys
 import time
 from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, InferenceClientModel, TransformersModel
+from smolagents import ActionStep, TransformersModel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,12 +13,12 @@ from sandbox.configs import SandboxVMConfig
 # ───────────────────────────── Agent Configuration ─────────────────────────────
 # MODEL
 # model_id = "meta-llama/Llama-3.3-70B-Instruct"
-model = InferenceClientModel(
-    token=os.getenv("HF_TOKEN"),  # model_id=model_id,
-)  # You can choose to not pass any model_id to InferenceClientModel to use a default model
+# model = InferenceClientModel(
+#     token=os.getenv("HF_TOKEN"),  # model_id=model_id,
+# )  # You can choose to not pass any model_id to InferenceClientModel to use a default model
 
 
-model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct", max_new_tokens=4096, device_map="auto")
+model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────

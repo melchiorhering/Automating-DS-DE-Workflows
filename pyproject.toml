@@ -16,6 +16,7 @@ dependencies = [
     "tenacity>=9.1.2",
     "pandas>=2.2.3",
     "openapi-python-client>=0.24.3",
+    "websocket-client>=1.8.0",
 ]
 
 
