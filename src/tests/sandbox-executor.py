@@ -1,14 +1,13 @@
-import logging
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sandbox.configs import SandboxVMConfig
-from src.agent.executor import SandboxExecutor
+from smolagents.monitoring import AgentLogger
 
-logger = logging.getLogger("TestSandboxExecutor")
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from agent.executor import SandboxExecutor
+from sandbox.configs import SandboxVMConfig
+
+logger = AgentLogger()
 
 
 def main():
@@ -17,8 +16,8 @@ def main():
     # Start executor
     executor = SandboxExecutor(
         config=config,
-        additional_imports=["numpy"],
         logger=logger,
+        additional_imports=["numpy"],
         preserve_on_exit=False,
     )
 
@@ -39,6 +38,29 @@ result
         result, logs = executor.run_code_raise_errors(numpy_code, return_final_answer=True)
         print("✅ NumPy Result:", result)
         print("📋 NumPy Logs:", logs)
+
+        pyautogui_code = f"""
+import pyautogui
+
+# Move the mouse to the center of the screen
+screen_width, screen_height = pyautogui.size()
+center_x, center_y = screen_width // 2, screen_height // 2
+pyautogui.moveTo(center_x, center_y)
+# Take a screenshot
+screenshot = pyautogui.screenshot()
+screenshot.save('/mnt/{config.container_name}/screenshot.png')
+
+
+print('Mouse moved to the center of the screen and screenshot saved.')
+# Check if the screenshot was saved successfully
+screenshot_path = '/mnt/{config.container_name}/screenshot.png'
+if os.path.exists(screenshot_path):
+    print(f'Screenshot saved at: %s' % screenshot_path)
+
+        """
+        result, logs = executor.run_code_raise_errors(pyautogui_code, return_final_answer=True)
+        print("✅ Pyautogui Result:", result)
+        print("📋 Pyautogui Logs:", logs)
 
     finally:
         executor.delete()

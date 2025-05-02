@@ -4,10 +4,11 @@ from pathlib import Path
 
 from PIL import Image
 from smolagents import ActionStep, VLLMModel
+from smolagents.monitoring import LogLevel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from agent.sandbox_agent import SandboxCodeAgent
+from agent import SandboxCodeAgent
 from sandbox.configs import SandboxVMConfig
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
@@ -25,6 +26,18 @@ model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
+def take_initial_screenshot(agent: SandboxCodeAgent, label: str = "initial"):
+    client = agent.python_executor.vm.sandbox_client
+    result = client.take_screenshot()
+    if "screenshot_path" in result:
+        try:
+            image = Image.open(result["screenshot_path"])
+            print(image)
+            print(f"📸 Saved initial screenshot: {label}.png")
+        except Exception as e:
+            print(f"⚠️ Failed to save initial screenshot: {e}")
+
+
 def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
@@ -67,20 +80,54 @@ def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
 
+config = SandboxVMConfig(host_server_dir=Path("sandbox/server/"))
 agent = SandboxCodeAgent(
     tools=[],
     model=model,
     executor_type="sandbox",
     executor_kwargs={
-        "config": SandboxVMConfig(host_server_dir=Path("sandbox/server/"), unique_container_name=True),
+        "config": config,
         "preserve_on_exit": False,
     },
-    additional_authorized_imports=["pyautogui", "numpy", "pandas", "matplotlib"],
+    additional_authorized_imports=["pyautogui"],
     step_callbacks=[save_screenshot_callback],
+    verbosity_level=LogLevel.DEBUG,
 )
+take_initial_screenshot(agent, label="before_run")
+# # Run the agent with the desired task
+# agent_output = agent.run(
+#     "move the mouse with pyautogui to the center of the screen, the current screen resolution is 1400x1050; use pyautogui.moveTo(x, y) to move the mouse",
+#     max_steps=4,
+#     stream=False,
+# )
+
+# print(
+#     f"Agent output:{agent_output[0].model_output},\n",
+# )
 
 
-# Run the agent with the desired task
+# time.sleep(5.0)
+
+
 agent.run(
-    "Give me some simple example of a python script that uses numpy and pandas to create a dataframe with random numbers and then plot it."
+    """Run the following code:
+```python
+import pyautogui
+
+# Move the mouse to the center of the screen
+screen_width, screen_height = pyautogui.size()
+center_x, center_y = screen_width // 2, screen_height // 2
+pyautogui.moveTo(center_x, center_y)
+print('Mouse moved to the center of the screen and screenshot saved.')
+
+
+If you can see the mouse moved to the center of the screen and the screenshot saved, return "success" else return "failure"
+```
+""",
+    max_steps=4,
+    stream=False,
 )
+# print(
+#     f"Agent output:{list(agent_output[0])}",
+# )
+print(agent.memory.replay())

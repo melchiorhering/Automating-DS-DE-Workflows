@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import importlib
 import json
-import logging
 import subprocess
 import sys
 import tempfile
@@ -11,15 +10,12 @@ import time
 from pathlib import Path
 
 import requests
+from smolagents import AgentLogger, LogLevel
 
 from .configs import SandboxVMConfig
 from .errors import RemoteCommandError, VMOperationError
 from .ssh import SSHClient, SSHConfig
 from .virtualmachine import VMManager
-
-# ────────────────────────────── Logging Setup ──────────────────────────────
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 # ────────────────────────────── SandboxClient ──────────────────────────────
@@ -29,13 +25,17 @@ class SandboxClient:
 
     def health(self) -> dict:
         response = self.manager.api_health_check.sync_detailed(client=self.manager.client)
-        return response.parsed or json.loads(response.content)
+
+        try:
+            return response.parsed or json.loads(response.content)
+        except Exception:
+            return {"status": "unhealthy", "raw": response.content.decode(errors="ignore")}
 
     def take_screenshot(self, method: str = "pyautogui") -> dict:
         method_enum = self.manager.models.ScreenshotEndpointScreenshotGetMethod(method)
         response = self.manager.api_screenshot.sync_detailed(client=self.manager.client, method=method_enum)
         result = response.parsed or json.loads(response.content)
-        result["screenshot_path"] = self.manager.cfg.container_shared_dir / result["screenshot_path"]
+        result["screenshot_path"] = self.manager.cfg.host_container_shared_dir / result["screenshot_path"]
         return result
 
     def start_recording(self) -> dict:
@@ -58,8 +58,8 @@ class SandboxVMManager(VMManager):
     def __init__(
         self,
         config: SandboxVMConfig,
+        logger: AgentLogger,
         preserve_on_exit: bool = False,
-        logger: logging.Logger = logger,
         **kwargs,
     ):
         if not isinstance(config, SandboxVMConfig):
@@ -68,9 +68,9 @@ class SandboxVMManager(VMManager):
 
         self._should_cleanup = not (self.container and self.container.status == "running")
         self._preserve_on_exit = preserve_on_exit
-        self.log.debug("Initialization _should_cleanup set to: %s", self._should_cleanup)
+        self.logger.log(f"Initialization _should_cleanup set to: {self._should_cleanup}", level=LogLevel.DEBUG)
         if self._preserve_on_exit:
-            self.log.info("⚠️ Container files will be preserved on exit (preserve_on_exit=True)")
+            self.logger.log("⚠️ Container files will be preserved on exit (preserve_on_exit=True)", level=LogLevel.INFO)
 
     @contextlib.contextmanager
     def sandbox_vm_context(self):
@@ -87,57 +87,50 @@ class SandboxVMManager(VMManager):
             self._should_cleanup = False
             return self
         except Exception as e:
-            self.log.error("❌ - Exception during VM startup: %s", e, exc_info=True)
+            self.logger.log_error(f"❌ - Exception during VM startup: {e}")
             self.cleanup(delete_storage=True)
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         delete_storage = not self._preserve_on_exit
-        if self._should_cleanup or exc_type is not None:
-            if delete_storage:
-                self.log.warning("⚠️ Exiting VM context with error, cleaning up completely...")
-            else:
-                self.log.warning("⚠️ Exiting VM context with error, preserving container files...")
+        if exc_type or self._should_cleanup:
+            msg = "⚠️ Exiting VM context with error,"
         else:
-            if delete_storage:
-                self.log.info("🧹 Normal exit, cleaning up VM container...")
-            else:
-                self.log.info("🧹 Normal exit, preserving container files as requested...")
+            msg = "🧹 Normal exit,"
+
+        msg += " preserving container files..." if not delete_storage else " cleaning up VM container..."
+        self.logger.log(msg, level=LogLevel.INFO)
         self.cleanup(delete_storage=delete_storage)
         return False
 
     def _ensure_mounted(self, mount_point: str, tag: str):
-        self.log.info("Mounting %s -> %s", tag, mount_point)
+        self.logger.log(f"Mounting {tag} -> {mount_point}", level=LogLevel.INFO)
         try:
             self.ssh.exec_command(f"mount -t 9p -o trans=virtio {tag} {mount_point}", as_root=True)
         except RemoteCommandError as e:
             if "already mounted" in e.stderr:
-                self.log.warning("⚠️ - Shared directory already mounted, continuing...")
+                self.logger.log("⚠️ - Shared directory already mounted, continuing...", level=LogLevel.WARNING)
             else:
                 raise
 
     def _wait_for_services(self, timeout: float = 120.0, interval: float = 3.0):
-        """
-        Wait for the Jupyter Gateway Kernel and FastAPI server to be reachable and healthy.
-        """
-
         url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}/health"
-        self.log.info("🔍 - Waiting for FastAPI server health check at %s...", url)
+        self.logger.log(f"🔍 - Waiting for FastAPI server health check at {url}...", level=LogLevel.INFO)
         deadline = time.time() + timeout
 
         while time.time() < deadline:
             try:
                 response = requests.get(url, timeout=2)
                 if response.status_code == 200:
-                    self.log.info(response.text.strip())
-                    self.log.info("✅ FastAPI server is healthy at %s", url)
+                    self.logger.log(response.text.strip(), level=LogLevel.INFO)
+                    self.logger.log(f"✅ FastAPI server is healthy at {url}", level=LogLevel.INFO)
                     return
                 else:
-                    self.log.debug("⏳ - Server responded with status %s", response.status_code)
+                    self.logger.log(f"⏳ - Server responded with status {response.status_code}", level=LogLevel.DEBUG)
             except requests.RequestException as e:
-                self.log.debug("⏳ - Server not ready (RequestException): %s", e)
+                self.logger.log(f"⏳ - Server not ready (RequestException): {e}", level=LogLevel.DEBUG)
             except Exception as e:
-                self.log.debug("⏳ - Unexpected error while checking server: %s", e)
+                self.logger.log(f"⏳ - Unexpected error while checking server: {e}", level=LogLevel.DEBUG)
 
             time.sleep(interval)
 
@@ -147,14 +140,12 @@ class SandboxVMManager(VMManager):
         self.create_container()
         time.sleep(5)
         self._wait_for_ssh_ready()
-        self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.log)
+        self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.logger)
 
     def _prepare_shared_mount(self):
         mount = f"/mnt/{self.cfg.container_name}"
         self.ssh.exec_command(f"mkdir -p {mount}", as_root=True)
-        # Create the FastAPI server log file
         self.ssh.exec_command(f"touch {mount}/{self.cfg.sandbox_server_log}", as_root=True)
-        # Create the Jupyter kernel log file
         self.ssh.exec_command(f"touch {mount}/{self.cfg.sandbox_jupyter_kernel_log}", as_root=True)
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
@@ -163,19 +154,21 @@ class SandboxVMManager(VMManager):
         self.ssh.exec_command(f"chmod +x {self.cfg.sandbox_server_dir}/start.sh")
 
     def _handle_server_start_failure(self, e: VMOperationError):
-        self.log.error("❌ FastAPI server failed health check: %s", e)
+        self.logger.log_error(f"❌ FastAPI server failed health check: {e}")
         try:
             logs = self.tail_server_logs()
-            self.log.error("🪵 Last sandbox-server logs:\n%s", logs)
+            self.logger.log_error(f"🪵 Last sandbox-server logs:\n{logs}")
         except VMOperationError as log_err:
-            self.log.error("⚠️ Could not read log file: %s", log_err)
+            self.logger.log_error(f"⚠️ Could not read log file: {log_err}")
         raise
 
     def _generate_client_from_openapi(self):
         server_url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}"
         openapi_schema_url = f"{server_url}/openapi.json"
 
-        self.log.info("📦 Generating FastAPI client from OpenAPI schema at %s...", openapi_schema_url)
+        self.logger.log(
+            f"📦 Generating FastAPI client from OpenAPI schema at {openapi_schema_url}...", level=LogLevel.INFO
+        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             schema_path = Path(tmpdir) / "openapi.json"
@@ -199,12 +192,14 @@ class SandboxVMManager(VMManager):
                 )
 
                 if result.returncode != 0:
-                    self.log.error("❌ FastAPI client generation failed:\n%s", result.stderr)
+                    self.logger.log_error(f"❌ FastAPI client generation failed:\n{result.stderr}")
                     raise VMOperationError("FastAPI client generation failed")
 
-                self.log.info("✅ FastAPI client generated at %s", self.cfg.client_output_dir.resolve())
+                self.logger.log(
+                    f"✅ FastAPI client generated at {self.cfg.client_output_dir.resolve()}", level=LogLevel.INFO
+                )
             except Exception as e:
-                self.log.error("❌ Failed to fetch or generate OpenAPI client: %s", e)
+                self.logger.log_error(f"❌ Failed to fetch or generate OpenAPI client: {e}")
                 raise
 
     def _import_generated_client(self):
@@ -219,8 +214,6 @@ class SandboxVMManager(VMManager):
             self.client = self.client_package.client.Client(
                 base_url=f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}"
             )
-
-            # Import models and API endpoints
             self.models = importlib.import_module(f"{client_module_name}.models")
             self.api_health_check = importlib.import_module(f"{client_module_name}.api.default.health_check_health_get")
             self.api_screenshot = importlib.import_module(
@@ -230,29 +223,32 @@ class SandboxVMManager(VMManager):
 
             self.sandbox_client = SandboxClient(manager=self)
 
-            self.log.info("✅ FastAPI client loaded and ready: %s", self.client)
+            self.logger.log(f"✅ FastAPI client loaded and ready: {self.client}", level=LogLevel.INFO)
         except ImportError as e:
-            self.log.error("❌ Could not import generated client: %s", e)
+            self.logger.log_error(f"❌ Could not import generated client: {e}")
             raise
 
     def _generate_fastapi_client(self):
         if self.cfg.force_regenerate_client or not self.cfg.client_output_dir.exists():
             self._generate_client_from_openapi()
         else:
-            self.log.info("⚠️ FastAPI client already exists at %s, skipping regeneration", self.cfg.client_output_dir)
+            self.logger.log(
+                f"⚠️ FastAPI client already exists at {self.cfg.client_output_dir}, skipping regeneration",
+                level=LogLevel.INFO,
+            )
 
         self._import_generated_client()
 
     def tail_server_logs(self, lines: int = 100) -> str:
         path = self.cfg.container_shared_dir / self.cfg.sandbox_server_log
         if not path.exists():
-            raise VMOperationError("❌ - Log file not found at %s", path)
+            raise VMOperationError(f"❌ - Log file not found at {path}")
 
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return "".join(f.readlines()[-lines:])
         except Exception as e:
-            raise VMOperationError("❌ - Failed to read log file: %s", e) from e
+            raise VMOperationError(f"❌ - Failed to read log file: {e}") from e
 
     def start_agent_vm(self):
         if not self.container or self.container.status != "running":
@@ -261,12 +257,8 @@ class SandboxVMManager(VMManager):
         self._prepare_shared_mount()
 
         self.cfg.runtime_env["SHARED_DIR"] = f"/mnt/{self.cfg.container_name}"
-
-        # FastAPI server environment variables
         self.cfg.runtime_env["PORT"] = str(self.cfg.sandbox_server_port)
         self.cfg.runtime_env["SERVER_LOG"] = str(self.cfg.sandbox_server_log)
-
-        # Jupyter kernel environment variables
         self.cfg.runtime_env["JUPYTER_KERNEL_NAME"] = self.cfg.sandbox_jupyter_kernel_name
         self.cfg.runtime_env["JUPYTER_KERNEL_GATEWAY_APP_PORT"] = str(self.cfg.sandbox_jupyter_kernel_port)
         self.cfg.runtime_env["JUPYTER_KERNEL_GATEWAY_APP_LOG"] = str(self.cfg.sandbox_jupyter_kernel_log)
@@ -281,3 +273,13 @@ class SandboxVMManager(VMManager):
             self._generate_fastapi_client()
         except VMOperationError as e:
             self._handle_server_start_failure(e)
+
+    def reconnect(self):
+        if not self.container or self.container.status != "running":
+            raise VMOperationError("No running container to reconnect to.")
+
+        self._wait_for_ssh_ready()
+        self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.logger)
+
+        self._generate_fastapi_client()
+        self.logger.log("🔁 Reconnected to running VM.", level=LogLevel.INFO)

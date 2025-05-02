@@ -76,15 +76,15 @@ fi
 uv venv --seed
 
 # Ensure packages needed for Jupyter + your kernel are installed
-uv pip install jupyter_kernel_gateway ipykernel smolagents pyautogui
+uv pip install jupyter_kernel_gateway smolagents pyautogui requests numpy pandas
 
-# Register the Jupyter kernel if not already installed
-if ! uv run --with jupyter jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
-    echo "📦 Registering Jupyter kernel: $JUPYTER_KERNEL_NAME"
-    uv run --with ipython ipython kernel install --user --name="$JUPYTER_KERNEL_NAME" --display-name="Python (Sandbox)"
-else
-    echo "✅ Jupyter kernel '$JUPYTER_KERNEL_NAME' already registered"
-fi
+# # Register the Jupyter kernel if not already installed
+# if ! uv run --with jupyter jupyter kernelspec list | grep -q "$JUPYTER_KERNEL_NAME"; then
+#     echo "📦 Registering Jupyter kernel: $JUPYTER_KERNEL_NAME"
+#     uv run --with ipython ipython kernel install --user --name="$JUPYTER_KERNEL_NAME" --display-name="Python (Sandbox)"
+# else
+#     echo "✅ Jupyter kernel '$JUPYTER_KERNEL_NAME' already registered"
+# fi
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6) Start Jupyter Kernel Gateway (background)
@@ -92,7 +92,7 @@ fi
 if ! lsof -iTCP:"$JUPYTER_KERNEL_GATEWAY_APP_PORT" -sTCP:LISTEN >/dev/null; then
     echo "🚀 Starting Jupyter Kernel Gateway on: $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
 
-    nohup uv run --with jupyter jupyter kernelgateway \
+    nohup .venv/bin/jupyter kernelgateway \
         --KernelGatewayApp.api=kernel_gateway.jupyter_websocket \
         --ip="$JUPYTER_KERNEL_GATEWAY_APP_HOST" \
         --port=$JUPYTER_KERNEL_GATEWAY_APP_PORT \

@@ -75,18 +75,18 @@ class VMConfig:
         self.base_data = self.vm_base_dir / "data.img"
 
         # Set up container paths
-        self.container_dir = self.snapshots_dir / self.container_name
-        self.container_iso = self.container_dir / "boot.iso"
-        self.container_data = self.container_dir / "data.img"
-        self.container_shared_dir = self.shared_root / self.container_name
+        self.host_container_shared_dir = self.shared_root / self.container_name
+        self.host_container_dir = self.snapshots_dir / self.container_name
+        self.host_container_iso = self.host_container_dir / "boot.iso"
+        self.host_container_data = self.host_container_dir / "data.img"
 
         # Create required directories
         for p in (
             self.vm_base_dir,
             self.snapshots_dir,
             self.shared_root,
-            self.container_dir,
-            self.container_shared_dir,
+            self.host_container_dir,
+            self.host_container_shared_dir,
         ):
             p.mkdir(parents=True, exist_ok=True)
             # if os.access(p, os.W_OK | os.X_OK):
@@ -140,4 +140,4 @@ class SandboxVMConfig(VMConfig):
             if not (start_sh.is_file() and os.access(start_sh, os.X_OK)):
                 raise VMCreationError(f"start.sh missing or not executable: {start_sh}")
 
-        self.client_output_dir = self.container_dir / "sandbox-client"
+        self.client_output_dir = self.host_container_dir / "sandbox-client"

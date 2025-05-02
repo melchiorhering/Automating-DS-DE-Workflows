@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import time
 from dataclasses import dataclass
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import paramiko
+from smolagents import AgentLogger, LogLevel
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .errors import RemoteCommandError, SSHError, VMOperationError
@@ -29,9 +29,9 @@ class SSHConfig:
 
 
 class SFTPHelper:
-    def __init__(self, sftp: paramiko.SFTPClient, logger: logging.Logger):
+    def __init__(self, sftp: paramiko.SFTPClient, logger: AgentLogger | None = None):
         self.sftp = sftp
-        self.log = logger
+        self.logger = logger
 
     def mkdir_p(self, remote_dir: str) -> None:
         dirs = []
@@ -44,7 +44,7 @@ class SFTPHelper:
                 dirs.append(path)
                 path = os.path.dirname(path)
         for d in reversed(dirs):
-            self.log.debug("Creating remote dir: %s", d)
+            self.logger.log(f"Creating remote dir: {d}", level=LogLevel.DEBUG)
             self.sftp.mkdir(d)
 
     def transfer_directory(
@@ -62,21 +62,21 @@ class SFTPHelper:
         for file in local.rglob("*"):
             file = file.resolve()
             if any(file.is_relative_to(ex) for ex in exclude_paths):
-                self.log.debug("Skipping excluded file: %s", file)
+                self.logger.log(f"Skipping excluded file: {file}", level=LogLevel.DEBUG)
                 continue
 
             if file.is_file():
                 relative = file.relative_to(local)
                 target = remote / relative
                 self.mkdir_p(str(target.parent))
-                self.log.debug("SFTP: %s → %s", file, target)
+                self.logger(f"SFTP: {file} → {target}", level=LogLevel.DEBUG)
                 self.sftp.put(str(file), str(target))
 
 
 class SSHClient:
-    def __init__(self, cfg: SSHConfig, logger: logging.Logger):
+    def __init__(self, cfg: SSHConfig, logger: AgentLogger | None = None):
         self.cfg = cfg
-        self.log = logger or logging.Logger
+        self.logger = logger or AgentLogger(level=LogLevel.INFO)
         self._client: Optional[paramiko.SSHClient] = None
         self._sftp: Optional[paramiko.SFTPClient] = None
         self._last_used = 0.0
@@ -94,7 +94,7 @@ class SSHClient:
             timeout=self.cfg.connect_timeout,
         )
         self._last_used = time.time()
-        self.log.info("SSH connection established")
+        self.logger.log("SSH connection established")
         return client
 
     def connect(self) -> paramiko.SSHClient:
@@ -114,7 +114,7 @@ class SSHClient:
             self._sftp = None
         if self._client:
             self._client.close()
-            self.log.info("SSH connection closed")
+            self.logger.log("SSH connection closed")
             self._client = None
 
     def exec_command(
@@ -134,7 +134,7 @@ class SSHClient:
         # wrapped_cmd = f"bash -l -c '{full_cmd}'"
 
         client = self.connect()
-        self.log.debug("ssh $ %s", full_cmd)
+        self.logger.log("ssh $ %s", full_cmd, level=LogLevel.DEBUG)
 
         # Open SSH command with get_pty=True for login shell
         stdin, stdout, stderr = client.exec_command(
@@ -145,7 +145,7 @@ class SSHClient:
         )
 
         if not block:
-            self.log.debug("Non-blocking exec_command issued.")
+            self.logger.log("Non-blocking exec_command issued.", level=LogLevel.DEBUG)
             return None
 
         status = stdout.channel.recv_exit_status()
@@ -231,7 +231,7 @@ class SSHClient:
 
         # Open an interactive shell (request xterm)
         chan = client.invoke_shell(term="xterm")
-        self.log.info("SSH interactive shell opened (xterm)")
+        self.logger.log("SSH interactive shell opened (xterm)")
 
         time.sleep(0.5)  # Give it a moment to initialize
 
@@ -243,11 +243,11 @@ class SSHClient:
         while chan.recv_ready():
             output += chan.recv(4096).decode()
 
-        self.log.debug("Shell detection output: %s", output.strip())
+        self.logger.log(f"Shell detection output: {output.strip()}", level=LogLevel.DEBUG)
 
         if not any(shell_name in output for shell_name in ["-bash", "bash -l", "login"]):
             # If not in a login shell already, switch to bash login shell
-            self.log.info("🔄 Switching to bash login shell...")
+            self.logger.log("🔄 Switching to bash login shell...")
             chan.send("bash -l\n")
             time.sleep(0.5)
 

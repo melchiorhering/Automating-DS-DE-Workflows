@@ -19,6 +19,8 @@ dependencies = [
     "websocket-client>=1.8.0",
     "huggingface-hub[cli]>=0.30.2",
     "vllm>=0.8.5",
+    "qdrant-client>=1.14.2",
+    "fastembed>=0.6.1",
 ]
 
 
