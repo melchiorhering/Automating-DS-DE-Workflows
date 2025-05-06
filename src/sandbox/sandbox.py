@@ -27,7 +27,7 @@ class SandboxClient:
         response = self.manager.api_health_check.sync_detailed(client=self.manager.client)
 
         try:
-            return response.parsed or json.loads(response.content)
+            return response.parsed
         except Exception:
             return {"status": "unhealthy", "raw": response.content.decode(errors="ignore")}
 
@@ -113,9 +113,9 @@ class SandboxVMManager(VMManager):
             else:
                 raise
 
-    def _wait_for_services(self, timeout: float = 120.0, interval: float = 3.0):
+    def _wait_for_services(self, timeout: float = 120.0, interval: float = 5.0):
+        self.logger.log_rule("🔎 FastAPI Health Check")
         url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}/health"
-        self.logger.log(f"🔍 - Waiting for FastAPI server health check at {url}...", level=LogLevel.INFO)
         deadline = time.time() + timeout
 
         while time.time() < deadline:
@@ -163,6 +163,7 @@ class SandboxVMManager(VMManager):
         raise
 
     def _generate_client_from_openapi(self):
+        self.logger.log_rule("📑 Generate FastAPI Client")
         server_url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}"
         openapi_schema_url = f"{server_url}/openapi.json"
 
@@ -203,6 +204,7 @@ class SandboxVMManager(VMManager):
                 raise
 
     def _import_generated_client(self):
+        self.logger.log_rule("📦 Import FastAPI Client")
         parent_dir = str(self.cfg.client_output_dir)
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
@@ -275,6 +277,7 @@ class SandboxVMManager(VMManager):
             self._handle_server_start_failure(e)
 
     def reconnect(self):
+        self.logger.log_rule("🔁 Reconnect to Sandbox VM")
         if not self.container or self.container.status != "running":
             raise VMOperationError("No running container to reconnect to.")
 

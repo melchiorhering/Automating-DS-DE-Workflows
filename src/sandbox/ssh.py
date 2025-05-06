@@ -69,7 +69,7 @@ class SFTPHelper:
                 relative = file.relative_to(local)
                 target = remote / relative
                 self.mkdir_p(str(target.parent))
-                self.logger(f"SFTP: {file} → {target}", level=LogLevel.DEBUG)
+                self.logger.log(f"SFTP: {file} → {target}", level=LogLevel.DEBUG)
                 self.sftp.put(str(file), str(target))
 
 
@@ -171,7 +171,7 @@ class SSHClient:
 
         sftp = self.get_sftp()
         self.exec_command(f"mkdir -p {remote}")
-        helper = SFTPHelper(sftp, self.log)
+        helper = SFTPHelper(sftp, self.logger)
         helper.transfer_directory(local, remote, exclude=exclude)
 
     def send_command(

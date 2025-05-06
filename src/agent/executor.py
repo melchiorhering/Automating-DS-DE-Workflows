@@ -33,6 +33,7 @@ class SandboxExecutor(RemotePythonExecutor):
         **kwargs,
     ):
         super().__init__(additional_imports, logger)
+        self.logger.log_rule("🧪 Sandbox Executor Initialization")
         self.kernel_id = None
         self.ws = None
         self._exited = False
@@ -41,11 +42,11 @@ class SandboxExecutor(RemotePythonExecutor):
             self.logger.log("✨ Initializing SandboxExecutor...", level=LogLevel.DEBUG)
             self.vm = SandboxVMManager(config=config, logger=self.logger, preserve_on_exit=preserve_on_exit, **kwargs)
 
+            self.logger.log("🔌 Connecting to Sandbox VM...", level=LogLevel.DEBUG)
             if reconnect and self.vm.container and self.vm.container.status == "running":
-                self.logger.log("🔁 Reconnecting to existing VM...", level=LogLevel.INFO)
                 self.vm.reconnect()
             else:
-                self.logger.log("🚀 Starting new sandbox VM...", level=LogLevel.INFO)
+                self.logger.log_rule("🚀 Start Sandbox VM")
                 self.vm.__enter__()
 
             self.host = config.host_sandbox_jupyter_kernel_host
@@ -53,13 +54,12 @@ class SandboxExecutor(RemotePythonExecutor):
             self.base_url = f"http://{self.host}:{self.port}"
             self.ws_url = f"ws://{self.host}:{self.port}"
 
-            self.logger.log("🔧 Creating Jupyter kernel...", level=LogLevel.DEBUG)
-            self._create_kernel()
+            self.logger.log("🔗 Connect or create Jupyter Kernel", level=LogLevel.DEBUG)
+            self._connect_or_create_kernel()
 
-            self.logger.log("📆 Installing required packages...", level=LogLevel.DEBUG)
             self.installed_packages = self.install_packages(additional_imports)
 
-            self.logger.log("✅ SandboxExecutor initialized successfully.", level=LogLevel.INFO)
+            self.logger.log_rule("✅ Sandbox Ready")
 
         except Exception as e:
             self.logger.log_error(f"SandboxExecutor init failed: {e}")
@@ -99,41 +99,47 @@ class SandboxExecutor(RemotePythonExecutor):
         packages = additional_imports + ["smolagents", "pyautogui"]
         self.logger.log(f"📆 Installing packages: {', '.join(packages)}", level=LogLevel.DEBUG)
         _, logs = self.run_code_raise_errors(f"!uv pip install {' '.join(packages)}")
-        # self.logger.log(f"📋 Install logs:\n{self.strip_ansi(logs)}", level=LogLevel.DEBUG)
         return packages
 
-    def _create_kernel(self, retries: int = 5, delay: float = 2.0):
-        for attempt in range(retries):
-            try:
-                self.logger.log(
-                    f"🔁 Attempting to create kernel (try {attempt + 1}/{retries})...", level=LogLevel.DEBUG
-                )
-                r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
+    def _connect_or_create_kernel(self, retries: int = 5, delay: float = 2.0):
+        """Connect to an existing Jupyter kernel or create a new one if none are active."""
+        self.logger.log_rule("🧠 Kernel Connection Setup")
+        try:
+            # Step 1: List existing kernels
+            self.logger.log("🔍 Requesting list of existing kernels...", level=LogLevel.DEBUG)
+            r = requests.get(f"{self.base_url}/api/kernels", timeout=5)
+            r.raise_for_status()
+            kernels = r.json()
 
-                if r.status_code != 201:
-                    error_details = {
-                        "status_code": r.status_code,
-                        "headers": dict(r.headers),
-                        "url": r.url,
-                        "body": r.text,
-                        "request_method": r.request.method,
-                        "request_headers": dict(r.request.headers),
-                        "request_body": r.request.body,
-                    }
-                    self.logger.log_error("❌ Failed to create kernel:\n" + json.dumps(error_details, indent=2))
-                    raise RuntimeError(f"Failed to create kernel: Status {r.status_code}\nResponse: {r.text}")
+            if kernels:
+                self.kernel_id = kernels[0]["id"]
+                self.logger.log(f"♻️ Reusing existing kernel: {self.kernel_id}", level=LogLevel.INFO)
+            else:
+                self.logger.log("🆕 No active kernels found. Creating a new one...", level=LogLevel.INFO)
+                for attempt in range(retries):
+                    try:
+                        r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
+                        if r.status_code == 201:
+                            self.kernel_id = r.json()["id"]
+                            self.logger.log(f"✅ Created new kernel: {self.kernel_id}", level=LogLevel.INFO)
+                            break
+                        else:
+                            self.logger.log_error(f"❌ Failed to create kernel: {r.status_code} — {r.text}")
+                    except Exception as e:
+                        self.logger.log_error(f"⚠️ Kernel creation attempt {attempt + 1} failed: {e}")
+                        if attempt == retries - 1:
+                            raise
+                        time.sleep(delay)
 
-                self.kernel_id = r.json()["id"]
-                self.ws = create_connection(f"{self.ws_url}/api/kernels/{self.kernel_id}/channels")
-                self.logger.log("✅ Kernel created and WebSocket connected.", level=LogLevel.INFO)
-                return
+            # Step 2: Connect to WebSocket
+            ws_url = f"{self.ws_url}/api/kernels/{self.kernel_id}/channels"
+            self.logger.log(f"🌐 Connecting WebSocket to: {ws_url}", level=LogLevel.DEBUG)
+            self.ws = create_connection(ws_url)
+            self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
 
-            except Exception as e:
-                self.logger.log_error(f"⚠️ Kernel creation failed: {e}")
-                if attempt < retries - 1:
-                    time.sleep(delay)
-                else:
-                    raise
+        except Exception as e:
+            self.logger.log_error(f"❌ Kernel setup failed: {e}")
+            raise
 
     def _send_execute_request(self, code: str) -> str:
         msg_id = str(uuid.uuid4())
