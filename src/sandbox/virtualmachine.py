@@ -152,7 +152,9 @@ class VMManager:
 
     def cleanup(self, delete_storage=True):
         if self.container:
+            self.container.stop()
             self.container.remove(force=True)
+            self.logger.log(f"Container {self.cfg.container_name} stopped and removed.", level=LogLevel.INFO)
             self.container = None
         if delete_storage:
             self.logger.log(f"Removing container directory: {self.cfg.host_container_dir}", level=LogLevel.INFO)

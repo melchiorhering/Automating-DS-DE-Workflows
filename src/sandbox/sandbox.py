@@ -131,8 +131,17 @@ class SandboxVMManager(VMManager):
     def _prepare_shared_mount(self):
         mount = f"/mnt/{self.cfg.container_name}"
         self.ssh.exec_command(f"mkdir -p {mount}", as_root=True)
-        self.ssh.exec_command(f"truncate -s 0 {mount}/{self.cfg.sandbox_services_log}", as_root=True)
-        self.ssh.exec_command(f"truncate -s 0 {mount}/{self.cfg.sandbox_jupyter_kernel_log}", as_root=True)
+
+        # Use tee workaround so redirection happens under sudo
+        self.ssh.exec_command(
+            f"truncate -s 0 {mount}/{self.cfg.sandbox_services_log} || sudo tee {mount}/{self.cfg.sandbox_services_log} <<< '' > /dev/null",
+            as_root=True,
+        )
+        self.ssh.exec_command(
+            f"truncate -s 0 {mount}/{self.cfg.sandbox_jupyter_kernel_log} || sudo tee {mount}/{self.cfg.sandbox_jupyter_kernel_log} <<< '' > /dev/null",
+            as_root=True,
+        )
+
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
     def _transfer_server_code(self):

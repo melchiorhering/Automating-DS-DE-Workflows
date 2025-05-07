@@ -33,13 +33,13 @@ class SandboxExecutor(RemotePythonExecutor):
         **kwargs,
     ):
         super().__init__(additional_imports, logger)
-        self.logger.log_rule("🧪 Sandbox Executor Initialization")
+        self.logger.log_rule("🎢 Sandbox Executor Initialization")
         self.kernel_id = None
         self.ws = None
         self._exited = False
 
         try:
-            self.logger.log("✨ Initializing SandboxExecutor...", level=LogLevel.DEBUG)
+            self.logger.log("✨ Initializing SandboxExecutor...", level=LogLevel.INFO)
             self.vm = SandboxVMManager(config=config, logger=self.logger, preserve_on_exit=preserve_on_exit, **kwargs)
 
             self.logger.log("🔌 Connecting to Sandbox VM...", level=LogLevel.DEBUG)
@@ -49,7 +49,7 @@ class SandboxExecutor(RemotePythonExecutor):
                 self.logger.log_rule("🚀 Start Sandbox VM")
                 self.vm.__enter__()
 
-            self._wait_for_fastapi_reachable()
+            self._wait_for_services()
 
             self.host = config.host_sandbox_jupyter_kernel_host
             self.port = config.host_sandbox_jupyter_kernel_port
@@ -59,7 +59,6 @@ class SandboxExecutor(RemotePythonExecutor):
             self._initialize_kernel_connection()
 
             self.installed_packages = self.install_packages(additional_imports)
-
             self.logger.log_rule("✅ Sandbox Ready")
 
         except Exception as e:
@@ -67,25 +66,36 @@ class SandboxExecutor(RemotePythonExecutor):
             self.cleanup()
             raise
 
-    def _log_jupyter_api_markdown(self):
-        """Logs the available Jupyter API endpoints from the swagger.json spec in Markdown format."""
-        try:
-            r = requests.get(f"{self.base_url}/api/swagger.json", timeout=5)
-            r.raise_for_status()
-            spec = r.json()
+    def _wait_for_services(self, retries: int = 10, delay: float = 5.0):
+        """Final confirmation that the FastAPI and Kernel Gateway servers are reachable."""
+        fastapi_url = f"http://{self.vm.cfg.host_sandbox_server_host}:{self.vm.cfg.host_sandbox_server_port}/health"
+        jupyter_url = f"http://{self.vm.cfg.host_sandbox_jupyter_kernel_host}:{self.vm.cfg.host_sandbox_jupyter_kernel_port}/api/kernels"
 
-            lines = ["# 🧬 Available API Endpoints"]
-            for path, methods in spec.get("paths", {}).items():
-                lines.append(f"## `{path}`")
-                for method, info in methods.items():
-                    summary = info.get("summary", "No summary provided.")
-                    lines.append(f"- **{method.upper()}** — {summary}")
+        for attempt in range(1, retries + 1):
+            fastapi_ok = jupyter_ok = False
 
-            markdown_output = "\n".join(lines)
-            self.logger.log_markdown(markdown_output, title="Jupyter API (swagger.json)")
+            try:
+                r1 = requests.get(fastapi_url, timeout=2)
+                self.logger.log(f"🌐 FastAPI health check: {r1}", level=LogLevel.DEBUG)
+                fastapi_ok = r1.status_code == 200
+            except Exception as e:
+                self.logger.log(f"⏳ FastAPI not ready (attempt {attempt}): {e}", level=LogLevel.DEBUG)
 
-        except Exception as e:
-            self.logger.log_error(f"⚠️ Could not fetch swagger.json: {e}")
+            try:
+                r2 = requests.get(jupyter_url, timeout=2)
+                self.logger.log(f"🌐 Jupyter Kernel Gateway health check: {r2}", level=LogLevel.DEBUG)
+                jupyter_ok = r2.status_code == 200
+            except Exception as e:
+                self.logger.log(f"⏳ Jupyter Kernel Gateway not ready (attempt {attempt}): {e}", level=LogLevel.DEBUG)
+
+            if fastapi_ok and jupyter_ok:
+                self.logger.log("✅ Both FastAPI and Jupyter Kernel Gateway are reachable.", level=LogLevel.INFO)
+                return
+
+            time.sleep(delay)
+
+        # Only raise if we never returned
+        raise RuntimeError("❌ Required services are not reachable after retries.")
 
     def _initialize_kernel_connection(self, retries: int = 5, delay: float = 2.0):
         """Creates a new Jupyter kernel and connects via WebSocket. Logs API docs if it fails."""
@@ -117,7 +127,6 @@ class SandboxExecutor(RemotePythonExecutor):
             self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
         except Exception as e:
             self.logger.log_error(f"❌ Failed to connect WebSocket: {e}")
-            self._log_jupyter_api_markdown()
             raise
 
     def _send_execute_request(self, code: str) -> str:
@@ -143,20 +152,6 @@ class SandboxExecutor(RemotePythonExecutor):
         self.logger.log(f"📤 Sending execute request with ID {msg_id}...", level=LogLevel.DEBUG)
         self.ws.send(json.dumps(execute_request))
         return msg_id
-
-    def _wait_for_fastapi_reachable(self, retries: int = 10, delay: float = 5.0):
-        """Final confirmation that the FastAPI server is reachable after VM startup."""
-        url = f"http://{self.vm.cfg.host_sandbox_server_host}:{self.vm.cfg.host_sandbox_server_port}/health"
-        for attempt in range(1, retries + 1):
-            try:
-                response = requests.get(url, timeout=2)
-                if response.status_code == 200:
-                    self.logger.log(f"✅ FastAPI server reachable at {url} (from SandboxExecutor)", level=LogLevel.INFO)
-                    return
-            except Exception as e:
-                self.logger.log(f"⏳ Retry {attempt}/{retries}: FastAPI not reachable — {e}", level=LogLevel.DEBUG)
-            time.sleep(delay)
-        raise RuntimeError(f"❌ FastAPI server still not reachable at {url} after {retries} retries")
 
     @staticmethod
     def strip_ansi(text: str) -> str:
@@ -247,6 +242,8 @@ class SandboxExecutor(RemotePythonExecutor):
             raise
 
     def cleanup(self):
+        self.vm.container.stop()
+
         if getattr(self, "_exited", False):
             return
         try:

@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pillow>=11.1.0",
-    "smolagents>=1.9.2",
+    "smolagents[gradio]>=1.9.2",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "docker>=7.1.0",
@@ -17,9 +17,12 @@ dependencies = [
     "pandas>=2.2.3",
     "websocket-client>=1.8.0",
     "huggingface-hub[cli]>=0.30.2",
-    "vllm>=0.8.5",
     "qdrant-client>=1.14.2",
     "fastembed>=0.6.1",
+    "vllm>=0.8.5.post1",
+    "setuptools>=80.3.1",
+    "num2words>=0.5.14",
+    "pyautogui>=0.9.54",
 ]
 
 

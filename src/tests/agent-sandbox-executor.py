@@ -1,14 +1,12 @@
 import sys
-import time
 from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, VLLMModel
-from smolagents.monitoring import LogLevel
+from smolagents import ActionStep, LogLevel, VLLMModel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from agent import SandboxCodeAgent
+from agent import CodeAgent
 from sandbox.configs import SandboxVMConfig
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
@@ -26,7 +24,7 @@ model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
-def take_initial_screenshot(agent: SandboxCodeAgent, label: str = "initial"):
+def take_initial_screenshot(agent: CodeAgent, label: str = "initial") -> None:
     client = agent.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
@@ -35,28 +33,26 @@ def take_initial_screenshot(agent: SandboxCodeAgent, label: str = "initial"):
             path = str(host_shared / result["screenshot_path"])
             print(f"Image Path: {path}")
             image = Image.open(path)
-            print(image)
+            # image.show(title="Initial Screenshot")
             print(f"📸 Saved initial screenshot: {label}.png")
         except Exception as e:
             print(f"⚠️ Failed to save initial screenshot: {e}")
 
 
-def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
+def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
-    time.sleep(3.0)
 
     # Clean up previous screenshots to save memory
     current_step = memory_step.step_number
     for previous_memory_step in agent.memory.steps:
-        if isinstance(previous_memory_step, ActionStep) and previous_memory_step.observations_images is not None:
-            if previous_memory_step.step_number <= current_step - 2:
-                previous_memory_step.observations_images = None
+        if isinstance(previous_memory_step, ActionStep) and previous_memory_step.step_number <= current_step - 2:
+            previous_memory_step.observations_images = None
 
     # Take the screenshot using the sandbox client
-    client = agent.sandbox_client
-    result = client.take_screenshot()
+    result = agent.sandbox_client.take_screenshot()
     if "screenshot_path" in result:
+        print(f"Screenshot result: {result}")
         path = result["screenshot_path"]
         try:
             image = Image.open(path)
@@ -78,39 +74,47 @@ def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
 
+# Logger for debug output
 config = SandboxVMConfig(container_name="sandbox-test", host_server_dir=Path("sandbox/server/"))
-agent = SandboxCodeAgent(
+agent = CodeAgent(
+    description="This agent runs in a sandboxed environment and can execute code.",
     tools=[],
     model=model,
     executor_type="sandbox",
     executor_kwargs={
         "config": config,
-        "preserve_on_exit": False,
     },
     additional_authorized_imports=["pyautogui"],
     step_callbacks=[save_screenshot_callback],
     verbosity_level=LogLevel.DEBUG,
 )
-take_initial_screenshot(agent, label="before_run")
-# # Run the agent with the desired task
-# agent_output = agent.run(
-#     "move the mouse with pyautogui to the center of the screen, the current screen resolution is 1400x1050; use pyautogui.moveTo(x, y) to move the mouse",
-#     max_steps=4,
-#     stream=False,
-# )
-
-# print(
-#     f"Agent output:{agent_output[0].model_output},\n",
-# )
-
-
-# time.sleep(5.0)
-
-
+# take_initial_screenshot(agent, label="before_run")
 output = agent.run(
-    """Using pyautogui, move the mouse to the center of the screen. The current screen resolution is 1400x1050. Use pyautogui.moveTo(x, y) to move the mouse.""",
-    max_steps=4,
+    """Using pyautogui, move the mouse to the center of the screen.
+Steps:
+1. First check the current screen size using `pyautogui.size()`.
+2. Use `pyautogui.moveTo(x, y)` to move the mouse to the center.
+3. After each code run, a screenshot is taken and given to you as context.
+4. To verify if the mouse is centered you can check the screenshot that is passed to your context.
+
+⚠️ Return your code in the following format:
+
+Code:
+```python
+import pyautogui
+import time
+
+# Step 1: Get the screen size
+screen_size = pyautogui.size()
+width, height = screen_size
+# Step 2: Calculate the center position
+center_x = width // 2
+center_y = height // 2
+# Step 3: Move the mouse to the center
+pyautogui.moveTo(center_x, center_y)
+# Step 4: Wait for a moment to see the mouse move
+time.sleep(1)
+```""",
+    max_steps=2,
 )
-
-
-print("Docker executor result:", output)
+print(output)

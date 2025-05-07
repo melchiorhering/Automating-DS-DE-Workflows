@@ -18,7 +18,9 @@ from src.pyxcursor import Xcursor
 from src.recording import recorded_actions, start_recording, stop_recording
 
 # ───────────────────── Logger Setup ─────────────────────
-log_path = os.path.join(os.getenv("SHARED_DIR", "/tmp/sandbox-server"), os.getenv("SERVER_LOG", "sandbox-server.log"))
+log_path = os.path.join(
+    os.getenv("SHARED_DIR", "/tmp/sandbox-server"), os.getenv("SERVICES_LOG", "services-server.log")
+)
 os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
 logger = logging.getLogger("SandboxServer")
