@@ -80,7 +80,7 @@ def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
 
-config = SandboxVMConfig(host_server_dir=Path("sandbox/server/"))
+config = SandboxVMConfig(container_name="sandbox-test", host_server_dir=Path("sandbox/server/"))
 agent = SandboxCodeAgent(
     tools=[],
     model=model,

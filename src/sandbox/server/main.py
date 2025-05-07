@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Literal
@@ -28,10 +29,24 @@ file_handler = logging.FileHandler(log_path)
 logger.addHandler(file_handler)
 logger.info(f"🔧 FastAPI Server logging to: {log_path}")
 
+
+# ───────────────────── Lifespan Event Setup ─────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    host = os.getenv(
+        "HOST", "localhost"
+    )  # This is for inside the container but since we are forwarding we use localhost
+    port = os.getenv("PORT", "8000")
+    logger.info(f"🛠️ FastAPI server is starting up on http://localhost:{port}")
+    yield
+    logger.info("🧹 FastAPI server is shutting down...")
+
+
 # ───────────────────── FastAPI Setup ─────────────────────
 app = FastAPI(
     title="Sandbox REST Server",
     description="API for screenshots and recording GUI actions in a sandboxed VM.",
+    lifespan=lifespan,  # ✅ Modern event hook
 )
 
 app.add_middleware(

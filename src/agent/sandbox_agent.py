@@ -108,6 +108,7 @@ class SandboxCodeAgent(CodeAgent):
             self.cleanup()
 
     def cleanup(self):
+        self.logger.log_rule("🧹 Cleanup Process")
         if not self._executor_cleaned_up and self._sandbox_executor:
             try:
                 self.logger.log("🧹 Cleaning up sandbox executor...", level=LogLevel.INFO)

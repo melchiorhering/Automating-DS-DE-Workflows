@@ -56,7 +56,6 @@ class SandboxExecutor(RemotePythonExecutor):
             self.base_url = f"http://{self.host}:{self.port}"
             self.ws_url = f"ws://{self.host}:{self.port}"
 
-            self.logger.log("🔗 Connect or create Jupyter Kernel", level=LogLevel.DEBUG)
             self._initialize_kernel_connection()
 
             self.installed_packages = self.install_packages(additional_imports)
@@ -91,7 +90,7 @@ class SandboxExecutor(RemotePythonExecutor):
     def _initialize_kernel_connection(self, retries: int = 5, delay: float = 2.0):
         """Creates a new Jupyter kernel and connects via WebSocket. Logs API docs if it fails."""
         self.logger.log_rule("🧠 Kernel Initialization")
-
+        self.logger.log("🔗 Connect or create Jupyter Kernel", level=LogLevel.DEBUG)
         for attempt in range(retries):
             try:
                 self.logger.log(f"🆕 Creating new kernel (attempt {attempt + 1}/{retries})...", level=LogLevel.DEBUG)

@@ -3,13 +3,14 @@ from __future__ import annotations
 import shutil
 import time
 
+from gguf import Union
 from smolagents import AgentLogger, LogLevel
 
 import docker
 from docker.client import DockerClient
 from docker.types import Mount
 
-from .configs import VMConfig
+from .configs import SandboxVMConfig, VMConfig
 from .errors import VMCreationError, VMOperationError
 from .ssh import SSHClient, SSHConfig
 
@@ -18,7 +19,7 @@ from .ssh import SSHClient, SSHConfig
 class VMManager:
     def __init__(
         self,
-        config: VMConfig,
+        config: Union[VMConfig, SandboxVMConfig],
         docker_client: DockerClient = None,
         logger: AgentLogger = None,
         ssh_cfg: SSHConfig = None,
@@ -150,7 +151,6 @@ class VMManager:
             self.docker.images.pull(self.cfg.container_image)
 
     def cleanup(self, delete_storage=True):
-        self.logger.log_rule("🧹 Cleanup Process")
         if self.container:
             self.container.remove(force=True)
             self.container = None

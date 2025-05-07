@@ -1,5 +1,5 @@
-import logging
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -21,23 +21,19 @@ def dummy_model(messages):
 # Dummy tool list (no tools used in this test)
 tools: list[Tool] = []
 
-# Basic logger setup
-logger = logging.getLogger("sandbox-test")
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+# Logger for debug output
+logger = AgentLogger(level=LogLevel.DEBUG)
 
-# Load config
+# Load config with a fixed container name to allow reconnect
 config = SandboxVMConfig(
-    container_name="sandbox-test",  # use a fixed name to support reconnect
+    container_name="sandbox-test",
     host_ssh_port=2222,
     host_sandbox_server_port=8765,
     host_sandbox_jupyter_kernel_port=8888,
     host_server_dir=Path("sandbox/server/"),
 )
 
-logger = AgentLogger(level=LogLevel.DEBUG)
-
-# Create the agent with reconnect enabled
+# Create agent with reconnect enabled
 agent = SandboxCodeAgent(
     tools=tools,
     model=dummy_model,
@@ -51,8 +47,8 @@ agent = SandboxCodeAgent(
     logger=logger,
 )
 
-# Test SSH command
-print("🔐 Testing SSH command...")
+# Test SSH
+print("🔐 Testing SSH connection...")
 try:
     result = agent.ssh.exec_command("echo 'sandbox-ok'")
     assert "sandbox-ok" in result["stdout"]
@@ -60,27 +56,33 @@ try:
 except Exception as e:
     print("❌ SSH test failed:", e)
 
-# Directly test the health endpoint
-print("🌐 Testing /health endpoint directly...")
+# Test /health
+print("🌐 Testing /health endpoint...")
 try:
-    health_resp = requests.get(
-        f"http://{config.host_sandbox_server_host}:{config.host_sandbox_server_port}/health",
-        timeout=5,
-    )
-    health_resp.raise_for_status()
-    print("✅ /health endpoint OK:", health_resp.json())
+    health = agent.sandbox_client.health()
+    print("✅ /health response:", health)
 except requests.RequestException as e:
-    print("❌ /health endpoint request failed:", e)
+    print("❌ /health endpoint failed:", e)
 
-# Directly test the screenshot endpoint
-print("🖼️ Testing /screenshot endpoint directly...")
+# Test /screenshot
+print("📸 Testing /screenshot endpoint...")
 try:
-    screenshot_resp = requests.get(
-        f"http://{config.host_sandbox_server_host}:{config.host_sandbox_server_port}/screenshot",
-        params={"method": "pyautogui"},
-        timeout=5,
-    )
-    screenshot_resp.raise_for_status()
-    print("✅ /screenshot endpoint OK:", screenshot_resp.json())
+    screenshot = agent.sandbox_client.take_screenshot(method="pyautogui")
+    print("✅ Screenshot taken:", screenshot)
 except requests.RequestException as e:
-    print("❌ /screenshot endpoint request failed:", e)
+    print("❌ /screenshot endpoint failed:", e)
+
+# Simulate downtime and reconnect scenario
+print("⏳ Waiting to simulate reconnect...")
+time.sleep(60)
+
+# Optional: run another test after waiting
+print("🔁 Re-testing /health after wait...")
+try:
+    health = agent.sandbox_client.health()
+    print("✅ /health (post-wait):", health)
+except requests.RequestException as e:
+    print("❌ /health (post-wait) failed:", e)
+
+# Cleanup
+agent.cleanup()
