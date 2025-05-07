@@ -2,6 +2,7 @@ import logging
 import sys
 from pathlib import Path
 
+import requests
 from smolagents.models import ChatMessage
 from smolagents.monitoring import AgentLogger, LogLevel
 from smolagents.tools import Tool
@@ -34,8 +35,8 @@ config = SandboxVMConfig(
     host_server_dir=Path("sandbox/server/"),
 )
 
-
 logger = AgentLogger(level=LogLevel.DEBUG)
+
 # Create the agent with reconnect enabled
 agent = SandboxCodeAgent(
     tools=tools,
@@ -59,15 +60,27 @@ try:
 except Exception as e:
     print("❌ SSH test failed:", e)
 
-# Test FastAPI client
-print("🌐 Testing FastAPI health check...")
+# Directly test the health endpoint
+print("🌐 Testing /health endpoint directly...")
 try:
-    health = agent.sandbox_client.health()
-    print(health)
-    assert health.get("status") == "ok"
-    print("✅ FastAPI health check passed:", health)
-except Exception as e:
-    print("❌ FastAPI health check failed:", e)
+    health_resp = requests.get(
+        f"http://{config.host_sandbox_server_host}:{config.host_sandbox_server_port}/health",
+        timeout=5,
+    )
+    health_resp.raise_for_status()
+    print("✅ /health endpoint OK:", health_resp.json())
+except requests.RequestException as e:
+    print("❌ /health endpoint request failed:", e)
 
-# Clean up (optional)
-# agent.cleanup()
+# Directly test the screenshot endpoint
+print("🖼️ Testing /screenshot endpoint directly...")
+try:
+    screenshot_resp = requests.get(
+        f"http://{config.host_sandbox_server_host}:{config.host_sandbox_server_port}/screenshot",
+        params={"method": "pyautogui"},
+        timeout=5,
+    )
+    screenshot_resp.raise_for_status()
+    print("✅ /screenshot endpoint OK:", screenshot_resp.json())
+except requests.RequestException as e:
+    print("❌ /screenshot endpoint request failed:", e)

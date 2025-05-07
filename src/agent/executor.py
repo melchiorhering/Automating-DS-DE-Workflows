@@ -49,13 +49,15 @@ class SandboxExecutor(RemotePythonExecutor):
                 self.logger.log_rule("🚀 Start Sandbox VM")
                 self.vm.__enter__()
 
+            self._wait_for_fastapi_reachable()
+
             self.host = config.host_sandbox_jupyter_kernel_host
             self.port = config.host_sandbox_jupyter_kernel_port
             self.base_url = f"http://{self.host}:{self.port}"
             self.ws_url = f"ws://{self.host}:{self.port}"
 
             self.logger.log("🔗 Connect or create Jupyter Kernel", level=LogLevel.DEBUG)
-            self._connect_or_create_kernel()
+            self._initialize_kernel_connection()
 
             self.installed_packages = self.install_packages(additional_imports)
 
@@ -65,6 +67,97 @@ class SandboxExecutor(RemotePythonExecutor):
             self.logger.log_error(f"SandboxExecutor init failed: {e}")
             self.cleanup()
             raise
+
+    def _log_jupyter_api_markdown(self):
+        """Logs the available Jupyter API endpoints from the swagger.json spec in Markdown format."""
+        try:
+            r = requests.get(f"{self.base_url}/api/swagger.json", timeout=5)
+            r.raise_for_status()
+            spec = r.json()
+
+            lines = ["# 🧬 Available API Endpoints"]
+            for path, methods in spec.get("paths", {}).items():
+                lines.append(f"## `{path}`")
+                for method, info in methods.items():
+                    summary = info.get("summary", "No summary provided.")
+                    lines.append(f"- **{method.upper()}** — {summary}")
+
+            markdown_output = "\n".join(lines)
+            self.logger.log_markdown(markdown_output, title="Jupyter API (swagger.json)")
+
+        except Exception as e:
+            self.logger.log_error(f"⚠️ Could not fetch swagger.json: {e}")
+
+    def _initialize_kernel_connection(self, retries: int = 5, delay: float = 2.0):
+        """Creates a new Jupyter kernel and connects via WebSocket. Logs API docs if it fails."""
+        self.logger.log_rule("🧠 Kernel Initialization")
+
+        for attempt in range(retries):
+            try:
+                self.logger.log(f"🆕 Creating new kernel (attempt {attempt + 1}/{retries})...", level=LogLevel.DEBUG)
+                r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
+
+                if r.status_code == 201:
+                    self.kernel_id = r.json()["id"]
+                    self.logger.log(f"✅ Created new kernel: {self.kernel_id}", level=LogLevel.INFO)
+                    break
+                else:
+                    self.logger.log_error(f"❌ Kernel creation failed: {r.status_code} — {r.text}")
+
+            except Exception as e:
+                self.logger.log_error(f"⚠️ Kernel creation attempt {attempt + 1} failed: {e}")
+                if attempt == retries - 1:
+                    self._log_jupyter_api_markdown()
+                    raise
+                time.sleep(delay)
+
+        try:
+            ws_url = f"{self.ws_url}/api/kernels/{self.kernel_id}/channels"
+            self.logger.log(f"🌐 Connecting WebSocket to: {ws_url}", level=LogLevel.DEBUG)
+            self.ws = create_connection(ws_url)
+            self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
+        except Exception as e:
+            self.logger.log_error(f"❌ Failed to connect WebSocket: {e}")
+            self._log_jupyter_api_markdown()
+            raise
+
+    def _send_execute_request(self, code: str) -> str:
+        msg_id = str(uuid.uuid4())
+        execute_request = {
+            "header": {
+                "msg_id": msg_id,
+                "username": "anonymous",
+                "session": str(uuid.uuid4()),
+                "msg_type": "execute_request",
+                "version": "5.0",
+            },
+            "parent_header": {},
+            "metadata": {},
+            "content": {
+                "code": code,
+                "silent": False,
+                "store_history": True,
+                "user_expressions": {},
+                "allow_stdin": False,
+            },
+        }
+        self.logger.log(f"📤 Sending execute request with ID {msg_id}...", level=LogLevel.DEBUG)
+        self.ws.send(json.dumps(execute_request))
+        return msg_id
+
+    def _wait_for_fastapi_reachable(self, retries: int = 10, delay: float = 5.0):
+        """Final confirmation that the FastAPI server is reachable after VM startup."""
+        url = f"http://{self.vm.cfg.host_sandbox_server_host}:{self.vm.cfg.host_sandbox_server_port}/health"
+        for attempt in range(1, retries + 1):
+            try:
+                response = requests.get(url, timeout=2)
+                if response.status_code == 200:
+                    self.logger.log(f"✅ FastAPI server reachable at {url} (from SandboxExecutor)", level=LogLevel.INFO)
+                    return
+            except Exception as e:
+                self.logger.log(f"⏳ Retry {attempt}/{retries}: FastAPI not reachable — {e}", level=LogLevel.DEBUG)
+            time.sleep(delay)
+        raise RuntimeError(f"❌ FastAPI server still not reachable at {url} after {retries} retries")
 
     @staticmethod
     def strip_ansi(text: str) -> str:
@@ -101,70 +194,6 @@ class SandboxExecutor(RemotePythonExecutor):
         _, logs = self.run_code_raise_errors(f"!uv pip install {' '.join(packages)}")
         return packages
 
-    def _connect_or_create_kernel(self, retries: int = 5, delay: float = 2.0):
-        """Connect to an existing Jupyter kernel or create a new one if none are active."""
-        self.logger.log_rule("🧠 Kernel Connection Setup")
-        try:
-            # Step 1: List existing kernels
-            self.logger.log("🔍 Requesting list of existing kernels...", level=LogLevel.DEBUG)
-            r = requests.get(f"{self.base_url}/api/kernels", timeout=5)
-            r.raise_for_status()
-            kernels = r.json()
-
-            if kernels:
-                self.kernel_id = kernels[0]["id"]
-                self.logger.log(f"♻️ Reusing existing kernel: {self.kernel_id}", level=LogLevel.INFO)
-            else:
-                self.logger.log("🆕 No active kernels found. Creating a new one...", level=LogLevel.INFO)
-                for attempt in range(retries):
-                    try:
-                        r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
-                        if r.status_code == 201:
-                            self.kernel_id = r.json()["id"]
-                            self.logger.log(f"✅ Created new kernel: {self.kernel_id}", level=LogLevel.INFO)
-                            break
-                        else:
-                            self.logger.log_error(f"❌ Failed to create kernel: {r.status_code} — {r.text}")
-                    except Exception as e:
-                        self.logger.log_error(f"⚠️ Kernel creation attempt {attempt + 1} failed: {e}")
-                        if attempt == retries - 1:
-                            raise
-                        time.sleep(delay)
-
-            # Step 2: Connect to WebSocket
-            ws_url = f"{self.ws_url}/api/kernels/{self.kernel_id}/channels"
-            self.logger.log(f"🌐 Connecting WebSocket to: {ws_url}", level=LogLevel.DEBUG)
-            self.ws = create_connection(ws_url)
-            self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
-
-        except Exception as e:
-            self.logger.log_error(f"❌ Kernel setup failed: {e}")
-            raise
-
-    def _send_execute_request(self, code: str) -> str:
-        msg_id = str(uuid.uuid4())
-        execute_request = {
-            "header": {
-                "msg_id": msg_id,
-                "username": "anonymous",
-                "session": str(uuid.uuid4()),
-                "msg_type": "execute_request",
-                "version": "5.0",
-            },
-            "parent_header": {},
-            "metadata": {},
-            "content": {
-                "code": code,
-                "silent": False,
-                "store_history": True,
-                "user_expressions": {},
-                "allow_stdin": False,
-            },
-        }
-        self.logger.log(f"📤 Sending execute request with ID {msg_id}...", level=LogLevel.DEBUG)
-        self.ws.send(json.dumps(execute_request))
-        return msg_id
-
     def run_code_raise_errors(self, code_action: str, return_final_answer: bool = False) -> Tuple[Any, str]:
         try:
             if return_final_answer:
@@ -183,7 +212,7 @@ class SandboxExecutor(RemotePythonExecutor):
 
             while True:
                 msg = json.loads(self.ws.recv())
-                self.logger.log(f"📥 Received message: {json.dumps(msg)}", level=LogLevel.DEBUG)
+                self.logger.log(f"📥 Received message: {json.dumps(msg, indent=3)}", level=LogLevel.DEBUG)
 
                 msg_type = msg.get("msg_type", "")
                 parent_msg_id = msg.get("parent_header", {}).get("msg_id")

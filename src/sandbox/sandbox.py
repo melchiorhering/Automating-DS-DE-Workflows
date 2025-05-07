@@ -27,7 +27,7 @@ class SandboxClient:
         response = self.manager.api_health_check.sync_detailed(client=self.manager.client)
 
         try:
-            return response.parsed
+            return response.parsed or json.loads(response.content)
         except Exception:
             return {"status": "unhealthy", "raw": response.content.decode(errors="ignore")}
 
@@ -113,8 +113,8 @@ class SandboxVMManager(VMManager):
             else:
                 raise
 
-    def _wait_for_services(self, timeout: float = 120.0, interval: float = 5.0):
-        self.logger.log_rule("🔎 FastAPI Health Check")
+    def _wait_for_services(self, timeout: float = 120.0, interval: float = 10):
+        self.logger.log_rule("🔎 Services Check")
         url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}/health"
         deadline = time.time() + timeout
 
@@ -204,7 +204,7 @@ class SandboxVMManager(VMManager):
                 raise
 
     def _import_generated_client(self):
-        self.logger.log_rule("📦 Import FastAPI Client")
+        self.logger.log("📦 Import FastAPI Client", level=LogLevel.INFO)
         parent_dir = str(self.cfg.client_output_dir)
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
@@ -231,14 +231,7 @@ class SandboxVMManager(VMManager):
             raise
 
     def _generate_fastapi_client(self):
-        if self.cfg.force_regenerate_client or not self.cfg.client_output_dir.exists():
-            self._generate_client_from_openapi()
-        else:
-            self.logger.log(
-                f"⚠️ FastAPI client already exists at {self.cfg.client_output_dir}, skipping regeneration",
-                level=LogLevel.INFO,
-            )
-
+        self._generate_client_from_openapi()
         self._import_generated_client()
 
     def tail_server_logs(self, lines: int = 100) -> str:

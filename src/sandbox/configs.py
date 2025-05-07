@@ -121,7 +121,6 @@ class SandboxVMConfig(VMConfig):
     sandbox_jupyter_kernel_log: str = "jupyter-kernel.log"
 
     runtime_env: Dict[str, str] = field(default_factory=dict)
-    force_regenerate_client: bool = False
 
     def __post_init__(self):
         super().__post_init__()
