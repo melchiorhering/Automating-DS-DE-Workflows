@@ -8,14 +8,13 @@ set -euo pipefail
 : "${HOST:=0.0.0.0}"
 : "${PORT:=8765}"
 : "${SHARED_DIR:=/tmp/sandbox-server}"
-: "${SERVER_LOG:=sandbox-server.log}"
+: "${SERVICES_LOG:=sandbox-server.log}"
 : "${JUPYTER_KERNEL_GATEWAY_APP_HOST:=0.0.0.0}"
 : "${JUPYTER_KERNEL_GATEWAY_APP_PORT:=8888}"
-: "${JUPYTER_KERNEL_NAME:=sandbox-kernel}"
 
-export HOST PORT SHARED_DIR SERVER_LOG \
+export HOST PORT SHARED_DIR SERVICES_LOG \
     JUPYTER_KERNEL_GATEWAY_APP_HOST JUPYTER_KERNEL_GATEWAY_APP_PORT \
-    JUPYTER_KERNEL_NAME DISPLAY XAUTHORITY
+    DISPLAY XAUTHORITY
 
 # ────────────────────────────────────────────────
 # Sanity Checks
@@ -26,24 +25,23 @@ if [[ -z "${DISPLAY:-}" || -z "${XAUTHORITY:-}" || ! -f "$XAUTHORITY" ]]; then
 fi
 
 mkdir -p "$SHARED_DIR"
-LOG_PATH="$SHARED_DIR/$SERVER_LOG"
-: >"$LOG_PATH" # truncate
-
+LOG_PATH="$SHARED_DIR/$SERVICES_LOG"
+: >"$LOG_PATH"
 exec >>"$LOG_PATH" 2>&1
 
 echo "──────────────────────────────────────────────"
 echo "✅ Starting sandbox services..."
 date
-echo "→ DISPLAY:    $DISPLAY"
-echo "→ LOG PATH:   $LOG_PATH"
-echo "→ HOST:       $HOST:$PORT"
-echo "→ JUPYTER:    $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
+echo "→ DISPLAY:  $DISPLAY"
+echo "→ LOG PATH: $LOG_PATH"
+echo "→ HOST:     $HOST:$PORT"
+echo "→ JUPYTER:  $JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT"
 echo "──────────────────────────────────────────────"
 
 xhost +SI:localuser:"$(whoami)" 2>/dev/null || true
 
 # ────────────────────────────────────────────────
-# Install runtime deps
+# Setup Python venv
 # ────────────────────────────────────────────────
 if ! command -v uv >/dev/null 2>&1; then
     echo "❌ uv not found"
@@ -51,7 +49,15 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 uv venv --seed
-uv pip install jupyter_kernel_gateway smolagents pyautogui requests numpy pandas
+source .venv/bin/activate
+
+echo "📦 Installing Python dependencies..."
+pip install --no-cache-dir \
+    jupyter_kernel_gateway \
+    smolagents \
+    pyautogui \
+    requests \
+    numpy
 
 # ────────────────────────────────────────────────
 # Kill stale services
@@ -69,14 +75,20 @@ nohup .venv/bin/jupyter kernelgateway \
     --ip="$JUPYTER_KERNEL_GATEWAY_APP_HOST" \
     --port="$JUPYTER_KERNEL_GATEWAY_APP_PORT" \
     --KernelGatewayApp.allow_origin='*' \
+    --JupyterWebsocketPersonality.list_kernels=True \
     --debug >>"$SHARED_DIR/jupyter-kernel.log" 2>&1 &
 
+# ────────────────────────────────────────────────
+# Wait for Kernel Gateway
+# ────────────────────────────────────────────────
 KERNEL_URL="http://$JUPYTER_KERNEL_GATEWAY_APP_HOST:$JUPYTER_KERNEL_GATEWAY_APP_PORT/api"
 deadline=$((SECONDS + 30))
 while ((SECONDS < deadline)); do
-    if curl -s -o /dev/null -w "%{http_code}" "$KERNEL_URL" | grep -q "200"; then
-        echo "✅ Jupyter Kernel Gateway is ready"
+    if curl -s -f "$KERNEL_URL" >/dev/null; then
+        echo "✅ Jupyter Kernel Gateway is ready at /api"
         break
+    else
+        echo "⏳ Waiting for Jupyter Kernel Gateway..."
     fi
     sleep 1
 done
@@ -89,9 +101,21 @@ fi
 # ────────────────────────────────────────────────
 # Start FastAPI
 # ────────────────────────────────────────────────
-nohup uv run --with uvicorn uvicorn main:app --host="$HOST" --port="$PORT" --log-level debug >>"$LOG_PATH" 2>&1 &
+echo "🚀 Starting FastAPI..."
+nohup uv run --with uvicorn uvicorn main:app \
+    --host="$HOST" \
+    --port="$PORT" \
+    --log-level debug >>"$LOG_PATH" 2>&1 &
 
-sleep 2
+echo "⏳ Waiting for FastAPI server to start..."
+for i in {1..10}; do
+    if curl -s "http://$HOST:$PORT/health" | grep -q "ok"; then
+        echo "✅ FastAPI server is up and responding"
+        break
+    fi
+    sleep 2
+done
+
 if ! pgrep -f 'uvicorn main:app' >/dev/null; then
     echo "❌ FastAPI failed to start. Dumping last 20 log lines:"
     tail -n 20 "$LOG_PATH"

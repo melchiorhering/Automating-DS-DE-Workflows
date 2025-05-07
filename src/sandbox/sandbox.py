@@ -75,19 +75,33 @@ class SandboxVMManager(VMManager):
         return False
 
     def _ensure_mounted(self, mount_point: str, tag: str):
-        self.logger.log(f"Mounting {tag} -> {mount_point}", level=LogLevel.INFO)
+        self.logger.log(f"🔍 Checking if {mount_point} is already mounted...", level=LogLevel.INFO)
+        try:
+            self.ssh.exec_command(f"mountpoint -q {mount_point}")
+            self.logger.log(f"✅ {mount_point} is already mounted.", level=LogLevel.DEBUG)
+            return
+        except RemoteCommandError as e:
+            if e.status == 32:  # Exit code for "not a mountpoint"
+                self.logger.log(f"🔧 {mount_point} is not mounted. Proceeding to mount...", level=LogLevel.INFO)
+            else:
+                self.logger.log_error(f"❌ Unexpected mountpoint check failure (exit {e.status}): {e.stderr}")
+                raise
+
         try:
             self.ssh.exec_command(f"mount -t 9p -o trans=virtio {tag} {mount_point}", as_root=True)
+            self.logger.log(f"✅ Mounted {tag} to {mount_point}.", level=LogLevel.INFO)
         except RemoteCommandError as e:
-            if "already mounted" in e.stderr:
-                self.logger.log("⚠️ - Shared directory already mounted, continuing...", level=LogLevel.DEBUG)
-            else:
-                raise
+            self.logger.log_error(f"❌ Failed to mount {tag} to {mount_point}: {e.stderr}")
+            raise
 
     def _wait_for_services(self, timeout: float = 120.0, interval: float = 10):
         self.logger.log_rule("🔎 Services Check")
+
         fastapi_url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_server_port}/health"
-        jupyter_url = f"http://{self.cfg.host_sandbox_server_host}:{self.cfg.host_sandbox_jupyter_kernel_port}/api"
+        jupyter_url = (
+            f"http://{self.cfg.host_sandbox_jupyter_kernel_host}:{self.cfg.host_sandbox_jupyter_kernel_port}/api"
+        )
+
         deadline = time.time() + timeout
 
         def is_healthy(name, url):
@@ -96,7 +110,7 @@ class SandboxVMManager(VMManager):
                 if r.status_code == 200:
                     self.logger.log(f"✅ {name} is healthy at {url}", level=LogLevel.INFO)
                     return True
-                self.logger.log(f"⏳ - {name} status: {r.status_code}", level=LogLevel.DEBUG)
+                self.logger.log(f"⏳ - {name} responded with {r.status_code}: {r.text}", level=LogLevel.DEBUG)
             except requests.RequestException as e:
                 self.logger.log(f"⏳ - {name} not ready: {e}", level=LogLevel.DEBUG)
             return False
@@ -117,7 +131,7 @@ class SandboxVMManager(VMManager):
     def _prepare_shared_mount(self):
         mount = f"/mnt/{self.cfg.container_name}"
         self.ssh.exec_command(f"mkdir -p {mount}", as_root=True)
-        self.ssh.exec_command(f"truncate -s 0 {mount}/{self.cfg.sandbox_server_log}", as_root=True)
+        self.ssh.exec_command(f"truncate -s 0 {mount}/{self.cfg.sandbox_services_log}", as_root=True)
         self.ssh.exec_command(f"truncate -s 0 {mount}/{self.cfg.sandbox_jupyter_kernel_log}", as_root=True)
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
@@ -135,7 +149,7 @@ class SandboxVMManager(VMManager):
         raise
 
     def tail_server_logs(self, lines: int = 100) -> str:
-        path = self.cfg.host_container_shared_dir / self.cfg.sandbox_server_log
+        path = self.cfg.host_container_shared_dir / self.cfg.sandbox_services_log
         if not path.exists():
             raise VMOperationError(f"❌ - Log file not found at {path}")
         try:
@@ -153,7 +167,7 @@ class SandboxVMManager(VMManager):
             {
                 "SHARED_DIR": f"/mnt/{self.cfg.container_name}",
                 "PORT": str(self.cfg.sandbox_server_port),
-                "SERVER_LOG": str(self.cfg.sandbox_server_log),
+                "SERVICES_LOG": str(self.cfg.sandbox_services_log),
                 "JUPYTER_KERNEL_NAME": self.cfg.sandbox_jupyter_kernel_name,
                 "JUPYTER_KERNEL_GATEWAY_APP_PORT": str(self.cfg.sandbox_jupyter_kernel_port),
                 "JUPYTER_KERNEL_GATEWAY_APP_LOG": str(self.cfg.sandbox_jupyter_kernel_log),
@@ -182,7 +196,7 @@ class SandboxVMManager(VMManager):
         self._wait_for_ssh_ready()
         self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.logger)
 
-        if not self.ssh.exec_command("pgrep -f 'uvicorn main:app'", check=False).success:
+        if not self.ssh.exec_command("pgrep -f 'uvicorn main:app'").success:
             self.logger.log("🟡 FastAPI not running, launching again...", level=LogLevel.INFO)
             self.ssh.exec_command(
                 "./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env, block=False

@@ -113,7 +113,7 @@ class SandboxVMConfig(VMConfig):
     sandbox_server_host: str = "0.0.0.0"
     sandbox_server_port: int = 8765
     sandbox_server_dir: Optional[Path] = Path("/home/user/server")
-    sandbox_server_log: str = "sandbox-server.log"
+    sandbox_services_log: str = "sandbox-services.log"
     # Jupyter kernel
     sandbox_jupyter_kernel_name: str = "sandbox-kernel"
     sandbox_jupyter_kernel_host: str = "0.0.0.0"

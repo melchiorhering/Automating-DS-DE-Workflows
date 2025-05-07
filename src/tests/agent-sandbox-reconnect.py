@@ -74,7 +74,7 @@ except requests.RequestException as e:
 
 # Simulate downtime and reconnect scenario
 print("⏳ Waiting to simulate reconnect...")
-time.sleep(60)
+time.sleep(20)
 
 # Optional: run another test after waiting
 print("🔁 Re-testing /health after wait...")

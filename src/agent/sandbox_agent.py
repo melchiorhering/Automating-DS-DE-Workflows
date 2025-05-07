@@ -49,10 +49,6 @@ class SandboxCodeAgent(CodeAgent):
         self.executor_type = executor_type
         self.executor_kwargs = executor_kwargs or {}
 
-        # Prepare final step cleanup if enabled
-        if auto_cleanup:
-            kwargs.setdefault("step_callbacks", []).append(self._final_step_cleanup)
-
         # Create the sandbox executor directly (don't let base create it)
         self._sandbox_executor: SandboxExecutor = self.create_python_executor()
 
@@ -102,10 +98,6 @@ class SandboxCodeAgent(CodeAgent):
         finally:
             if self.auto_cleanup and not self._executor_cleaned_up:
                 self.cleanup()
-
-    def _final_step_cleanup(self, step, agent=None):
-        if getattr(step, "is_final", False):  # assumes your steps could implement this trait
-            self.cleanup()
 
     def cleanup(self):
         self.logger.log_rule("🧹 Cleanup Process")

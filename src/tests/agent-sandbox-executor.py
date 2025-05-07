@@ -27,11 +27,14 @@ model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
 def take_initial_screenshot(agent: SandboxCodeAgent, label: str = "initial"):
-    client = agent.python_executor.vm.sandbox_client
+    client = agent.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
         try:
-            image = Image.open(result["screenshot_path"])
+            host_shared = agent._sandbox_executor.vm.cfg.host_container_shared_dir
+            path = str(host_shared / result["screenshot_path"])
+            print(f"Image Path: {path}")
+            image = Image.open(path)
             print(image)
             print(f"📸 Saved initial screenshot: {label}.png")
         except Exception as e:
@@ -51,7 +54,7 @@ def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
                 previous_memory_step.observations_images = None
 
     # Take the screenshot using the sandbox client
-    client = agent.python_executor.vm.sandbox_client
+    client = agent.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
         path = result["screenshot_path"]
@@ -63,15 +66,10 @@ def save_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent):
             mouse_info = f"Mouse position: {result['mouse_position']}"
             screen_info = f"Screen resolution: {image.size[0]}x{image.size[1]} pixels"
 
-            # Get additional VM state if available
-            vm_state = client.get_vm_state() if hasattr(client, "get_vm_state") else {}
-            active_window = vm_state.get("active_window", "Unknown")
-
             observations = [
                 f"🖼️ Screenshot captured at step {current_step}",
                 mouse_info,
                 screen_info,
-                f"Active window: {active_window}",
             ]
 
             memory_step.observations = "\n".join(observations)
@@ -109,25 +107,10 @@ take_initial_screenshot(agent, label="before_run")
 # time.sleep(5.0)
 
 
-agent.run(
-    """Run the following code:
-```python
-import pyautogui
-
-# Move the mouse to the center of the screen
-screen_width, screen_height = pyautogui.size()
-center_x, center_y = screen_width // 2, screen_height // 2
-pyautogui.moveTo(center_x, center_y)
-print('Mouse moved to the center of the screen and screenshot saved.')
-
-
-If you can see the mouse moved to the center of the screen and the screenshot saved, return "success" else return "failure"
-```
-""",
+output = agent.run(
+    """Using pyautogui, move the mouse to the center of the screen. The current screen resolution is 1400x1050. Use pyautogui.moveTo(x, y) to move the mouse.""",
     max_steps=4,
-    stream=False,
 )
-# print(
-#     f"Agent output:{list(agent_output[0])}",
-# )
-print(agent.memory.replay())
+
+
+print("Docker executor result:", output)
