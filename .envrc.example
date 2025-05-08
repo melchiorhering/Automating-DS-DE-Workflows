@@ -2,8 +2,6 @@
 # !!!NEVER ADD THIS FILE WITH REAL SECRETS TO GIT!!!
 # ==================================================
 export ROOT_DIR=$(pwd)
-export ENVIRONMENT=development
-export VOLUME_DIRECTORY=./data
 
 # Hugging Face Token
 export HF_TOKEN=<token>

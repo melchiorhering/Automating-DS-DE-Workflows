@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, LiteLLMModel, LogLevel, VLLMModel
+from smolagents import ActionStep, LiteLLMModel, LogLevel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,14 +18,12 @@ from sandbox.configs import SandboxVMConfig
 
 
 # model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
-
-# model = VLLMModel(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
-model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
+# model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
 model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key="YOUR_ANTHROPIC_API_KEY")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
-def take_initial_screenshot(agent: CodeAgent, label: str = "initial") -> None:
+def take_initial_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
     client = agent.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
@@ -33,11 +31,12 @@ def take_initial_screenshot(agent: CodeAgent, label: str = "initial") -> None:
             host_shared = agent._sandbox_executor.vm.cfg.host_container_shared_dir
             path = str(host_shared / result["screenshot_path"])
             print(f"Image Path: {path}")
+
             image = Image.open(path)
-            # image.show(title="Initial Screenshot")
-            print(f"📸 Saved initial screenshot: {label}.png")
+            memory_step.observations_images = [image.copy()]
+            print("📸 Saved initial screenshot")
         except Exception as e:
-            print(f"⚠️ Failed to save initial screenshot: {e}")
+            memory_step.observations = f"⚠️ Failed to save initial screenshot: {e}"
 
 
 def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
@@ -75,21 +74,36 @@ def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
 
-# Logger for debug output
+# ──────────────── Sandbox Executor Configuration ────────────────
 config = SandboxVMConfig(container_name="sandbox-test", host_server_dir=Path("sandbox/server/"))
 agent = CodeAgent(
     description="This agent runs in a sandboxed environment and can execute code.",
     tools=[],
     model=model,
+    add_base_tools=True,
+    additional_authorized_imports=["pyautogui"],
+    step_callbacks=[save_screenshot_callback],
     executor_type="sandbox",
     executor_kwargs={
         "config": config,
     },
-    additional_authorized_imports=["pyautogui"],
-    step_callbacks=[save_screenshot_callback],
     verbosity_level=LogLevel.DEBUG,
 )
-# take_initial_screenshot(agent, label="before_run")
+# Create an initial ActionStep (use step_number=0 and fill in observation fields)
+initial_step = ActionStep(
+    step_number=0,
+    model_output="Initial environment state.",
+    observations="📸 Initial screenshot before execution.",
+)
+# Take the screenshot and attach image data
+take_initial_screenshot(
+    initial_step,
+    agent,
+)
+# Add the initial step to the agent's memory
+agent.memory.steps.append(initial_step)
+
+
 output = agent.run(
     """Using pyautogui, move the mouse to the center of the screen.
 Steps:
