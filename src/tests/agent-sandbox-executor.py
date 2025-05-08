@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from PIL import Image
-from smolagents import ActionStep, LogLevel, VLLMModel
+from smolagents import ActionStep, LiteLLMModel, LogLevel, VLLMModel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +21,7 @@ from sandbox.configs import SandboxVMConfig
 
 # model = VLLMModel(model_id="HuggingFaceTB/SmolLM2-1.7B-Instruct")
 model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
+model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key="YOUR_ANTHROPIC_API_KEY")
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────

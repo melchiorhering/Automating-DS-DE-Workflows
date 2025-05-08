@@ -23,6 +23,7 @@ dependencies = [
     "setuptools>=80.3.1",
     "num2words>=0.5.14",
     "pyautogui>=0.9.54",
+    "litellm>=1.68.1",
 ]
 
 

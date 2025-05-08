@@ -53,6 +53,11 @@ logger = getLogger(__name__)
 
 class CodeAgent(MultiStepAgent):
     """
+    ## CodeAgent Rewrite
+    This agent is a rewrite of the original CodeAgent. It is designed to execute Python code in a sandboxed environment. Specific for our usecase, it will be running inside a Docker KVM Virtual Machine. The agent is capable of executing code, importing libraries, and performing various tasks using the provided tools.
+
+
+    ## Overview
     In this agent, the tool calls will be formulated by the LLM in code format, then parsed and executed.
 
     Args:
@@ -86,7 +91,7 @@ class CodeAgent(MultiStepAgent):
         self.authorized_imports = sorted(set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports))
         self.max_print_outputs_length = max_print_outputs_length
 
-        # Adding my agent path
+        # Modified to resource files path to local `agent/` directory
         prompt_templates = prompt_templates or yaml.safe_load(
             importlib.resources.files("agent.prompts").joinpath("code_agent.yaml").read_text()
         )
