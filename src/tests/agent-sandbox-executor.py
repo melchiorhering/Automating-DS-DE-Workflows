@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from sandbox.configs import SandboxVMConfig
 
 # model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
 # model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
-model = LiteLLMModel(model_id="anthropic/claude-3-5-sonnet-latest", api_key="YOUR_ANTHROPIC_API_KEY")
+model = LiteLLMModel(model_id="openai/o4-mini-2025-04-16", api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
@@ -52,7 +53,7 @@ def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
     # Take the screenshot using the sandbox client
     result = agent.sandbox_client.take_screenshot()
     if "screenshot_path" in result:
-        print(f"Screenshot result: {result}")
+        # print(f"Screenshot result: {result}")
         path = result["screenshot_path"]
         try:
             image = Image.open(path)
@@ -69,7 +70,7 @@ def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
             ]
 
             memory_step.observations = "\n".join(observations)
-            print(f"Captured a VM screenshot: {image.size[0]}x{image.size[1]} pixels")
+            # print(f"Captured a VM screenshot: {image.size[0]}x{image.size[1]} pixels")
         except Exception as e:
             memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
 
@@ -80,14 +81,14 @@ agent = CodeAgent(
     description="This agent runs in a sandboxed environment and can execute code.",
     tools=[],
     model=model,
-    add_base_tools=True,
+    # add_base_tools=True,
     additional_authorized_imports=["pyautogui"],
     step_callbacks=[save_screenshot_callback],
     executor_type="sandbox",
     executor_kwargs={
         "config": config,
     },
-    verbosity_level=LogLevel.DEBUG,
+    verbosity_level=LogLevel.INFO,
 )
 # Create an initial ActionStep (use step_number=0 and fill in observation fields)
 initial_step = ActionStep(
@@ -130,6 +131,8 @@ pyautogui.moveTo(center_x, center_y)
 # Step 4: Wait for a moment to see the mouse move
 time.sleep(1)
 ```""",
-    max_steps=2,
+    max_steps=4,
 )
-print(output)
+
+
+agent.cleanup()

@@ -158,6 +158,18 @@ class CodeAgent(MultiStepAgent):
         )
         return system_prompt
 
+    def _step_stream(self, memory_step: ActionStep):
+        """
+        Perform one step in the ReAct framework and yield the result.
+        This is required by the MultiStepAgent interface for streaming support.
+        """
+        output = self.step(memory_step)
+        yield memory_step
+        if output is not None:
+            from smolagents.memory import FinalAnswerStep
+
+            yield FinalAnswerStep(output)
+
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
@@ -291,3 +303,12 @@ class CodeAgent(MultiStepAgent):
         code_agent_kwargs.update(kwargs)
         # Call the parent class's from_dict method
         return super().from_dict(agent_dict, **code_agent_kwargs)
+
+    def cleanup(self):
+        """Clean up resources, especially sandbox VMs or Docker containers."""
+        try:
+            if hasattr(self, "python_executor") and hasattr(self.python_executor, "cleanup"):
+                self.logger.log("🧹 Calling cleanup on python executor...", level=LogLevel.INFO)
+                self.python_executor.cleanup()
+        except Exception as e:
+            self.logger.log_error(f"⚠️ CodeAgent cleanup failed: {e}")

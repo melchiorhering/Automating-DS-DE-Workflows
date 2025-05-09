@@ -205,17 +205,12 @@ class SandboxVMManager(VMManager):
         self._wait_for_ssh_ready()
         self.ssh = SSHClient(SSHConfig(port=self.cfg.host_ssh_port), logger=self.logger)
 
-        if not self.ssh.exec_command("pgrep -f 'uvicorn main:app'").success:
-            self.logger.log("🟡 FastAPI not running, launching again...", level=LogLevel.INFO)
-            self.ssh.exec_command(
-                "./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env, block=False
-            )
-        else:
-            self.logger.log("✅ FastAPI server already running", level=LogLevel.INFO)
+        self.logger.log("🔁 Re-running start.sh to cleanly restart all services...", level=LogLevel.INFO)
+        self.ssh.exec_command("./start.sh", cwd=str(self.cfg.sandbox_server_dir), env=self.cfg.runtime_env, block=False)
 
         self._wait_for_services()
         self.sandbox_client = SandboxClient(
             host=self.cfg.host_sandbox_server_host,
-            port=self.cfg.host_sandbox_server_port,
+            port=self.cfg.sandbox_server_port,
         )
-        self.logger.log("🔁 Reconnected to running VM.", level=LogLevel.INFO)
+        self.logger.log("✅ Reconnected and reinitialized sandbox services.", level=LogLevel.INFO)

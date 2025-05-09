@@ -21,6 +21,8 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
  ┃ ┃ ┣ 📜uefi.rom # Created on container startup
  ┃ ┃ ┗ 📜uefi.vars # Created on container startup
  ┣ 📜README.md
+ ┣ 📜upload_base.py # Python script to upload a base vm to HF repository
+ ┣ 📜download_base.py # Python script to download a base vm from a HF repository
  ┗ 📜compose.qemu.yaml
 ```
 

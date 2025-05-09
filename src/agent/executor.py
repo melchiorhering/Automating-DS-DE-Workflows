@@ -29,7 +29,6 @@ class SandboxExecutor(RemotePythonExecutor):
         logger: AgentLogger,
         config: SandboxVMConfig,
         preserve_on_exit: bool = False,
-        reconnect: bool = False,
         **kwargs,
     ):
         super().__init__(additional_imports, logger)
@@ -43,10 +42,11 @@ class SandboxExecutor(RemotePythonExecutor):
             self.vm = SandboxVMManager(config=config, logger=self.logger, preserve_on_exit=preserve_on_exit, **kwargs)
 
             self.logger.log("🔌 Connecting to Sandbox VM...", level=LogLevel.DEBUG)
-            if reconnect and self.vm.container and self.vm.container.status == "running":
+            if self.vm.container and self.vm.container.status == "running":
+                self.logger.log("🔁 Detected running container. Reconnecting...", level=LogLevel.INFO)
                 self.vm.reconnect()
             else:
-                self.logger.log_rule("🚀 Start Sandbox VM")
+                self.logger.log_rule("🚀 Starting new sandbox VM")
                 self.vm.__enter__()
 
             self._wait_for_services()
@@ -67,24 +67,17 @@ class SandboxExecutor(RemotePythonExecutor):
             raise
 
     def _wait_for_services(self, retries: int = 10, delay: float = 5.0):
-        """Final confirmation that the FastAPI and Kernel Gateway servers are reachable."""
         fastapi_url = f"http://{self.vm.cfg.host_sandbox_server_host}:{self.vm.cfg.host_sandbox_server_port}/health"
         jupyter_url = f"http://{self.vm.cfg.host_sandbox_jupyter_kernel_host}:{self.vm.cfg.host_sandbox_jupyter_kernel_port}/api/kernels"
 
         for attempt in range(1, retries + 1):
             fastapi_ok = jupyter_ok = False
-
             try:
-                r1 = requests.get(fastapi_url, timeout=2)
-                self.logger.log(f"🌐 FastAPI health check: {r1}", level=LogLevel.DEBUG)
-                fastapi_ok = r1.status_code == 200
+                fastapi_ok = requests.get(fastapi_url, timeout=2).status_code == 200
             except Exception as e:
                 self.logger.log(f"⏳ FastAPI not ready (attempt {attempt}): {e}", level=LogLevel.DEBUG)
-
             try:
-                r2 = requests.get(jupyter_url, timeout=2)
-                self.logger.log(f"🌐 Jupyter Kernel Gateway health check: {r2}", level=LogLevel.DEBUG)
-                jupyter_ok = r2.status_code == 200
+                jupyter_ok = requests.get(jupyter_url, timeout=2).status_code == 200
             except Exception as e:
                 self.logger.log(f"⏳ Jupyter Kernel Gateway not ready (attempt {attempt}): {e}", level=LogLevel.DEBUG)
 
@@ -93,41 +86,55 @@ class SandboxExecutor(RemotePythonExecutor):
                 return
 
             time.sleep(delay)
-
-        # Only raise if we never returned
         raise RuntimeError("❌ Required services are not reachable after retries.")
 
     def _initialize_kernel_connection(self, retries: int = 5, delay: float = 2.0):
-        """Creates a new Jupyter kernel and connects via WebSocket. Logs API docs if it fails."""
         self.logger.log_rule("🧠 Kernel Initialization")
-        self.logger.log("🔗 Connect or create Jupyter Kernel", level=LogLevel.DEBUG)
+        self.logger.log("🔗 Fetch existing kernels", level=LogLevel.DEBUG)
+        existing_kernels = []
+        try:
+            r = requests.get(f"{self.base_url}/api/kernels", timeout=5)
+            if r.status_code == 200:
+                existing_kernels = r.json()
+                self.logger.log(f"🔄 Found {len(existing_kernels)} existing kernels", level=LogLevel.INFO)
+        except Exception as e:
+            self.logger.log_error(f"⚠️ Failed to fetch existing kernels: {e}")
+
+        if existing_kernels:
+            self.kernel_id = existing_kernels[0]["id"]
+            self.logger.log(f"🔁 Reusing existing kernel: {self.kernel_id}", level=LogLevel.INFO)
+        else:
+            for attempt in range(retries):
+                try:
+                    self.logger.log(
+                        f"🆕 Creating new kernel (attempt {attempt + 1}/{retries})...", level=LogLevel.DEBUG
+                    )
+                    r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
+                    if r.status_code == 201:
+                        self.kernel_id = r.json()["id"]
+                        self.logger.log(f"✅ Created new kernel: {self.kernel_id}", level=LogLevel.INFO)
+                        break
+                    else:
+                        self.logger.log_error(f"❌ Kernel creation failed: {r.status_code} — {r.text}")
+                except Exception as e:
+                    self.logger.log_error(f"⚠️ Kernel creation attempt {attempt + 1} failed: {e}")
+                    time.sleep(delay)
+            else:
+                raise RuntimeError("❌ Failed to create a new kernel after retries.")
+
+        ws_url = f"{self.ws_url}/api/kernels/{self.kernel_id}/channels"
+        self.logger.log(f"🌐 Connecting WebSocket to: {ws_url}", level=LogLevel.DEBUG)
         for attempt in range(retries):
             try:
-                self.logger.log(f"🆕 Creating new kernel (attempt {attempt + 1}/{retries})...", level=LogLevel.DEBUG)
-                r = requests.post(f"{self.base_url}/api/kernels", timeout=5)
-
-                if r.status_code == 201:
-                    self.kernel_id = r.json()["id"]
-                    self.logger.log(f"✅ Created new kernel: {self.kernel_id}", level=LogLevel.INFO)
-                    break
-                else:
-                    self.logger.log_error(f"❌ Kernel creation failed: {r.status_code} — {r.text}")
-
+                self.ws = create_connection(ws_url)
+                self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
+                return
             except Exception as e:
-                self.logger.log_error(f"⚠️ Kernel creation attempt {attempt + 1} failed: {e}")
-                if attempt == retries - 1:
-                    self._log_jupyter_api_markdown()
-                    raise
+                self.logger.log(
+                    f"⏳ WebSocket connection failed (attempt {attempt + 1}/{retries}): {e}", level=LogLevel.DEBUG
+                )
                 time.sleep(delay)
-
-        try:
-            ws_url = f"{self.ws_url}/api/kernels/{self.kernel_id}/channels"
-            self.logger.log(f"🌐 Connecting WebSocket to: {ws_url}", level=LogLevel.DEBUG)
-            self.ws = create_connection(ws_url)
-            self.logger.log("📡 WebSocket connected to kernel.", level=LogLevel.INFO)
-        except Exception as e:
-            self.logger.log_error(f"❌ Failed to connect WebSocket: {e}")
-            raise
+        raise RuntimeError("❌ Failed to establish WebSocket connection after retries.")
 
     def _send_execute_request(self, code: str) -> str:
         msg_id = str(uuid.uuid4())
@@ -171,15 +178,13 @@ class SandboxExecutor(RemotePythonExecutor):
         self.logger.log(f"🔨 Tool Definition Code:\n{tool_definition_code}", level=LogLevel.DEBUG)
         self.logger.log(f"📦 Detected packages to install: {', '.join(packages_to_install)}", level=LogLevel.DEBUG)
 
-        if packages_to_install:
-            code = f"!uv pip install {' '.join(packages_to_install)}\n{tool_definition_code}"
-        else:
-            self.logger.log("ℹ️ No new packages to install.", level=LogLevel.DEBUG)
-            code = tool_definition_code
-
+        code = (
+            f"!uv pip install {' '.join(packages_to_install)}\n{tool_definition_code}"
+            if packages_to_install
+            else tool_definition_code
+        )
         result, logs = self.run_code_raise_errors(code)
         self.logger.log(f"📄 Execution logs:\n{logs}", level=LogLevel.DEBUG)
-
         self.logger.log("result", result, level=LogLevel.DEBUG)
 
     def install_packages(self, additional_imports: list[str]):
@@ -234,7 +239,7 @@ class SandboxExecutor(RemotePythonExecutor):
                         break
 
             output_log = "".join(outputs)
-            self.logger.log(f"📄 Execution completed. Logs:\n{self.strip_ansi(output_log)}", level=LogLevel.INFO)
+            self.logger.log(f"📄 Execution completed. Logs:\n{self.strip_ansi(output_log)}", level=LogLevel.DEBUG)
             return result, output_log
 
         except Exception as e:
@@ -242,8 +247,6 @@ class SandboxExecutor(RemotePythonExecutor):
             raise
 
     def cleanup(self):
-        self.vm.container.stop()
-
         if getattr(self, "_exited", False):
             return
         try:
