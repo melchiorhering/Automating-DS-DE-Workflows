@@ -42,12 +42,7 @@ class SandboxExecutor(RemotePythonExecutor):
             self.vm = SandboxVMManager(config=config, logger=self.logger, preserve_on_exit=preserve_on_exit, **kwargs)
 
             self.logger.log("🔌 Connecting to Sandbox VM...", level=LogLevel.DEBUG)
-            if self.vm.container and self.vm.container.status == "running":
-                self.logger.log("🔁 Detected running container. Reconnecting...", level=LogLevel.INFO)
-                self.vm.reconnect()
-            else:
-                self.logger.log_rule("🚀 Starting new sandbox VM")
-                self.vm.__enter__()
+            self.vm.connect_or_start()
 
             self._wait_for_services()
 

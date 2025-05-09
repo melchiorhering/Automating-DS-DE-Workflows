@@ -48,6 +48,17 @@ class SandboxVMManager(VMManager):
         if self._preserve_on_exit:
             self.logger.log("⚠️ Container files will be preserved on exit (preserve_on_exit=True)", level=LogLevel.INFO)
 
+    def connect_or_start(self):
+        if self.container and self.container.status == "running":
+            self.logger.log("🔁 Detected running container. Reconnecting...", level=LogLevel.INFO)
+            self.reconnect()
+        else:
+            self.logger.log_rule("🚀 Starting new sandbox VM")
+            try:
+                self.__enter__()
+            except Exception as e:
+                raise VMOperationError(f"Failed to start sandbox VM: {e}") from e
+
     @contextlib.contextmanager
     def sandbox_vm_context(self):
         try:

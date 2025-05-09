@@ -40,7 +40,7 @@ def take_initial_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
             memory_step.observations = f"⚠️ Failed to save initial screenshot: {e}"
 
 
-def save_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
+def observation_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
 
@@ -83,7 +83,7 @@ agent = CodeAgent(
     model=model,
     # add_base_tools=True,
     additional_authorized_imports=["pyautogui"],
-    step_callbacks=[save_screenshot_callback],
+    step_callbacks=[observation_screenshot_callback],
     executor_type="sandbox",
     executor_kwargs={
         "config": config,

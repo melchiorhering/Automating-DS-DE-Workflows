@@ -112,11 +112,6 @@ class CodeAgent(MultiStepAgent):
         self.executor_kwargs = executor_kwargs or {}
         self.python_executor = self.create_python_executor()
 
-        # Check for the executor type == "sandbox", then also set the ssh and sandbox_client
-        if self.executor_type == "sandbox":
-            self.ssh = self.python_executor.vm.ssh
-            self.sandbox_client = self.python_executor.vm.sandbox_client
-
     def create_python_executor(
         self,
     ) -> Union[E2BExecutor, PythonExecutor, DockerExecutor, LocalPythonExecutor, SandboxExecutor]:
@@ -124,9 +119,12 @@ class CodeAgent(MultiStepAgent):
         match self.executor_type:
             # Adding my Sandbox Executor
             case "sandbox":
-                return SandboxExecutor(
+                python_executor = SandboxExecutor(
                     additional_imports=self.additional_authorized_imports, logger=self.logger, **self.executor_kwargs
                 )
+                self.ssh = python_executor.vm.ssh
+                self.sandbox_client = python_executor.vm.sandbox_client
+                return python_executor
 
             case "e2b" | "docker":
                 if self.managed_agents:
