@@ -12,6 +12,17 @@ def run_ssh_command(ssh, command, timeout=10):
     return exit_status, output, error
 
 
+def test_sftp(ssh: paramiko.SSHClient):
+    try:
+        sftp = ssh.open_sftp()
+        sftp.listdir(".")
+        sftp.get()  # TO DO
+        sftp.close()
+        return True
+    except Exception as e:
+        return False, str(e)
+
+
 def connect_ssh_with_password(host, port, username, password, timeout=10):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

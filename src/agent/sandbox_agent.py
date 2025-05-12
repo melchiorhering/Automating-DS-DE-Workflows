@@ -1,22 +1,12 @@
-#!/usr/bin/env python
-# coding=utf-8
+"""# Adaption off the smolagents CodeAgent
 
-# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+It uses the same source code with some modifications on the python_executor and the prompt templates.
+
+"""
+
 import importlib
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Union
 
 import yaml
 from rich.console import Group
@@ -33,7 +23,7 @@ from smolagents.local_python_executor import (
     PythonExecutor,
     fix_final_answer_code,
 )
-from smolagents.memory import ActionStep, ToolCall
+from smolagents.memory import ActionStep, FinalAnswerStep, ToolCall
 from smolagents.models import ChatMessage
 from smolagents.monitoring import YELLOW_HEX, LogLevel
 from smolagents.remote_executors import DockerExecutor, E2BExecutor
@@ -91,7 +81,7 @@ class CodeAgent(MultiStepAgent):
         self.authorized_imports = sorted(set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports))
         self.max_print_outputs_length = max_print_outputs_length
 
-        # Modified to resource files path to local `agent/` directory
+        # MODIFIED: to resource files path to local `agent/` directory
         prompt_templates = prompt_templates or yaml.safe_load(
             importlib.resources.files("agent.prompts").joinpath("code_agent.yaml").read_text()
         )
@@ -112,6 +102,7 @@ class CodeAgent(MultiStepAgent):
         self.executor_kwargs = executor_kwargs or {}
         self.python_executor = self.create_python_executor()
 
+    # MODIFIED: Added the new executor type and ssh and sandbox client attributes
     def create_python_executor(
         self,
     ) -> Union[E2BExecutor, PythonExecutor, DockerExecutor, LocalPythonExecutor, SandboxExecutor]:
@@ -122,6 +113,7 @@ class CodeAgent(MultiStepAgent):
                 python_executor = SandboxExecutor(
                     additional_imports=self.additional_authorized_imports, logger=self.logger, **self.executor_kwargs
                 )
+                # Set the SSH and sandbox client attributes
                 self.ssh = python_executor.vm.ssh
                 self.sandbox_client = python_executor.vm.sandbox_client
                 return python_executor
@@ -156,7 +148,8 @@ class CodeAgent(MultiStepAgent):
         )
         return system_prompt
 
-    def _step_stream(self, memory_step: ActionStep):
+    # ADDED:  _step_stream method to support streaming
+    def _step_stream(self, memory_step: ActionStep) -> Generator[ActionStep | FinalAnswerStep, Any, None]:
         """
         Perform one step in the ReAct framework and yield the result.
         This is required by the MultiStepAgent interface for streaming support.

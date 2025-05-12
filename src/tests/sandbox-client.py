@@ -14,18 +14,11 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 
-def get_test_vm_config() -> SandboxVMConfig:
-    """Return a basic SandboxVMConfig for testing."""
-    config = SandboxVMConfig(
-        host_server_dir=Path("sandbox/server/"),  # Assuming your FastAPI + Jupyter server is in server/
-        force_regenerate_client=True,  # Always regenerate client during test
-    )
-    return config
-
-
 def main():
     # Step 1: Create config
-    config = get_test_vm_config()
+    config = SandboxVMConfig(
+        host_server_dir=Path("sandbox/server/"),  # Assuming your FastAPI + Jupyter server is in server/
+    )
 
     # Step 2: Start VM inside a context manager
     with SandboxVMManager(config=config, logger=logger) as vm:

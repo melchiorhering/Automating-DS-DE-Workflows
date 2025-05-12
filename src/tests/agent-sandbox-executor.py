@@ -104,6 +104,7 @@ take_initial_screenshot(
 # Add the initial step to the agent's memory
 agent.memory.steps.append(initial_step)
 
+# agent.ssh SETUP SPECIFIC
 
 output = agent.run(
     """Using pyautogui, move the mouse to the center of the screen.
@@ -133,6 +134,8 @@ time.sleep(1)
 ```""",
     max_steps=4,
 )
+# SSH CLIENT FOR THE SANDBOX
+# agent.ssh
 
 
 agent.cleanup()
