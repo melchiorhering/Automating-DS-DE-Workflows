@@ -103,7 +103,7 @@ class SandboxVMConfig(VMConfig):
     host_sandbox_server_host: str = "localhost"
     host_sandbox_server_port: int = 8765
     host_sandbox_jupyter_kernel_host: str = "localhost"
-    host_sandbox_jupyter_kernel_port: int = 8888
+    host_sandbox_jupyter_kernel_port: int = 8880
     host_server_dir: Optional[Path] = Path("server/")
 
     # Pyautogui settings
@@ -117,7 +117,7 @@ class SandboxVMConfig(VMConfig):
     # Jupyter kernel
     sandbox_jupyter_kernel_name: str = "sandbox-kernel"
     sandbox_jupyter_kernel_host: str = "0.0.0.0"
-    sandbox_jupyter_kernel_port: int = 8888
+    sandbox_jupyter_kernel_port: int = 8880
     sandbox_jupyter_kernel_log: str = "jupyter-kernel.log"
 
     runtime_env: Dict[str, str] = field(default_factory=dict)

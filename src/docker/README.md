@@ -7,23 +7,23 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
 ## 📂 Docker Directory Layout
 
 ```
-📦docker
- ┣ 📂shared # Directory for shared files between host and container
- ┣ 📂vms
- ┃ ┣ 📂snapshots
- ┃ ┣ 📂spider2-v # OPTIONAL: YOU COULD USE THE ORIGINAL SPIDER2-V IMAGE (Needs to be downloaded separately)
- ┃ ┃ ┣ 📜Ubuntu.qcow2
- ┃ ┃ ┗ 📜Ubuntu.qcow2.zip
- ┃ ┗ 📂ubuntu-base # OPTIONAL: NEW VARIANT OF UBUNTU BASE IMAGE; Already configured for SSH
- ┃ ┃ ┣ 📜boot.iso # Needed
- ┃ ┃ ┣ 📜data.img # Needed
- ┃ ┃ ┣ 📜qemu.mac # Created on container startup
- ┃ ┃ ┣ 📜uefi.rom # Created on container startup
- ┃ ┃ ┗ 📜uefi.vars # Created on container startup
- ┣ 📜README.md
- ┣ 📜upload_base.py # Python script to upload a base vm to HF repository
- ┣ 📜download_base.py # Python script to download a base vm from a HF repository
- ┗ 📜compose.qemu.yaml
+📆docker
+ ┣ 📆shared # Directory for shared files between host and container
+ ┣ 📆vms
+ ┃ ┣ 📆snapshots
+ ┃ ┣ 📆spider2-v # OPTIONAL: YOU COULD USE THE ORIGINAL SPIDER2-V IMAGE (Needs to be downloaded separately)
+ ┃ ┃ ┣ 📋Ubuntu.qcow2
+ ┃ ┃ ┗ 📋Ubuntu.qcow2.zip
+ ┃ ┗ 📆ubuntu-base # OPTIONAL: NEW VARIANT OF UBUNTU BASE IMAGE; Already configured for SSH
+ ┃ ┃ ┣ 📋boot.iso # Needed
+ ┃ ┃ ┣ 📋data.img # Needed
+ ┃ ┃ ┣ 📋qemu.mac # Created on container startup
+ ┃ ┃ ┣ 📋uefi.rom # Created on container startup
+ ┃ ┃ ┗ 📋uefi.vars # Created on container startup
+ ┣ 📋README.md
+ ┣ 📋upload_base.py # Python script to upload a base vm to HF repository
+ ┣ 📋download_base.py # Python script to download a base vm from a HF repository
+ ┗ 📋compose.qemu.yaml
 ```
 
 ---
@@ -41,14 +41,16 @@ docker compose up ──▶ downloader & installer ──▶ ubuntu-base.qcow2 �
 
 ## 2 · Host prerequisites
 
-| Host role             | Packages / tools                        | Ubuntu example                                       |
-| --------------------- | --------------------------------------- | ---------------------------------------------------- |
-| **Builder + runtime** | **Docker + Docker Compose**             | `sudo apt install docker.io docker-compose-plugin`   |
-|                       | Add user to `docker` _and_ `kvm` groups | `sudo usermod -aG docker,kvm $USER && newgrp docker` |
+| Host role             | Packages / tools example                |
+| --------------------- | --------------------------------------- |
+| **Builder + runtime** | **Docker + Docker Compose**             |
+|                       | Add user to `docker` _and_ `kvm` groups |
 
 Verify KVM with `kvm-ok` or `lsmod | grep kvm`. If your host is itself a VM, enable **nested VT-x/AMD-V**.
 
 The qemux/qemu Docker image contains all necessary QEMU components, so you don't need to install additional packages like qemu-utils or libguestfs-tools on the host.
+
+> ✨ **Note**: If you are building your own **base image** inside the VM (e.g. `ubuntu-base/`), you must also install **Docker inside the VM** using to support containerized tools like Airbyte and Superset.
 
 ---
 
@@ -98,7 +100,7 @@ services:
 docker compose up -f <compose-file> -d
 ```
 
-1. Browse to **http://localhost:8006**.
+1. Browse to **[http://localhost:8006](http://localhost:8006)**.
 2. In the web console you’ll see the Ubuntu live environment; run the installer and target the virtual disk under `/storage`.
 3. When installation finishes, **shut down the VM** from the guest.
 
@@ -124,9 +126,13 @@ sudo apt install -y qemu-guest-agent openssh-server curl wget git vscode htop ne
                     build-essential ca-certificates software-properties-common gnome-screenshot
 ```
 
+> ✅ Also install `docker` if you plan to run containers from inside the guest VM:
+> Follow the [Docker installation guide](https://docs.docker.com/engine/install/ubuntu/) for the latest instructions.
+
 ### 4.2 · Configure SSH & passwordless sudo
 
 1. **Edit** `/etc/ssh/sshd_config` to allow password authentication if needed (`PasswordAuthentication yes`).
+
 2. **Restart SSH**:
 
    ```bash

@@ -6,7 +6,6 @@ This sandbox environment spins up a full virtual machine (VM) using QEMU in a Do
 
 - A **FastAPI server** offers automation endpoints (e.g., screenshot, recording).
 - A **Jupyter Kernel Gateway** enables safe Python code execution via WebSockets.
-- Typed **OpenAPI clients** are auto-generated and dynamically imported at runtime.
 
 The entire system is orchestrated by the `SandboxVMManager`, and Python code can be run interactively via `SandboxExecutor`.
 
@@ -82,22 +81,6 @@ Auto-generated OpenAPI client provides typed access to:
 
 ---
 
-## 🔁 OpenAPI Client Lifecycle
-
-1. On VM startup, `sandbox.py` fetches `/openapi.json`
-2. Calls `openapi-python-client generate`
-3. Result is written to:
-   `sandbox-client/sandbox_rest_server_client/`
-4. Imports models + API endpoints dynamically at runtime
-
-You can force regeneration with:
-
-```python
-cfg = SandboxVMConfig(force_regenerate_client=True)
-```
-
----
-
 ## 🧾 Kernel Execution Protocol
 
 Example of returning a Python object:
@@ -112,24 +95,6 @@ print("RESULT_PICKLE:" + base64.b64encode(pickle.dumps(_result)).decode())
 ```
 
 This gets executed via WebSocket, and `_result` is returned as a native Python object.
-
----
-
-## 📂 Client Layout
-
-```
-sandbox-client/
-┗ sandbox_rest_server_client/
- ┣ api/
- ┃ ┗ default/
- ┃   ┣ health_check_health_get.py
- ┃   ┣ screenshot_endpoint_screenshot_get.py
- ┃   ┣ record_record_get.py
- ┣ models/
- ┣ client.py
- ┣ types.py
- ┗ errors.py
-```
 
 ---
 
@@ -190,7 +155,6 @@ config = SandboxVMConfig(
     # Runtime customization
     enable_debug=True,
     runtime_env={"FOO": "BAR"},
-    force_regenerate_client=True
 )
 
 ```
