@@ -8,9 +8,9 @@ services:
 
     # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
     volumes:
-      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
       # - ${ROOT_DIR}/src/docker/vms/snapshots/ubuntu-base-snap1.qcow2:/boot.qcow2 # For using snapshots
-      # - ${ROOT_DIR}/src/docker/shared:/shared
+      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
+      # - ${ROOT_DIR}/src/docker/shared/ubuntu-base:/shared # Shared directory for the VM; in the container you have to mount `mount -t 9p -o trans=virtio shared /mnt/example`
 
     # Grant KVM + networking devices
     devices:
@@ -22,11 +22,12 @@ services:
     # Runtime tweaks
     environment:
       # BOOT: "https://releases.ubuntu.com/jammy/ubuntu-22.04.5-desktop-amd64.iso" # Downloads the Spider2-V
-      BOOT: "ubuntu"
+      BOOT: "ubuntu" # SET THIS ONCE FOR THE FIRST CONTAINER BUILD/RUN  (THIS DOWNLOADS THE LATEST ISO)
       RAM_SIZE: "4G" # ↑ RAM (default 2G)
       CPU_CORES: "4" # ↑ vCPUs (default 2)
-      DISK_SIZE: "16G"
+      DISK_SIZE: "25g" # Set this to resize the disk
       DEBUG: "Y"
+      # ARGUMENTS: # Optional: You can create the ARGUMENTS environment variable to provide additional arguments to QEMU at runtime
 
     ports:
       - 8006:8006 # Web console (noVNC)

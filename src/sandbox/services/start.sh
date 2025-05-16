@@ -28,7 +28,7 @@ mkdir -p "$SHARED_DIR"
 LOG_PATH="$SHARED_DIR/$SERVICES_LOG"
 : >"$LOG_PATH"
 exec >>"$LOG_PATH" 2>&1
-
+490
 echo "──────────────────────────────────────────────"
 echo "✅ Starting sandbox services..."
 date
@@ -102,7 +102,8 @@ fi
 # Start FastAPI
 # ────────────────────────────────────────────────
 echo "🚀 Starting FastAPI..."
-nohup uv run --with uvicorn uvicorn main:app \
+# either change directory …
+nohup uv run uvicorn main:app \
     --host="$HOST" \
     --port="$PORT" \
     --log-level debug >>"$LOG_PATH" 2>&1 &

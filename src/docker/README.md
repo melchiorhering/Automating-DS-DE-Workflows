@@ -10,12 +10,9 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
 📆docker
  ┣ 📆shared # Directory for shared files between host and container
  ┣ 📆vms
- ┃ ┣ 📆snapshots
- ┃ ┣ 📆spider2-v # OPTIONAL: YOU COULD USE THE ORIGINAL SPIDER2-V IMAGE (Needs to be downloaded separately)
- ┃ ┃ ┣ 📋Ubuntu.qcow2
- ┃ ┃ ┗ 📋Ubuntu.qcow2.zip
+ ┃ ┣ 📆snapshots # The copies of your base image should be stored here
  ┃ ┗ 📆ubuntu-base # OPTIONAL: NEW VARIANT OF UBUNTU BASE IMAGE; Already configured for SSH
- ┃ ┃ ┣ 📋boot.iso # Needed
+ ┃ ┃ ┣ 📋boot.iso # Needed on first start (installs distro)
  ┃ ┃ ┣ 📋data.img # Needed
  ┃ ┃ ┣ 📋qemu.mac # Created on container startup
  ┃ ┃ ┣ 📋uefi.rom # Created on container startup
@@ -32,10 +29,6 @@ _Build once with QEMU/KVM, run anywhere with the **`qemux/qemu`** Docker image_
 
 We use **QEMU/KVM** via the [`qemux/qemu`](https://github.com/qemus/qemu) Docker container to install, configure, and run Ubuntu or any other OS.
 Just point `BOOT` at an Ubuntu release alias (e.g. `ubuntu`) and the container will download the ISO for you.
-
-```
-docker compose up ──▶ downloader & installer ──▶ ubuntu-base.qcow2 ──▶ qemux/qemu
-```
 
 ---
 
@@ -69,8 +62,9 @@ services:
 
     # Mount the qcow2 we built earlier as /boot.qcow2 (overrides BOOT)
     volumes:
-      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory, this will skip the BOOT download and use a local image (.iso, .qcow2, etc.). THIS SHOULD CONTAINER AN `boot.iso|.qcow2|other` FILE AND A `data.img` FILE
-      - ${ROOT_DIR}/src/docker/shared:/shared # For the shared directory
+      # - ${ROOT_DIR}/src/docker/vms/snapshots/ubuntu-base-snap1.qcow2:/boot.qcow2 # For using snapshots
+      - ${ROOT_DIR}/src/docker/vms/ubuntu-base:/storage # Setting the storage directory
+      # - ${ROOT_DIR}/src/docker/shared/ubuntu-base:/shared # Shared directory for the VM; in the container you have to mount `mount -t 9p -o trans=virtio shared /mnt/example`
 
     # Grant KVM + networking devices
     devices:
@@ -82,11 +76,12 @@ services:
     # Runtime tweaks
     environment:
       # BOOT: "https://releases.ubuntu.com/jammy/ubuntu-22.04.5-desktop-amd64.iso" # Downloads the Spider2-V
-      BOOT: "ubuntu"
+      BOOT: "ubuntu" # SET THIS ONCE FOR THE FIRST CONTAINER BUILD/RUN  (THIS DOWNLOADS THE LATEST ISO)
       RAM_SIZE: "4G" # ↑ RAM (default 2G)
       CPU_CORES: "4" # ↑ vCPUs (default 2)
-      DISK_SIZE: "16G"
+      DISK_SIZE: "25g" # Set this to resize the disk
       DEBUG: "Y"
+      # ARGUMENTS: # Optional: You can create the ARGUMENTS environment variable to provide additional arguments to QEMU at runtime
 
     ports:
       - 8006:8006 # Web console (noVNC)
@@ -122,7 +117,7 @@ Inside the guest:
 
 ```bash
 sudo apt update && sudo apt dist-upgrade -y
-sudo apt install -y qemu-guest-agent openssh-server curl wget git vscode htop net-tools \
+sudo apt install -y openssh-server curl wget git htop net-tools \
                     build-essential ca-certificates software-properties-common gnome-screenshot
 ```
 
@@ -189,19 +184,6 @@ Inside the guest VM:
 ```bash
 # Install uv if not already installed
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Add to PATH for interactive shells
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-
-# Add to PATH for SSH login shells
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
-
-# (Optional) Add system-wide for all users
-sudo bash -c 'echo "export PATH=\$HOME/.local/bin:\$PATH" >> /etc/profile'
-
-# Reload the current shell
-source ~/.bashrc
-source ~/.profile
 ```
 
 > ✅ This ensures `uv` is available immediately after login, for **SSH**, **FastAPI server**, and **agent operations**.

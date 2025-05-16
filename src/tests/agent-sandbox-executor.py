@@ -76,7 +76,7 @@ def observation_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -
 
 
 # ──────────────── Sandbox Executor Configuration ────────────────
-config = SandboxVMConfig(container_name="sandbox-test", host_server_dir=Path("sandbox/server/"))
+config = SandboxVMConfig(container_name="sandbox-test", host_services_dir=Path("sandbox/services/"))
 agent = CodeAgent(
     description="This agent runs in a sandboxed environment and can execute code.",
     tools=[],

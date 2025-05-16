@@ -44,8 +44,6 @@ class SandboxExecutor(RemotePythonExecutor):
             self.logger.log("🔌 Connecting to Sandbox VM...", level=LogLevel.DEBUG)
             self.vm.connect_or_start()
 
-            self._wait_for_services()
-
             self.host = config.host_sandbox_jupyter_kernel_host
             self.port = config.host_sandbox_jupyter_kernel_port
             self.base_url = f"http://{self.host}:{self.port}"

@@ -1,6 +1,6 @@
 # sandbox/__init__.py
 
-from . import errors, server
+from . import errors
 from .configs import SandboxVMConfig, VMConfig
 from .sandbox import SandboxClient, SandboxVMManager
 from .ssh import SSHClient, SSHConfig
@@ -8,7 +8,6 @@ from .virtualmachine import VMManager
 
 __all__ = [
     "errors",
-    "server",
     "SSHClient",
     "SSHConfig",
     "SandboxVMConfig",

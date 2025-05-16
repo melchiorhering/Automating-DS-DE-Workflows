@@ -44,12 +44,11 @@ def launch_container(name: str, boot_img: Path, data_img: Path, vnc: int, ssh: i
             "BOOT": "ubuntu",
             "RAM_SIZE": "4G",
             "CPU_CORES": "4",
-            "DISK_SIZE": "16G",
             "DEBUG": "Y",
         },
         ports={
-            "8006/tcp": vnc,
-            "22/tcp": ssh,
+            8006: vnc,
+            22: ssh,
         },
         detach=True,
     )
@@ -74,7 +73,7 @@ def main():
         boot_img, data_img = copy_disk_images(base_boot, base_data, snap_dir)
 
         vnc_port = 8000 + idx * 100 + 6
-        ssh_port = 2222 + idx
+        ssh_port = 8000 + idx
         launch_container(f"ubuntu-{snap_name}", boot_img, data_img, vnc_port, ssh_port, snap_dir)
 
 

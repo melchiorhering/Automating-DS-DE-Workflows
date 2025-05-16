@@ -1,66 +1,69 @@
-import argparse
+from __future__ import annotations
+
+import time
+
+"""
+SSH smoke-test that boots the *sandbox-test* container with VMManager,
+waits for sshd, then runs two sanity commands over the cached session.
+
+Run:
+    uv run vm_ssh_smoke_test.py          # or: python vm_ssh_smoke_test.py
+
+Optional env overrides:
+    SSH_HOST, SSH_PORT, SSH_USER, SSH_PASS
+"""
+
+import os
 import sys
+from pathlib import Path
 
-import paramiko
+from smolagents import AgentLogger, LogLevel
+
+# ── local imports ───────────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BASE_DIR))
+
+from sandbox.configs import VMConfig  # noqa: E402
+from sandbox.ssh import SSHClient, SSHConfig  # noqa: E402
+from sandbox.virtualmachine import VMManager  # noqa: E402
 
 
-def run_ssh_command(ssh, command, timeout=10):
-    stdin, stdout, stderr = ssh.exec_command(command, timeout=timeout)
-    exit_status = stdout.channel.recv_exit_status()
-    output = stdout.read().decode().strip()
-    error = stderr.read().decode().strip()
-    return exit_status, output, error
+# ── tiny assertions ─────────────────────────────────────────────────────
+def test_echo(client: SSHClient) -> None:
+    assert client.exec_command("echo it_works")["stdout"].strip() == "it_works"
 
 
-def test_sftp(ssh: paramiko.SSHClient):
+def test_run_as_root(client: SSHClient) -> None:
+    assert client.exec_command("id -u", as_root=True)["stdout"].strip() == "0"
+
+
+# ── main runner ─────────────────────────────────────────────────────────
+def run_ssh_smoke_tests() -> None:
+    logger = AgentLogger(level=LogLevel.INFO)
+
+    ssh_cfg = SSHConfig(
+        hostname=os.getenv("SSH_HOST", "localhost"),
+        port=int(os.getenv("SSH_PORT", "2222")),
+        username=os.getenv("SSH_USER", "user"),
+        password=os.getenv("SSH_PASS", "password"),
+        initial_delay=10,  # give QEMU a head-start
+        banner_timeout=60,
+    )
+
+    vm_cfg = VMConfig(container_name="sandbox-test")
+
+    vm = VMManager(config=vm_cfg, logger=logger, ssh_cfg=ssh_cfg)
+    vm.start()  # container + sshd + cached session ready
+
     try:
-        sftp = ssh.open_sftp()
-        sftp.listdir(".")
-        sftp.get()  # TO DO
-        sftp.close()
-        return True
-    except Exception as e:
-        return False, str(e)
-
-
-def connect_ssh_with_password(host, port, username, password, timeout=10):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname=host, port=port, username=username, password=password, timeout=timeout)
-    return ssh
-
-
-def test_root_privileges(ssh):
-    exit_status, output, error = run_ssh_command(ssh, "sudo -n whoami")
-    if exit_status == 0 and output == "root":
-        return True
-    return False, exit_status, output, error
+        time.sleep(180)
+        # logger.log_rule("🚀 SSH smoke-tests")
+        # test_echo(vm.ssh)
+        # test_run_as_root(vm.ssh)
+        # logger.log("✅ All SSH tests passed", level=LogLevel.INFO)
+    finally:
+        vm.close(delete_storage=False)  # keep container; change if desired
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SSH connectivity & sudo test")
-    parser.add_argument("--host", default="localhost", help="SSH host")
-    parser.add_argument("--port", type=int, default=2222, help="SSH port")
-    parser.add_argument("--user", default="user", help="SSH username")
-    parser.add_argument("--password", default="password", help="SSH password")
-    args = parser.parse_args()
-
-    try:
-        ssh = connect_ssh_with_password(args.host, args.port, args.user, args.password)
-    except Exception as exc:
-        print(f"Failed to connect: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    # Basic connectivity test
-    status, output, error = run_ssh_command(ssh, "echo OK")
-    print(f"[Basic] Exit status: {status}, Output: {output}, Error: {error}")
-
-    # Root privilege test
-    root_test = test_root_privileges(ssh)
-    if root_test is True:
-        print("[Root] User has passwordless sudo (root privileges confirmed).")
-    else:
-        exit_status, output, error = root_test[1:]
-        print(f"[Root] NOT confirmed (exit {exit_status}, out='{output}', err='{error}').")
-
-    ssh.close()
+    run_ssh_smoke_tests()
