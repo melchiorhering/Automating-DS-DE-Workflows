@@ -162,7 +162,8 @@ class SandboxVMManager(VMManager):
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
     def _transfer_server_code(self):
-        self.ssh.transfer_directory(self.cfg.host_services_dir, str(self.cfg.sandbox_services_dir))
+        self.ssh.put_directory(self.cfg.host_services_dir, str(self.cfg.sandbox_services_dir))
+        # Run the services script
         self.ssh.exec_command(f"chmod +x {self.cfg.sandbox_services_dir}/start.sh")
 
     def _handle_server_start_failure(self, err: VMOperationError):

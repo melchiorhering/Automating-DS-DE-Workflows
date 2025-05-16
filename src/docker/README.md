@@ -136,9 +136,9 @@ sudo systemctl enable ssh
 
 ---
 
-## 5 · Optional GUI control (pyautogui etc.)
+## GUI control (pyautogui etc.)
 
-- Disable Wayland → switch to Xorg on the login screen.
+- Disable Wayland → switch to Xorg (X11) on the login screen.
 - Inside the VM: `xhost +SI:localuser:$(whoami)`.
 - Pass `DISPLAY` and `XAUTHORITY` to any container that needs GUI automation.
 
@@ -177,7 +177,7 @@ You now have a **portable, reproducible Ubuntu VM** running under Docker/KVM, wi
 
 - One‑file cloning (`data.img`)
 - Password‑only SSH + passwordless sudo
-- Optional GUI automation via X11
+- GUI automation via X11 & `pyautogui`
 - Seamless development through VS Code Remote‑SSH
 
 Happy hacking! 🎉

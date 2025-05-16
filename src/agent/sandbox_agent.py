@@ -102,6 +102,11 @@ class CodeAgent(MultiStepAgent):
         self.executor_kwargs = executor_kwargs or {}
         self.python_executor = self.create_python_executor()
 
+        # ADDED: To simplify the ssh and sandbox-client parts
+        if executor_type == "sandbox":
+            self.ssh = self.python_executor.vm.ssh
+            self.sandbox_client = self.python_executor.vm.sandbox_client
+
     # MODIFIED: Added the new executor type and ssh and sandbox client attributes
     def create_python_executor(
         self,
