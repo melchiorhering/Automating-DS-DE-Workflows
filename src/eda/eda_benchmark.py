@@ -140,20 +140,26 @@ def make_plots(df: pd.DataFrame) -> List[plt.Figure]:
     ax1.add_artist(plt.Circle((0, 0), 0.35, color="white", zorder=10))
 
     legend_handles = [plt.Rectangle((0, 0), 1, 1, fc=c) for c in inner_colors]
+
+    fontdict = {
+        "family": "serif",
+        "color": "darkred",
+        "weight": "normal",
+        "size": 16,
+    }
+
     ax1.legend(
         handles=legend_handles,
         labels=inner_labels,
         title="Task Categories",
         loc="center left",
         bbox_to_anchor=(1.05, 0.5),
-        fontsize="medium",
-        title_fontsize="large",
+        fontsize="x-large",
+        title_fontsize="x-large",
         frameon=False,
     )
 
-    ax1.set_title(
-        f"Tasks by Task Category (inner) and Tools (outer) — {len(df)} Total Tasks", fontsize="large", weight="bold"
-    )
+    ax1.set_title(f"Task Categories with used Tools — {len(df)} Total Tasks", fontsize="large", weight="bold")
     ax1.axis("equal")
     figs.append(fig1)
 
@@ -198,6 +204,58 @@ def make_plots(df: pd.DataFrame) -> List[plt.Figure]:
     figs.append(fig_dist)
 
     return figs
+
+
+def extended_summary(tasks, stats):
+    total_tasks = len(tasks)
+
+    easy = sum(1 for x in stats["action_steps"] if x <= 5)
+    medium = sum(1 for x in stats["action_steps"] if 6 <= x <= 15)
+    hard = sum(1 for x in stats["action_steps"] if x > 15)
+
+    easy_pct = round((easy / total_tasks) * 100, 1)
+    medium_pct = round((medium / total_tasks) * 100, 1)
+    hard_pct = round((hard / total_tasks) * 100, 1)
+
+    step_percentiles = sorted(stats["action_steps"])
+    n = len(step_percentiles)
+    avg_steps = round(sum(step_percentiles) / n, 2)
+    percentile_25 = step_percentiles[int(n * 0.25)] if n > 0 else 0
+    percentile_50 = step_percentiles[int(n * 0.50)] if n > 0 else 0
+    percentile_75 = step_percentiles[int(n * 0.75)] if n > 0 else 0
+
+    return {
+        "Total Tasks": f"{total_tasks} (100%)",
+        "Pure CLI": f"{stats['task_types']['CLI Only']} ({round(stats['task_types']['CLI Only'] / total_tasks * 100, 1)}%)",
+        "Pure GUI": f"{stats['task_types']['GUI Only']} ({round(stats['task_types']['GUI Only'] / total_tasks * 100, 1)}%)",
+        "CLI + GUI": f"{stats['task_types']['CLI + GUI']} ({round(stats['task_types']['CLI + GUI'] / total_tasks * 100, 1)}%)",
+        "w. Authentic User Account": f"{stats['auth']['Authenticated']} ({round(stats['auth']['Authenticated'] / total_tasks * 100, 1)}%)",
+        "w/o. Authentic User Account": f"{stats['auth']['No Auth']} ({round(stats['auth']['No Auth'] / total_tasks * 100, 1)}%)",
+        "Easy (≤ 5)": f"{easy} ({easy_pct}%)",
+        "Medium (6 ~ 15)": f"{medium} ({medium_pct}%)",
+        "Hard (> 15)": f"{hard} ({hard_pct}%)",
+        "Avg. Action Steps (P25/P50/P75)": f"{avg_steps} / {percentile_25} / {percentile_50} / {percentile_75}",
+        "Avg. Length of Abstract Instructions": round(
+            sum(stats["instruction_lengths"]["abstract"]) / len(stats["instruction_lengths"]["abstract"]), 1
+        )
+        if stats["instruction_lengths"]["abstract"]
+        else 0,
+        "Avg. Length of Verbose Instructions": round(
+            sum(stats["instruction_lengths"]["verbose"]) / len(stats["instruction_lengths"]["verbose"]), 1
+        )
+        if stats["instruction_lengths"]["verbose"]
+        else 0,
+        "Avg. Number of Used Apps Per Task": round(sum(stats["related_apps"]) / len(stats["related_apps"]), 1)
+        if stats["related_apps"]
+        else 0,
+    }
+
+
+def save_extended_summary(tasks, stats, output_path):
+    summary = extended_summary(tasks, stats)
+    summary_df = pd.DataFrame.from_dict(summary, orient="index", columns=["Value"])
+    summary_df.to_latex(output_path / "task_extended_summary_table.tex", header=True, bold_rows=True)
+    return summary_df
 
 
 if __name__ == "__main__":
