@@ -24,6 +24,11 @@ dependencies = [
     "num2words>=0.5.14",
     "pyautogui>=0.9.54",
     "litellm>=1.68.1",
+    "nbformat>=5.10.4",
+    "scikit-image",
+    "matplotlib",
+    "seaborn>=0.13.2",
+    "scikit-learn",
 ]
 
 

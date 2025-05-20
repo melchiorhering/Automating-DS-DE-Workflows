@@ -96,9 +96,7 @@ PORT_POOL = PortPool()
 # ────────────────────────────────────────────────────────────────────
 def _take_initial_screenshot(step: ActionStep, agent: CodeAgent):
     res = agent.sandbox_client.take_screenshot()
-    if "screenshot_path" not in res:
-        return
-    shared = agent._sandbox_executor.vm.cfg.host_container_shared_dir
+    shared = agent.python_executor.vm.cfg.host_container_shared_dir
     try:
         img = Image.open(shared / res["screenshot_path"])
         step.observations_images = [img.copy()]
@@ -111,8 +109,6 @@ def _observation_callback(step: ActionStep, agent: CodeAgent):
         if isinstance(prev, ActionStep) and prev.step_number <= step.step_number - 2:
             prev.observations_images = None
     res = agent.sandbox_client.take_screenshot()
-    if "screenshot_path" not in res:
-        return
     try:
         img = Image.open(res["screenshot_path"])
         step.observations_images = [img.copy()]
@@ -134,7 +130,7 @@ def build_agent(container: str) -> CodeAgent:
         host_ssh_port=PORT_POOL.get(),
         host_sandbox_server_port=PORT_POOL.get(),
         host_sandbox_jupyter_kernel_port=PORT_POOL.get(),
-        host_server_dir=Path("services"),
+        host_server_dir=Path("sandbox/services/"),
     )
     agent = CodeAgent(
         description=f"Agent {container}",
