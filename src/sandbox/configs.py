@@ -97,15 +97,17 @@ class SandboxVMConfig(VMConfig):
     # Pyautogui settings
     sandbox_server_display: str = ":0"
     sandbox_server_xauth: str = "/run/user/1000/gdm/Xauthority"
+    # Sandbox Services
+    sandbox_services_dir: Optional[Path] = Path("/home/user/services")
+    sandbox_task_setup_log: str = "task-setup.log"
     # FastAPI server
     sandbox_server_host: str = "0.0.0.0"
-    sandbox_server_port: int = 8765  # Port for FastAPI server
-    sandbox_services_dir: Optional[Path] = Path("/home/user/server")
+    sandbox_server_port: int = 60000  # Port for FastAPI server
     sandbox_services_log: str = "sandbox-services.log"
     # Jupyter kernel
     sandbox_jupyter_kernel_name: str = "sandbox-kernel"
     sandbox_jupyter_kernel_host: str = "0.0.0.0"
-    sandbox_jupyter_kernel_port: int = 8888  # Port for Jupyter kernel
+    sandbox_jupyter_kernel_port: int = 60001  # Port for Jupyter kernel
     sandbox_jupyter_kernel_log: str = "jupyter-kernel.log"
 
     # Extra's

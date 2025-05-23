@@ -1,0 +1,8 @@
+{
+  "sandbox-00b43a0a-b17": {
+    "ssh": 60000,
+    "vnc": 60001,
+    "sandbox_server": 60002,
+    "jupyter": 60003
+  }
+}

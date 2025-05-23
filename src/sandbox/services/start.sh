@@ -28,7 +28,7 @@ mkdir -p "$SHARED_DIR"
 LOG_PATH="$SHARED_DIR/$SERVICES_LOG"
 : >"$LOG_PATH"
 exec >>"$LOG_PATH" 2>&1
-490
+
 echo "──────────────────────────────────────────────"
 echo "✅ Starting sandbox services..."
 date

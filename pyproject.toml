@@ -29,6 +29,10 @@ dependencies = [
     "matplotlib",
     "seaborn>=0.13.2",
     "scikit-learn",
+    "playwright>=1.52.0",
+    "formulas>=1.2.10",
+    "lxml>=5.4.0",
+    "rapidfuzz>=3.13.0",
 ]
 
 

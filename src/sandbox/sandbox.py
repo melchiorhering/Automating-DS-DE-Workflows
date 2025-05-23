@@ -154,14 +154,18 @@ class SandboxVMManager(VMManager):
         mount = f"/mnt/{self.cfg.container_name}"
         self.ssh.exec_command(f"mkdir -p {mount}", as_root=True)
         # truncate (create/clear) log files under sudo
-        for log_name in (self.cfg.sandbox_services_log, self.cfg.sandbox_jupyter_kernel_log):
+        for log_name in (
+            self.cfg.sandbox_services_log,
+            self.cfg.sandbox_jupyter_kernel_log,
+            self.cfg.sandbox_task_setup_log,
+        ):
             self.ssh.exec_command(
                 f"truncate -s 0 {mount}/{log_name} || sudo tee {mount}/{log_name} <<< '' > /dev/null",
                 as_root=True,
             )
         self._ensure_mounted(mount, self.cfg.guest_shared_dir.name)
 
-    def _transfer_server_code(self):
+    def _transfer_services_code(self):
         self.ssh.put_directory(self.cfg.host_services_dir, str(self.cfg.sandbox_services_dir))
         # Run the services script
         self.ssh.exec_command(f"chmod +x {self.cfg.sandbox_services_dir}/start.sh")
@@ -199,7 +203,7 @@ class SandboxVMManager(VMManager):
         )
 
         if self.cfg.host_services_dir and Path(self.cfg.host_services_dir).exists():
-            self._transfer_server_code()
+            self._transfer_services_code()
 
         # fire-and-forget launch of FastAPI + kernels
         self.ssh.exec_command(

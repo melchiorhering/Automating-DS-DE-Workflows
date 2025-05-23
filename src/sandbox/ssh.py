@@ -136,7 +136,7 @@ class SSHClient:
         if as_root and not cmd.startswith("sudo"):
             cmd = f"sudo {cmd}"
 
-        self.logger.log(f"ssh $ {cmd}", level=LogLevel.DEBUG)
+        self.logger.log(f"✨ ssh $ {cmd}", level=LogLevel.DEBUG)
         ssh = self.connect()
         _, stdout, stderr = ssh.exec_command(
             cmd,
@@ -151,6 +151,7 @@ class SSHClient:
         status = stdout.channel.recv_exit_status()
         out, err = stdout.read().decode(), stderr.read().decode()
         self.logger.log(f"→ exit {status} | stdout {len(out)}B | stderr {len(err)}B", level=LogLevel.DEBUG)
+        self.logger.log(f"→ exit {status} | stdout {out}B | stderr {err}B", level=LogLevel.DEBUG)
         if status:
             raise RemoteCommandError(cmd, status, err)
         return {"status": status, "stdout": out, "stderr": err}
