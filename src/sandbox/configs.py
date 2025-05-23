@@ -108,13 +108,18 @@ class SandboxVMConfig(VMConfig):
     sandbox_jupyter_kernel_port: int = 8888  # Port for Jupyter kernel
     sandbox_jupyter_kernel_log: str = "jupyter-kernel.log"
 
+    # Extra's
     runtime_env: Dict[str, str] = field(default_factory=dict)
+    additional_ports: Dict[int, int] = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
-        # Map the host ports to the container ports (FastAPI server and Jupyter kernel)
+        # Add core ports
         self.extra_ports[self.sandbox_server_port] = self.host_sandbox_server_port
         self.extra_ports[self.sandbox_jupyter_kernel_port] = self.host_sandbox_jupyter_kernel_port
+
+        # Add any user-defined extra ports
+        self.extra_ports.update(self.additional_ports)
 
         self.runtime_env.setdefault("DISPLAY", self.sandbox_server_display)
         self.runtime_env.setdefault("XAUTHORITY", self.sandbox_server_xauth)
