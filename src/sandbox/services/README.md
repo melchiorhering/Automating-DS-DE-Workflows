@@ -1,51 +1,105 @@
-# Sandbox Environment Server
+# 🧪 Sandbox Services
 
-## Overview
+A Python-based service suite that powers sandboxed virtual machines for secure code execution, GUI automation, and interactive control using WebSockets and REST APIs.
 
-This server provides a sandbox environment for executing Python code in a secure, controlled setting. It supports both console and GUI code execution over a WebSocket interface, enabling remote code execution and screenshot capture with mouse pointer overlays.
+---
 
-## Features
+## 📦 Project Structure
 
-- **WebSocket API**: Handles code execution requests and returns outputs.
-- **GUI Code Execution**: Executes GUI-based code and captures screenshots with mouse annotations.
-- **Screenshot Capture**: Takes desktop screenshots, annotates with mouse position, and overlays the captured cursor image.
-- **XCursor Integration**: Retrieves the current cursor image using X11 libraries.
-- **Dynamic Package Management**: Installs required Python packages on demand using `uv`.
+```
 
-## Installation
+📦services
+┣ 📂src                    # Utility modules
+┃ ┣ 📜__init__.py
+┃ ┣ 📜pyxcursor.py         # Extracts mouse cursor bitmap using XFixes/X11
+┃ ┣ 📜recording.py         # Handles input event recording (keyboard/mouse)
+┃ ┗ 📜utils.py             # Shared helpers for screenshots, overlays, etc.
+┣ 📜main.py                # FastAPI server entry point
+┣ 📜start.sh               # Launch script for all services (GUI + API)
+┣ 📜pyproject.toml         # Project metadata and dependencies (via uv)
+┣ 📜uv.lock                # uv lockfile for reproducible environments
+┣ 📜.python-version        # Python version pin (e.g. 3.11)
+┗ 📜README.md              # You are here
 
-1. **Dependencies**:
-   Install the required packages with:
+```
 
-   ```
-   pip install -r requirements.txt
-   ```
+---
 
-   Alternatively, dependencies are defined in `pyproject.toml`.
+## ⚙️ Features
 
-2. **X Server Requirement**:
-   Ensure an X server is running. The server relies on XFixes and X11 libraries to capture screenshots and cursor images.
+- ✅ **FastAPI Server** for screenshotting and recording
+- 🧠 **Jupyter Kernel Gateway** for executing Python (pyautogui) code via WebSocket
+- 🖱️ **pyautogui + pyxcursor** for desktop automation and annotated screenshots
+- 📸 Screenshot + cursor overlay
+- 🎥 Input event recording via `pynput`
+- 📦 On-demand dependency management with `uv`
+- 🖥️ GUI automation using X11 (Wayland not supported)
 
-## Usage
+---
 
-- **Starting the Server**:
-  Run the server with:
-  ```
-  uv run main.py --screenshots-path=<path_to_screenshots>
-  ```
-  By default, it listens on `localhost:8765`. Adjust the host and port as needed via command-line arguments or environment variables.
+## 🚀 How to Run
 
-## Project Structure
+This is handled automatically inside the VM by `start.sh`. To run manually:
 
-- **main.py**: Launches the WebSocket server and handles client requests.
-- **pyxcursor.py**: Provides the functionality for capturing the X cursor image.
-- **start.sh**: A shell script for environment setup and server startup.
-- **pyproject.toml**: Contains project metadata and dependency specifications.
+### 1. Start your X11 desktop environment inside the VM
 
-## Contributing
+Ensure that `DISPLAY` and `XAUTHORITY` are correctly set and accessible to your user.
 
-Contributions and enhancements are welcome. Please submit pull requests with clear descriptions of changes.
+### 2. Run the startup script
 
-## License
+```bash
+./start.sh
+```
 
-This project is released under the MIT License.
+This script will:
+
+- Create and activate a Python environment using `uv`
+- Install dependencies listed in `pyproject.toml`
+- Start the Jupyter Kernel Gateway on port `8888`
+- Start the FastAPI server on port `8765`
+- Log all output to `sandbox-services.log` and `jupyter-kernel.log` in the shared mount path
+
+> Ports can be configured via environment variables (`PORT`, `JUPYTER_KERNEL_GATEWAY_APP_PORT`, etc.)
+
+---
+
+## 🌐 API Overview
+
+### FastAPI Endpoints
+
+| Method | Path                                        | Description                |
+| ------ | ------------------------------------------- | -------------------------- |
+| GET    | `/health`                                   | Liveness check             |
+| GET    | `/screenshot`                               | Capture desktop screenshot |
+| GET    | `/record?mode=start` or `/record?mode=stop` | Start/stop input recording |
+
+### Jupyter Kernel Gateway
+
+The Jupyter WebSocket API listens on:
+
+```
+ws://<host>:8888/api/kernels/<kernel_id>/channels
+```
+
+This is used by agents to stream code execution requests and capture outputs.
+
+---
+
+## 🧠 Notes
+
+- `start.sh` assumes the VM user has access to an X11 session and is **not running Wayland**.
+- The services require access to `.Xauthority` and `DISPLAY`, and use `xhost` to permit local connections.
+- SSH server setup is optional, but recommended for remote control and testing.
+
+---
+
+## 🔒 Security Considerations
+
+These services are designed to run **inside isolated VM sandboxes only**.
+Never expose them to untrusted users or open networks without proper isolation.
+
+---
+
+## 📜 License
+
+MIT License — see `LICENSE` for details.
