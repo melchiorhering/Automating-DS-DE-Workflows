@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pillow>=11.1.0",
-    "smolagents[gradio]>=1.9.2",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "docker>=7.1.0",
@@ -22,17 +21,16 @@ dependencies = [
     "vllm>=0.8.5.post1",
     "setuptools>=80.3.1",
     "num2words>=0.5.14",
-    "pyautogui>=0.9.54",
     "litellm>=1.68.1",
     "nbformat>=5.10.4",
     "scikit-image",
     "matplotlib",
     "seaborn>=0.13.2",
     "scikit-learn",
-    "playwright>=1.52.0",
     "formulas>=1.2.10",
     "lxml>=5.4.0",
     "rapidfuzz>=3.13.0",
+    "smolagents[toolkit]>=1.16.1",
 ]
 
 

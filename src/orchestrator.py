@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib
 import json
 import os
 import time
@@ -11,10 +12,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List
 
+import yaml
 from smolagents import ActionStep, LiteLLMModel, LogLevel
 
 from agent.build import _observation_callback, _take_initial_screenshot
-from agent.sandbox_agent import CodeAgent
+from agent.sandbox_agent import SandboxCodeAgent
 from agent.utils.port_pool import PORT_MANAGER
 from benchmark.helpers import (
     CONFIG_DISPATCH,
@@ -29,9 +31,11 @@ MODEL = LiteLLMModel(
     api_key=os.getenv("OPENAI_API_KEY"),
 )
 
+PROMPT_TEMPLATES = yaml.safe_load(importlib.resources.files("agent.prompts").joinpath("code_agent.yaml").read_text())
+
 
 # METRICS = load_metric_registry()
-def build_agent(container_name: str) -> CodeAgent:
+def build_agent(container_name: str) -> SandboxCodeAgent:
     ports = PORT_MANAGER.get_ports(container_name)
     cfg = SandboxVMConfig(
         container_name=container_name,
@@ -41,10 +45,11 @@ def build_agent(container_name: str) -> CodeAgent:
         host_sandbox_jupyter_kernel_port=ports["jupyter"],
         host_services_dir=Path("sandbox/services/"),
     )
-    agent = CodeAgent(
+    agent = SandboxCodeAgent(
         description=f"Agent {container_name}",
         tools=[],
         model=MODEL,
+        PROMPT_TEMPLATES=PROMPT_TEMPLATES,
         additional_authorized_imports=["pyautogui"],
         step_callbacks=[_observation_callback],
         executor_type="sandbox",
@@ -122,10 +127,11 @@ class Orchestrator:
 
             # 🧠 Agent execution
             try:
-                agent.run(spec.prompt, max_steps=spec.steps)
+                result = agent.run(spec.prompt, max_steps=spec.steps)
             except Exception as exc:
                 logger.log_error(f"❌ {spec.uid} failed during execution: {exc}")
 
+            # IF RESULT IS of class FinalAnswerStep we know the agent thinks its done else it would be a
             # 🧪 Evaluation
             self._evaluate(spec, ssh)
 

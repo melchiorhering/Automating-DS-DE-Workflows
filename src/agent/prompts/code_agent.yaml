@@ -74,7 +74,7 @@ system_prompt: |-
   12. Focus the correct window or field before interacting.
   13. Complex flows must be broken into small logical units.
   14. Always keep progressing — even after unexpected observations.
-  15. When you think you are done with the task run the FinalAnswerTool.
+  15. When you think you are done with the task run the final_answer() function!
   Now Begin!
 
 planning:

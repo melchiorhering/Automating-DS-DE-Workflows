@@ -4,16 +4,11 @@ import sys
 from pathlib import Path
 
 import yaml
-from PIL import Image
-from smolagents import (
-    ActionStep,
-    LiteLLMModel,
-    LogLevel,
-)
+from smolagents import LiteLLMModel, LogLevel
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from agent import SandboxCodeAgent
+from agent import SandboxCodeAgent, observation_screenshot_callback, take_initial_screenshot
 from sandbox.configs import SandboxVMConfig
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
@@ -26,59 +21,7 @@ from sandbox.configs import SandboxVMConfig
 
 # model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
 # model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
-model = LiteLLMModel(model_id="openai/o3-mini", api_key=os.getenv("OPENAI_API_KEY"))
-
-
-# ───────────────────────────── Helpers & Utils ─────────────────────────
-def take_initial_screenshot(memory_step: ActionStep, agent: SandboxCodeAgent) -> None:
-    client = agent.sandbox_client
-    result = client.take_screenshot()
-    if "screenshot_path" in result:
-        try:
-            host_shared = agent._sandbox_executor.vm.cfg.host_container_shared_dir
-            path = str(host_shared / result["screenshot_path"])
-            print(f"Image Path: {path}")
-
-            image = Image.open(path)
-            memory_step.observations_images = [image.copy()]
-            print("📸 Saved initial screenshot")
-        except Exception as e:
-            memory_step.observations = f"⚠️ Failed to save initial screenshot: {e}"
-
-
-def observation_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent) -> None:
-    """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
-    # Wait for any animations or UI updates to complete
-
-    # Clean up previous screenshots to save memory
-    current_step = memory_step.step_number
-    for previous_memory_step in agent.memory.steps:
-        if isinstance(previous_memory_step, ActionStep) and previous_memory_step.step_number <= current_step - 2:
-            previous_memory_step.observations_images = None
-
-    # Take the screenshot using the sandbox client
-    result = agent.sandbox_client.take_screenshot()
-    if "screenshot_path" in result:
-        # print(f"Screenshot result: {result}")
-        path = result["screenshot_path"]
-        try:
-            image = Image.open(path)
-            memory_step.observations_images = [image.copy()]
-
-            # Add detailed observation information
-            mouse_info = f"Mouse position: {result['mouse_position']}"
-            screen_info = f"Screen resolution: {image.size[0]}x{image.size[1]} pixels"
-
-            observations = [
-                f"🖼️ Screenshot captured at step {current_step}",
-                mouse_info,
-                screen_info,
-            ]
-
-            memory_step.observations = "\n".join(observations)
-            # print(f"Captured a VM screenshot: {image.size[0]}x{image.size[1]} pixels")
-        except Exception as e:
-            memory_step.observations = f"⚠️ Failed to load screenshot: {e}"
+model = LiteLLMModel(model_id="openai/o4-mini", api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # ──────────────── Sandbox Executor Configuration ────────────────
@@ -88,6 +31,7 @@ prompt_templates = yaml.safe_load(importlib.resources.files("agent.prompts").joi
 # structured_prompt_templates = yaml.safe_load(
 #     importlib.resources.files("agent.prompts").joinpath("structured_code_agent.yaml").read_text()
 # )
+
 config = SandboxVMConfig(container_name="sandbox-test", host_services_dir=Path("sandbox/services/"))
 agent = SandboxCodeAgent(
     description="This agent runs in a sandboxed environment and can execute code.",
@@ -103,19 +47,11 @@ agent = SandboxCodeAgent(
     prompt_templates=prompt_templates,
     verbosity_level=LogLevel.INFO,
 )
-# Create an initial ActionStep (use step_number=0 and fill in observation fields)
-initial_step = ActionStep(
-    step_number=0,
-    model_output="Initial environment state.",
-    observations="📸 Initial screenshot before execution.",
-)
 # Take the screenshot and attach image data
 take_initial_screenshot(
-    initial_step,
     agent,
 )
-# Add the initial step to the agent's memory
-agent.memory.steps.append(initial_step)
+
 
 # agent.ssh SETUP SPECIFIC
 
@@ -147,11 +83,11 @@ pyautogui.moveTo(center_x, center_y)
 # Step 4: Wait for a moment to see the mouse move
 time.sleep(1)
 
-When the mouse is in the center you are done!
+It helps to print the screensize and location of the mouse, then you can easily calculate if you are in the center.
+When the mouse is in the center you are done, just run the final_answer function!
 ```""",
-        max_steps=4,
+        max_steps=7,
     )
-
     print("Final output:")
     print(output)
 except KeyboardInterrupt:
@@ -160,3 +96,6 @@ except Exception as e:
     print(f"An unexpected error occurred: {e}")
 finally:
     agent.cleanup()
+
+
+print(list(agent.memory.steps)[:-2])
