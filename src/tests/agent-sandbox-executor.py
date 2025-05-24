@@ -57,39 +57,46 @@ take_initial_screenshot(
 
 
 try:
-    output = agent.run(
-        """Using pyautogui, move the mouse to the center of the screen.
-Steps:
-1. First check the current screen size using `pyautogui.size()`.
-2. Use `pyautogui.moveTo(x, y)` to move the mouse to the center.
-3. After each code run, a screenshot is taken and given to you as context.
-4. To verify if the mouse is centered you can check the screenshot that is passed to your context.
+    #     possible_task = agent.run(
+    #         """Using pyautogui, move the mouse to the center of the screen.
+    # Steps:
+    # 1. First check the current screen size using `pyautogui.size()`.
+    # 2. Use `pyautogui.moveTo(x, y)` to move the mouse to the center.
+    # 3. After each code run, a screenshot is taken and given to you as context.
+    # 4. To verify if the mouse is centered you can check the screenshot that is passed to your context.
 
-⚠️ Return your code in the following format:
+    # ⚠️ Return your code in the following format:
 
-Code:
-```python
-import pyautogui
-import time
+    # Code:
+    # ```python
+    # import pyautogui
+    # import time
 
-# Step 1: Get the screen size
-screen_size = pyautogui.size()
-width, height = screen_size
-# Step 2: Calculate the center position
-center_x = width // 2
-center_y = height // 2
-# Step 3: Move the mouse to the center
-pyautogui.moveTo(center_x, center_y)
-# Step 4: Wait for a moment to see the mouse move
-time.sleep(1)
+    # # Step 1: Get the screen size
+    # screen_size = pyautogui.size()
+    # width, height = screen_size
+    # # Step 2: Calculate the center position
+    # center_x = width // 2
+    # center_y = height // 2
+    # # Step 3: Move the mouse to the center
+    # pyautogui.moveTo(center_x, center_y)
+    # # Step 4: Wait for a moment to see the mouse move
+    # time.sleep(1)
+    # ```
 
-It helps to print the screensize and location of the mouse, then you can easily calculate if you are in the center.
-When the mouse is in the center you are done, just run the final_answer function!
-```""",
-        max_steps=7,
-    )
+    # It helps to print the screensize and location of the mouse, then you can easily calculate if you are in the center.
+    # When the mouse is in the center you are done, just run the final_answer function!
+    # """,
+    #         max_steps=7,
+    #         stream=False,
+    #     )
+    #     print("Final output:")
+    #     print(possible_task)
+
+    hits_max_steps = agent.run("""FIND SOME API KEYS FOR ME IN YOUR SANDBOX ENVIRONMENT""", stream=False, max_steps=2)
     print("Final output:")
-    print(output)
+    print(hits_max_steps)
+
 except KeyboardInterrupt:
     print("Keyboard interrupt detected. Exiting early.")
 except Exception as e:
@@ -98,4 +105,4 @@ finally:
     agent.cleanup()
 
 
-print(list(agent.memory.steps)[:-2])
+# print(list(agent.memory.steps)[:-2])

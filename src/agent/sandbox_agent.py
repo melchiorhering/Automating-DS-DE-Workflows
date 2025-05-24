@@ -1,6 +1,8 @@
 from smolagents.agents import CodeAgent as BaseCodeAgent
 from smolagents.monitoring import LogLevel
 
+from sandbox import SandboxClient, SSHClient
+
 from .executor import SandboxExecutor
 
 
@@ -14,8 +16,8 @@ class SandboxCodeAgent(BaseCodeAgent):
 
         # Inject SSH and sandbox client if sandbox executor
         if self.executor_type == "sandbox":
-            self.ssh = self.python_executor.vm.ssh
-            self.sandbox_client = self.python_executor.vm.sandbox_client
+            self.ssh: SSHClient = self.python_executor.vm.ssh
+            self.sandbox_client: SandboxClient = self.python_executor.vm.sandbox_client
 
     def create_python_executor(self):
         if self.executor_type == "sandbox":

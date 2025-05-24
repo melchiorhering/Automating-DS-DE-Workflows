@@ -41,8 +41,8 @@
   "evaluation": {
     "func": "compare_csv",
     "arguments": {
-      "vm_result": "/home/user/Desktop/allGames.csv",
-      "local_expected": "gold.csv"
+      "local_expected": "gold.csv",
+      "vm_result": "/home/user/Desktop/allGames.csv"
     }
   },
   "counterpart": "cad93c85-d12d-4ba3-83d7-ba4e3ec3bfcc"

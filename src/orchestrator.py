@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Dict, List
 
 import yaml
-from smolagents import ActionStep, LiteLLMModel, LogLevel
+from smolagents import LiteLLMModel, LogLevel
 
-from agent.build import _observation_callback, _take_initial_screenshot
+from agent.build import observation_screenshot_callback, take_initial_screenshot
 from agent.sandbox_agent import SandboxCodeAgent
 from agent.utils.port_pool import PORT_MANAGER
 from benchmark.helpers import (
@@ -24,20 +24,16 @@ from benchmark.helpers import (
     upload_and_execute_script,
 )
 from sandbox.configs import SandboxVMConfig
-from sandbox.virtualmachine import SSHClient
 
-MODEL = LiteLLMModel(
-    model_id="openai/o4-mini-2025-04-16",
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
-
+# GLOBALS
+MODEL = LiteLLMModel(model_id="openai/o4-mini", api_key=os.getenv("OPENAI_API_KEY"))
 PROMPT_TEMPLATES = yaml.safe_load(importlib.resources.files("agent.prompts").joinpath("code_agent.yaml").read_text())
 
 
-# METRICS = load_metric_registry()
+# AGENT GENERATOR
 def build_agent(container_name: str) -> SandboxCodeAgent:
     ports = PORT_MANAGER.get_ports(container_name)
-    cfg = SandboxVMConfig(
+    config = SandboxVMConfig(
         container_name=container_name,
         host_ssh_port=ports["ssh"],
         host_vnc_port=ports["vnc"],
@@ -46,24 +42,35 @@ def build_agent(container_name: str) -> SandboxCodeAgent:
         host_services_dir=Path("sandbox/services/"),
     )
     agent = SandboxCodeAgent(
-        description=f"Agent {container_name}",
+        description="This agent runs in a sandboxed environment and can execute code.",
         tools=[],
         model=MODEL,
-        PROMPT_TEMPLATES=PROMPT_TEMPLATES,
+        # add_base_tools=True,
         additional_authorized_imports=["pyautogui"],
-        step_callbacks=[_observation_callback],
+        step_callbacks=[observation_screenshot_callback],
         executor_type="sandbox",
-        executor_kwargs={"config": cfg},
+        executor_kwargs={
+            "config": config,
+        },
+        prompt_templates=PROMPT_TEMPLATES,
+        verbosity_level=LogLevel.INFO,
+    )
+    # Take the initial screenshot and add to the agents memory
+    take_initial_screenshot(
+        agent,
     )
 
     return agent
 
 
 class TaskSpec:
-    def __init__(self, tool: str, uid: str, root: Path):
+    def __init__(self, tool: str, uid: str, root: Path, results_root: Path):
         self.uid, self.tool = uid, tool
         self.tool_dir = root / tool
         self.folder = root / tool / uid
+        self.result = results_root / uid  # <- result dir is now dynamic and clear
+
+        # Load Meta Data
         meta = json.loads((self.folder / f"{uid}.json").read_text())
         self.prompt = meta["instruction"]
         self.steps = meta.get("action_number", 6)
@@ -74,8 +81,10 @@ class TaskSpec:
 
 
 class Orchestrator:
-    def __init__(self, max_conc: int, mapping: Dict, examples_root: Path):
-        self.tasks: List[TaskSpec] = [TaskSpec(t, u, examples_root) for t, lst in mapping.items() for u in lst]
+    def __init__(self, max_conc: int, mapping: Dict, examples_root: Path, results_root: Path = Path("results")):
+        self.tasks: List[TaskSpec] = [
+            TaskSpec(t, u, examples_root, results_root) for t, lst in mapping.items() for u in lst
+        ]
         self.sem = asyncio.Semaphore(max_conc)
         self.pool = ThreadPoolExecutor(max_workers=max_conc)
 
@@ -91,85 +100,58 @@ class Orchestrator:
 
     def _run_one(self, spec: TaskSpec):
         agent = build_agent(spec.container)
-        logger = agent.logger
-        ssh = agent.ssh
-        cfg = agent.python_executor.vm.cfg
 
         try:
             setup_script = spec.tool_dir / "setup.sh"
             if setup_script.is_file():
-                logger.log(f"🛠 Running setup.sh for {spec.uid}", level=LogLevel.INFO)
-                upload_and_execute_script(ssh, cfg, setup_script, logger=logger)
+                agent.logger.log(f"🛠 Running setup.sh for {spec.uid}", level=LogLevel.INFO)
+                upload_and_execute_script(agent, setup_script)
             else:
-                logger.log(f"⚠️ No setup.sh found at {setup_script}", level=LogLevel.WARNING)
+                agent.logger.log(f"⚠️ No setup.sh found at {setup_script}", level=LogLevel.ERROR)
 
-            # 📸 Initial screenshot
-            first = ActionStep(0, "initial state", "📸 initial")
-            _take_initial_screenshot(first, agent)
-            agent.memory.steps.append(first)
-
-            # 📤 Run configuration steps (e.g., upload files)
+            # 📤 CONFIG STEPS
             for step in spec.config:
                 func = CONFIG_DISPATCH.get(step["func"])
                 if not func:
-                    logger.log(f"⚠️ Unknown step function: {step['func']}", level=LogLevel.WARNING)
+                    agent.logger.log(f"⚠️ Unknown step function: {step['func']}", level=LogLevel.ERROR)
                     continue
 
                 try:
                     kwargs = step.get("arguments", {})
-                    if "local_path" in kwargs:
-                        # Resolve path relative to the task folder
-                        relative = Path(kwargs["local_path"])
-                        kwargs["local_path"] = (spec.folder / relative).resolve()
-                    func(ssh, logger=logger, **kwargs)
+                    func(task=spec, agent=agent, **kwargs)
                 except Exception as e:
-                    logger.log(f"⚠️ Step {step['func']} in {spec.uid} failed: {e}", level=LogLevel.ERROR)
+                    agent.logger.log(f"⚠️ Step {step['func']} in {spec.uid} failed: {e}", level=LogLevel.ERROR)
 
-            # 🧠 Agent execution
+            # 🧠 Agent run
             try:
-                result = agent.run(spec.prompt, max_steps=spec.steps)
+                result = agent.run(spec.prompt, max_steps=spec.steps, stream=False)
+                agent.logger.log(result)
             except Exception as exc:
-                logger.log_error(f"❌ {spec.uid} failed during execution: {exc}")
+                agent.logger.log(f"❌ {spec.uid} failed during execution: {exc}", level=LogLevel.ERROR)
 
-            # IF RESULT IS of class FinalAnswerStep we know the agent thinks its done else it would be a
-            # 🧪 Evaluation
-            self._evaluate(spec, ssh)
+            self._evaluate(spec, agent)
 
-            # Wait briefly before cleanup (useful for debugging or GUI interaction)
             time.sleep(280)
 
         except Exception as fatal:
-            logger.log_error(f"🔥 Unhandled error during task {spec.uid}: {fatal}")
+            agent.logger.log(f"🔥 Unhandled error during task {spec.uid}: {fatal}", level=LogLevel.ERROR)
         finally:
-            logger.log("🧹 Cleaning up sandbox environment...", level=LogLevel.DEBUG)
+            agent.logger.log.log("🧹 Cleaning up sandbox environment...", level=LogLevel.DEBUG)
             try:
                 agent.cleanup()
-                # Optionally remove VM container dir
-                # shutil.rmtree(cfg.host_container_shared_dir, ignore_errors=True)
             except Exception as cleanup_err:
-                logger.log_error(f"⚠️ Error during cleanup: {cleanup_err}")
+                agent.logger.log(f"⚠️ Error during cleanup: {cleanup_err}", level=LogLevel.ERROR)
 
-    def _evaluate(self, spec: TaskSpec, ssh: SSHClient):
-        out_dir = Path("results") / spec.uid
-        out_dir.mkdir(parents=True, exist_ok=True)
-
+    def _evaluate(self, spec: TaskSpec, agent: SandboxCodeAgent):
+        spec.result.mkdir(parents=True, exist_ok=True)
         eval_spec = spec.evaluation
         func = EVAL_DISPATCH.get(eval_spec["func"])
         if not func:
             print(f"⚠️ Unknown evaluation function: {eval_spec['func']}")
             return
 
-        args = eval_spec.get("arguments", {})
         try:
-            args["folder"] = spec.folder  # required by compare_csv
-
-            # Resolve gold.csv relative to task folder
-            if "local_expected" in args:
-                args["local_expected"] = str((spec.folder / args["local_expected"]).resolve())
-
-            score = func(ssh=ssh, **args)
-            (out_dir / "score.json").write_text(json.dumps({"score": score}, indent=2))
-            print(f"✅ {spec.uid}  {eval_spec['func']}={score}")
+            func(task=spec, agent=agent, **eval_spec.get("arguments", {}))
         except Exception as e:
             print(f"❌ Evaluation for {spec.uid} failed: {e}")
 
@@ -181,6 +163,7 @@ def main():
     ap.add_argument("-j", "--concurrency", type=int, default=2)
     args = ap.parse_args()
 
+    # Load Task File
     mapping = json.loads(args.task_file.read_text())
     orch = Orchestrator(args.concurrency, mapping, args.examples_root.resolve())
     asyncio.run(orch.run_all())
