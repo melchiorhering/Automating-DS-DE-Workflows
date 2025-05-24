@@ -1,12 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 source ~/.profile
-set -euxo pipefail
+set -euo pipefail
 
 # ────────────────────────────────────────────────
 # ENV Defaults
 # ────────────────────────────────────────────────
 : "${SHARED_DIR:=/tmp/sandbox-server}"
 : "${TASK_SETUP_LOG:=task-setup.log}"
+: "${JUPYTER_PORT:=8888}"
+: "${DISPLAY:=:0}"
+
+export DISPLAY
 
 cd /home/user/Desktop
 
@@ -19,47 +23,81 @@ echo "────────────────────────�
 echo "📦 Starting Jupyter setup..."
 date
 echo "→ Log file: $LOG_PATH"
+echo "→ Display: $DISPLAY"
 echo "──────────────────────────────────────────────"
 
+# ────────────────────────────────────────────────
 # 1. Setup Python environment
+# ────────────────────────────────────────────────
 if [ ! -d ".venv" ]; then
     echo "🔧 Creating virtual environment..."
-    uv venv
+    uv venv --seed
 fi
 source .venv/bin/activate
 
-# 2. Install required Python packages
-echo "📦 Installing Python dependencies with uv..."
-uv pip install \
-    jupyter==1.0.0 \
-    jupyterlab==4.1.6 \
-    ipykernel==6.29.4 \
-    numpy==1.26.4 \
-    pandas==2.2.2 \
-    matplotlib==3.8.4 \
-    seaborn==0.13.2 \
-    scipy==1.13.0 \
-    scikit-learn==1.5.0
+# ────────────────────────────────────────────────
+# 2. Install dependencies
+# ────────────────────────────────────────────────
+echo "📦 Installing Python dependencies..."
+uv pip install ipykernel jupyterlab
 
-# 3. Generate Jupyter configs
-echo "🛠 Generating Jupyter configuration files..."
-jupyter notebook --generate-config
-jupyter lab --generate-config
+# ────────────────────────────────────────────────
+# 3. Register kernel
+# ────────────────────────────────────────────────
+echo "🧠 Registering kernel..."
+uv run ipython kernel install --user \
+    --name=jupyterlab \
+    --display-name "Python (jupyterlab)" \
+    --env VIRTUAL_ENV "$(pwd)/.venv"
 
-# 4. Set Chromium as default browser for Jupyter
-browser=$(which chromium)
-echo "🌐 Setting default browser: $browser"
-echo "c.ServerApp.browser = '$browser'" >>~/.jupyter/jupyter_notebook_config.py
-echo "c.ServerApp.browser = '$browser'" >>~/.jupyter/jupyter_lab_config.py
+# ────────────────────────────────────────────────
+# 4. Configure browser
+# ────────────────────────────────────────────────
+browser=$(command -v chromium || command -v chromium-browser || true)
+if [[ -n "$browser" ]]; then
+    echo "🌐 Configuring Chromium as Jupyter default browser"
+    mkdir -p ~/.jupyter
+    echo "c.ServerApp.browser = '$browser'" >~/.jupyter/jupyter_lab_config.py
+else
+    echo "⚠️ Chromium not found, skipping browser config"
+fi
 
-# 5. Register the Jupyter kernel
-echo "🧠 Registering IPython kernel..."
-python -m ipykernel install --user --name=jupyterlab --display-name "Python (jupyterlab)"
-
-# 6. Disable token login
-echo "🔐 Disabling Jupyter token..."
+# ────────────────────────────────────────────────
+# 5. Disable token login
+# ────────────────────────────────────────────────
 export JUPYTER_TOKEN=""
+echo "🔐 Token login disabled"
 
-# 7. Launch JupyterLab (auto-opens Chromium)
+# ────────────────────────────────────────────────
+# 6. Start JupyterLab in background
+# ────────────────────────────────────────────────
 echo "🚀 Launching JupyterLab..."
-jupyter lab --notebook-dir="/home/user/Desktop"
+nohup bash -c "BROWSER=\"$browser\" uv run --with jupyter jupyter lab \
+    --notebook-dir=\"/home/user/Desktop\" \
+    --port=$JUPYTER_PORT \
+    --ip=0.0.0.0 \
+    --ServerApp.token='' \
+    --ServerApp.password=''" \
+    >>"$SHARED_DIR/jupyter.log" 2>&1 &
+
+# ────────────────────────────────────────────────
+# 7. Wait for Jupyter and launch GUI
+# ────────────────────────────────────────────────
+echo "⏳ Waiting for JupyterLab to become available..."
+jupyter_url="http://localhost:$JUPYTER_PORT/lab"
+for i in {1..20}; do
+    if curl -s -A "Mozilla/5.0" -L "$jupyter_url" | grep -q "<title>JupyterLab"; then
+        echo "✅ JupyterLab is ready at $jupyter_url"
+        if [[ -n "$browser" && -n "$DISPLAY" ]]; then
+            echo "🌍 Opening JupyterLab in Chromium..."
+            nohup "$browser" "$jupyter_url" >/dev/null 2>&1 &
+        else
+            echo "⚠️ Cannot launch browser (DISPLAY or browser not set)"
+        fi
+        exit 0
+    fi
+    sleep 5
+done
+
+echo "❌ Timeout: JupyterLab did not respond in time"
+exit 1

@@ -12,28 +12,28 @@
     {
       "func": "upload_file_to_vm",
       "arguments": {
-        "local_path": "evaluation_examples/examples/jupyter/00b43a0a-b17b-475d-a482-302efe94d4cc/Athletes_summer_games.csv",
+        "local_path": "Athletes_summer_games.csv",
         "remote_path": "/home/user/Desktop/Athletes_summer_games.csv"
       }
     },
     {
       "func": "upload_file_to_vm",
       "arguments": {
-        "local_path": "evaluation_examples/examples/jupyter/00b43a0a-b17b-475d-a482-302efe94d4cc/Athletes_winter_games.csv",
+        "local_path": "Athletes_winter_games.csv",
         "remote_path": "/home/user/Desktop/Athletes_winter_games.csv"
       }
     },
     {
       "func": "upload_file_to_vm",
       "arguments": {
-        "local_path": "evaluation_examples/examples/jupyter/00b43a0a-b17b-475d-a482-302efe94d4cc/allGames.csv",
+        "local_path": "allGames.csv",
         "remote_path": "/home/user/Desktop/allGames.csv"
       }
     },
     {
       "func": "upload_file_to_vm",
       "arguments": {
-        "local_path": "evaluation_examples/examples/jupyter/00b43a0a-b17b-475d-a482-302efe94d4cc/notebook.ipynb",
+        "local_path": "notebook.ipynb",
         "remote_path": "/home/user/Desktop/notebook.ipynb"
       }
     }
@@ -42,7 +42,7 @@
     "func": "compare_csv",
     "arguments": {
       "vm_result": "/home/user/Desktop/allGames.csv",
-      "local_expected": "evaluation_examples/examples/jupyter/00b43a0a-b17b-475d-a482-302efe94d4cc/gold.csv"
+      "local_expected": "gold.csv"
     }
   },
   "counterpart": "cad93c85-d12d-4ba3-83d7-ba4e3ec3bfcc"

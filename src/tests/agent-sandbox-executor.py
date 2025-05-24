@@ -1,13 +1,19 @@
+import importlib
 import os
 import sys
 from pathlib import Path
 
+import yaml
 from PIL import Image
-from smolagents import ActionStep, LiteLLMModel, LogLevel
+from smolagents import (
+    ActionStep,
+    LiteLLMModel,
+    LogLevel,
+)
 
 # Allow imports from the parent directory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from agent import CodeAgent
+from agent import SandboxCodeAgent
 from sandbox.configs import SandboxVMConfig
 
 # ───────────────────────────── Agent Configuration ─────────────────────────────
@@ -20,11 +26,11 @@ from sandbox.configs import SandboxVMConfig
 
 # model = TransformersModel(model_id="Qwen/Qwen2.5-Coder-7B-Instruct", max_new_tokens=4096, device_map="auto")
 # model = VLLMModel(model_id="HuggingFaceTB/SmolVLM2-2.2B-Instruct")
-model = LiteLLMModel(model_id="openai/o4-mini-2025-04-16", api_key=os.getenv("OPENAI_API_KEY"))
+model = LiteLLMModel(model_id="openai/o3-mini", api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # ───────────────────────────── Helpers & Utils ─────────────────────────
-def take_initial_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
+def take_initial_screenshot(memory_step: ActionStep, agent: SandboxCodeAgent) -> None:
     client = agent.sandbox_client
     result = client.take_screenshot()
     if "screenshot_path" in result:
@@ -40,7 +46,7 @@ def take_initial_screenshot(memory_step: ActionStep, agent: CodeAgent) -> None:
             memory_step.observations = f"⚠️ Failed to save initial screenshot: {e}"
 
 
-def observation_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -> None:
+def observation_screenshot_callback(memory_step: ActionStep, agent: SandboxCodeAgent) -> None:
     """Enhanced callback that takes screenshots with the FastAPI sandbox client."""
     # Wait for any animations or UI updates to complete
 
@@ -76,8 +82,14 @@ def observation_screenshot_callback(memory_step: ActionStep, agent: CodeAgent) -
 
 
 # ──────────────── Sandbox Executor Configuration ────────────────
+# NORMAL CODE AGENT PROMPT TEMPLATE
+prompt_templates = yaml.safe_load(importlib.resources.files("agent.prompts").joinpath("code_agent.yaml").read_text())
+# STRUCTURED CODE AGENT PROMPT TEMPLATE NOT YET ADDED TO RELEASE SMOLEAGENT
+# structured_prompt_templates = yaml.safe_load(
+#     importlib.resources.files("agent.prompts").joinpath("structured_code_agent.yaml").read_text()
+# )
 config = SandboxVMConfig(container_name="sandbox-test", host_services_dir=Path("sandbox/services/"))
-agent = CodeAgent(
+agent = SandboxCodeAgent(
     description="This agent runs in a sandboxed environment and can execute code.",
     tools=[],
     model=model,
@@ -88,6 +100,7 @@ agent = CodeAgent(
     executor_kwargs={
         "config": config,
     },
+    prompt_templates=prompt_templates,
     verbosity_level=LogLevel.INFO,
 )
 # Create an initial ActionStep (use step_number=0 and fill in observation fields)
@@ -106,8 +119,10 @@ agent.memory.steps.append(initial_step)
 
 # agent.ssh SETUP SPECIFIC
 
-output = agent.run(
-    """Using pyautogui, move the mouse to the center of the screen.
+
+try:
+    output = agent.run(
+        """Using pyautogui, move the mouse to the center of the screen.
 Steps:
 1. First check the current screen size using `pyautogui.size()`.
 2. Use `pyautogui.moveTo(x, y)` to move the mouse to the center.
@@ -131,11 +146,17 @@ center_y = height // 2
 pyautogui.moveTo(center_x, center_y)
 # Step 4: Wait for a moment to see the mouse move
 time.sleep(1)
+
+When the mouse is in the center you are done!
 ```""",
-    max_steps=4,
-)
-# SSH CLIENT FOR THE SANDBOX
-# agent.ssh
+        max_steps=4,
+    )
 
-
-agent.cleanup()
+    print("Final output:")
+    print(output)
+except KeyboardInterrupt:
+    print("Keyboard interrupt detected. Exiting early.")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+finally:
+    agent.cleanup()

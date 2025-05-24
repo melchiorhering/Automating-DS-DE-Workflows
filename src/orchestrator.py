@@ -6,12 +6,12 @@ import argparse
 import asyncio
 import json
 import os
-import shutil
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List
 
-from smolagents import ActionStep, LiteLLMModel
+from smolagents import ActionStep, LiteLLMModel, LogLevel
 
 from agent.build import _observation_callback, _take_initial_screenshot
 from agent.sandbox_agent import CodeAgent
@@ -50,15 +50,14 @@ def build_agent(container_name: str) -> CodeAgent:
         executor_type="sandbox",
         executor_kwargs={"config": cfg},
     )
-    first = ActionStep(0, "initial state", "📸 initial")
-    _take_initial_screenshot(first, agent)
-    agent.memory.steps.append(first)
+
     return agent
 
 
 class TaskSpec:
     def __init__(self, tool: str, uid: str, root: Path):
         self.uid, self.tool = uid, tool
+        self.tool_dir = root / tool
         self.folder = root / tool / uid
         meta = json.loads((self.folder / f"{uid}.json").read_text())
         self.prompt = meta["instruction"]
@@ -91,33 +90,58 @@ class Orchestrator:
         ssh = agent.ssh
         cfg = agent.python_executor.vm.cfg
 
-        setup_script = spec.folder / "setup.sh"
-        if setup_script.is_file():
-            logger.log(f"🛠 Running setup.sh for {spec.uid}")
-            upload_and_execute_script(ssh, cfg, setup_script)
-
-        for step in spec.config:
-            func = CONFIG_DISPATCH.get(step["func"])
-            if not func:
-                logger.log(f"⚠️ Unknown step function: {step['func']}")
-                continue
-            try:
-                kwargs = step.get("arguments", {})
-                func(ssh, **kwargs)
-            except Exception as e:
-                logger.log(f"⚠️ Step {step['func']} in {spec.uid} failed: {e}")
-
         try:
-            agent.run(spec.prompt, max_steps=spec.steps)
-        except Exception as exc:
-            logger.log_error(
-                f"❌ {spec.uid} failed during execution: {exc}",
-            )
+            setup_script = spec.tool_dir / "setup.sh"
+            if setup_script.is_file():
+                logger.log(f"🛠 Running setup.sh for {spec.uid}", level=LogLevel.INFO)
+                upload_and_execute_script(ssh, cfg, setup_script, logger=logger)
+            else:
+                logger.log(f"⚠️ No setup.sh found at {setup_script}", level=LogLevel.WARNING)
 
-        self._evaluate(spec, ssh)
+            # 📸 Initial screenshot
+            first = ActionStep(0, "initial state", "📸 initial")
+            _take_initial_screenshot(first, agent)
+            agent.memory.steps.append(first)
 
-        agent.cleanup()
-        shutil.rmtree(cfg.host_container_dir, ignore_errors=True)
+            # 📤 Run configuration steps (e.g., upload files)
+            for step in spec.config:
+                func = CONFIG_DISPATCH.get(step["func"])
+                if not func:
+                    logger.log(f"⚠️ Unknown step function: {step['func']}", level=LogLevel.WARNING)
+                    continue
+
+                try:
+                    kwargs = step.get("arguments", {})
+                    if "local_path" in kwargs:
+                        # Resolve path relative to the task folder
+                        relative = Path(kwargs["local_path"])
+                        kwargs["local_path"] = (spec.folder / relative).resolve()
+                    func(ssh, logger=logger, **kwargs)
+                except Exception as e:
+                    logger.log(f"⚠️ Step {step['func']} in {spec.uid} failed: {e}", level=LogLevel.ERROR)
+
+            # 🧠 Agent execution
+            try:
+                agent.run(spec.prompt, max_steps=spec.steps)
+            except Exception as exc:
+                logger.log_error(f"❌ {spec.uid} failed during execution: {exc}")
+
+            # 🧪 Evaluation
+            self._evaluate(spec, ssh)
+
+            # Wait briefly before cleanup (useful for debugging or GUI interaction)
+            time.sleep(280)
+
+        except Exception as fatal:
+            logger.log_error(f"🔥 Unhandled error during task {spec.uid}: {fatal}")
+        finally:
+            logger.log("🧹 Cleaning up sandbox environment...", level=LogLevel.DEBUG)
+            try:
+                agent.cleanup()
+                # Optionally remove VM container dir
+                # shutil.rmtree(cfg.host_container_shared_dir, ignore_errors=True)
+            except Exception as cleanup_err:
+                logger.log_error(f"⚠️ Error during cleanup: {cleanup_err}")
 
     def _evaluate(self, spec: TaskSpec, ssh: SSHClient):
         out_dir = Path("results") / spec.uid
@@ -131,7 +155,13 @@ class Orchestrator:
 
         args = eval_spec.get("arguments", {})
         try:
-            score = func(ssh=ssh, folder=spec.folder, **args)
+            args["folder"] = spec.folder  # required by compare_csv
+
+            # Resolve gold.csv relative to task folder
+            if "local_expected" in args:
+                args["local_expected"] = str((spec.folder / args["local_expected"]).resolve())
+
+            score = func(ssh=ssh, **args)
             (out_dir / "score.json").write_text(json.dumps({"score": score}, indent=2))
             print(f"✅ {spec.uid}  {eval_spec['func']}={score}")
         except Exception as e:

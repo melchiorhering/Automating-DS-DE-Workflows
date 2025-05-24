@@ -179,7 +179,8 @@ class VMManager:
 
         # We only have to bind the storage and shared directories
         mounts = [
-            Mount(target="/storage", source=str(self.cfg.host_container_dir), type="bind"),  # Uses the data.img
+            Mount(target="/boot.img", source=str(self.cfg.host_container_data), type="bind"),  # Uses the data.img
+            # Mount(target="/storage", source=str(self.cfg.host_container_dir), type="bind"),
             Mount(
                 target=str(self.cfg.guest_shared_dir), source=str(self.cfg.host_container_shared_dir), type="bind"
             ),  # Uses the shared directory
